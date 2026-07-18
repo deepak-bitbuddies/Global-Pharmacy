@@ -1,0 +1,29 @@
+{
+  "Nav": {
+    "dashboard": "Dashboard",
+    "logout": "Logout",
+    "logoutError": "Unable to sign out.",
+    "toggleTheme": "Toggle theme",
+    "language": "Language",
+    "openSidebar": "Open sidebar",
+    "closeSidebar": "Close sidebar"
+  },
+  "Login": {
+    "title": "Sign in",
+    "subtitle": "Enter your credentials to access the dashboard.",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "errorTitle": "Could not sign in",
+    "demoCredentialsTitle": "Demo credentials",
+    "useDemoCredentials": "Use demo credentials",
+    "validation": {
+      "emailRequired": "Email is required.",
+      "emailInvalid": "Enter a valid email address.",
+      "passwordRequired": "Password is required."
+    }
+  }
+}
