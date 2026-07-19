@@ -1,3 +1,3 @@
 export { authRoutes } from "./routes.js"
-export { AuthUserModel, type AuthUserDocument } from "./model.js"
+export { authUsers, type AuthUserDocument, type NewAuthUserDocument } from "./model.js"
 export { findAuthUserByEmail, createAuthUser } from "./repository.js"

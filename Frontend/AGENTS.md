@@ -213,34 +213,36 @@ Never parse this envelope by hand in feature code. Two helpers already do it:
 
 ## Standardized CRUD Infrastructure
 
-Every business CRUD listing module must inherit these capabilities to guarantee uniform UX and behavior:
+Every business CRUD listing module must inherit these capabilities to guarantee uniform UX and behavior. All shared UI lives in `src/components/ui/` (`Custom*`-prefixed wrappers around HeroUI — see the boundary rule below) and is imported from the barrel at `@/components/ui`, never from `@heroui/react` directly.
 
 1. **Server-Side Pagination**:
-   - Must use the shared `<Pagination />` component.
+   - Must use the shared `<CustomTable />` component (it renders pagination internally via `<CustomPagination />`).
    - Display page size options (10, 20, 50, 100), record count summary, and routing synchronization.
    - Default page size: `DEFAULT_PAGE_SIZE = 10` (Centralized).
 
 2. **Unified Entity Lifecycle**:
-   - Master modules must implement `ACTIVE`, `INACTIVE`, and `ARCHIVED` statuses.
-   - Record deletions must be non-destructive Soft Deletes. Require deletion reason logs.
+   - Master modules must implement `ACTIVE`, `INACTIVE`, and `ARCHIVED` statuses (see `RecordStatus` in `customFilters/customStatusFilter.tsx`).
+   - Record deletions must be non-destructive Soft Deletes. Require deletion reason logs (pass a reason input via `CustomConfirmDialog`'s `extra` slot).
    - Archived records cannot be assigned to new documents, but remain available for historical reference. They can be restored to active.
 
 3. **Managed Filters**:
-   - Must use the shared `<FilterBar />` component.
+   - Must use the shared `<CustomFilterBar />` component, composed from `<CustomSearchFilter />`, `<CustomStatusFilter />`, and `<CustomDateRangeFilter />`.
    - Standard filters: Search string (debounced), Status dropdown (Active, Inactive, Archived), and Created/Updated Date ranges.
    - Reset the page number to 1 on filter or search parameter change.
 
 4. **Bulk Actions Toolbar**:
-   - Must use the shared `<BulkActionsToolbar />` component.
+   - Must use the shared `<CustomBulkActionsToolbar />` component (also available built into `<CustomTable bulkActions={...} />`).
    - Support checkboxes, row selections, selection counts, clear selection, and confirmation overlays.
    - Actions: Activate, Deactivate, Archive, Restore, Delete (Soft).
 
-5. **Shared CRUD Components**:
-   - `<DataTable />`
-   - `<Pagination />`
-   - `<FilterBar />`
-   - `<BulkActionsToolbar />`
-   - `<DeleteConfirmationDialog />`
-   - `<ArchiveConfirmationDialog />`
-   - `<ConfirmationDialog />`
+5. **Shared CRUD Components** (all exported from `@/components/ui`):
+   - `<CustomTable />` (built on HeroUI `Table`; use `tableCellHelpers.status()` / `.actions()` for status badges and row-action dropdowns)
+   - `<CustomPagination />`
+   - `<CustomFilterBar />`
+   - `<CustomBulkActionsToolbar />`
+   - `<CustomConfirmDialog />` + `useConfirm()` — one generic confirm dialog (parameterized by `variant: "default" | "warning" | "danger"`) used for delete/archive/generic confirmations alike, instead of separate per-action dialog components.
+
+### HeroUI boundary rule
+
+`@heroui/react` / `@heroui/styles` must never be imported outside `src/components/ui/**` — enforced by a `no-restricted-imports` ESLint rule. HeroUI is an implementation detail behind our own `Custom*` component library; if a HeroUI capability is needed and no wrapper exists yet, add one to `src/components/ui/` following the existing pattern rather than importing HeroUI directly in a page/module.
 

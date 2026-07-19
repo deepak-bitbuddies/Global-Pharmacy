@@ -1,0 +1,1 @@
+ALTER TABLE "branches" ALTER COLUMN "gstin" DROP NOT NULL;

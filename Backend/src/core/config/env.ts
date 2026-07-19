@@ -19,7 +19,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   HOST: z.string().default("0.0.0.0"),
 
-  MONGO_URI: z.string().min(1, "MONGO_URI is required"),
+  DATABASE_URL: z.url("DATABASE_URL must be a valid PostgreSQL connection URL"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),
 

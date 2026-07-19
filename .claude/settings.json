@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsx *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Read(//tmp/**)",
+      "Bash(npx drizzle-kit *)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:4000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(netstat -ano)",
+      "Bash(curl -s http://localhost:4000/api/v1/admin/uploads -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -F fileType=stock -F 'file=@/c/Users/Deepak_Vyas/Downloads/STOCK 18-7-2026.xls;type=application/vnd.ms-excel')",
+      "Bash(curl -v http://localhost:4000/api/v1/admin/uploads -H 'Authorization: Bearer __CMDSUB_OUTPUT__' -F fileType=stock -F 'file=@/c/Users/Deepak_Vyas/Downloads/STOCK 18-7-2026.xls;type=application/vnd.ms-excel')",
+      "Bash(curl -s -o /dev/null -w \"server alive: %{http_code}\\\\n\" http://localhost:4000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(tasklist)",
+      "Bash(disown)",
+      "Bash(curl -s -o /dev/null -w \"backend alive: %{http_code}\\\\n\" http://localhost:4000/api/v1/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -s -o /dev/null -w \"root: %{http_code}\\\\n\" http://localhost:3001/)",
+      "Bash(curl -s -o /dev/null -w \"login: %{http_code}\\\\n\" http://localhost:3001/login)",
+      "Bash(curl -s -o /dev/null -w \"import: %{http_code}\\\\n\" http://localhost:3001/import)",
+      "Bash(curl -s -o /dev/null -w \"sales report: %{http_code}\\\\n\" http://localhost:3001/reports/sales)",
+      "Bash(curl -s -o /dev/null -w \"stock report: %{http_code}\\\\n\" http://localhost:3001/reports/stock)",
+      "Bash(rm -f /tmp/cookies.txt)",
+      "Bash(curl -s -c /tmp/cookies.txt http://localhost:3001/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{\"email\":\"admin@globalpharmacy.com\",\"password\":\"ChangeMe123!\"}')",
+      "Bash(curl -s -b /tmp/cookies.txt -o /tmp/dashboard.html -w \"status: %{http_code}\\\\n\" http://localhost:3001/)",
+      "Bash(grep -o \"GPRS Dashboard\\\\|Error\\\\|error-boundary\\\\|Application error\" /tmp/dashboard.html | sort -u *)",
+      "Bash(curl -s -b /tmp/cookies.txt \"http://localhost:3001/api/admin/reports/dashboard/summary\")",
+      "Bash(curl -s -b /tmp/cookies.txt \"http://localhost:3001/api/admin/reports/stock?item=aptamil\")",
+      "Bash(npx eslint *)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard.html)",
+      "Bash(TaskStop b7wk8in3m *)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard2.html)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard3.html)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard4.html)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard5.html)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard6.html)"
+    ]
+  }
+}

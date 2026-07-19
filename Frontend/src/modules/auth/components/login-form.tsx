@@ -5,24 +5,21 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation } from "@tanstack/react-query"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import {
+  ButtonType,
+  ButtonVariant,
+  CustomButton,
+  CustomInput,
+  customToast,
+  InputTypes,
+} from "@/components/ui"
 import { z } from "zod"
 import {
-  CircleNotchIcon,
   EnvelopeSimpleIcon,
   LockKeyIcon,
   SparkleIcon,
 } from "@phosphor-icons/react"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@/components/ui/field"
 import { useAuthStore } from "@/providers"
 import { login } from "../api/auth-api"
 import type { ApiErrorPayload } from "@/lib/axios"
@@ -60,7 +57,7 @@ export function LoginForm() {
       router.push(searchParams.get("from") ?? "/")
     },
     onError: (error: ApiErrorPayload) => {
-      toast.error(t("errorTitle"), { description: error.message })
+      customToast.danger(error.message || t("errorTitle"))
     },
   })
 
@@ -74,95 +71,75 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-6">
-      <FieldSet>
-        <FieldGroup>
-          <Controller
-            name="email"
-            control={control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor={field.name}>
-                  <EnvelopeSimpleIcon className="size-4" />
-                  {t("email")}
-                </FieldLabel>
-                <Input
-                  {...field}
-                  id={field.name}
-                  type="email"
-                  autoComplete="email"
-                  placeholder={t("emailPlaceholder")}
-                  aria-invalid={fieldState.invalid}
-                />
-                {fieldState.invalid && (
-                  <FieldError
-                    errors={[
-                      {
-                        message: fieldState.error?.message
-                          ? t(`validation.${fieldState.error.message}`)
-                          : undefined,
-                      },
-                    ]}
-                  />
-                )}
-              </Field>
-            )}
-          />
+      <div className="space-y-5">
+        <Controller
+          name="email"
+          control={control}
+          render={({ field, fieldState }) => (
+            <CustomInput
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              label={t("email")}
+              type={InputTypes.email}
+              startContent={<EnvelopeSimpleIcon className="size-4" />}
+              placeholder={t("emailPlaceholder")}
+              isInvalid={fieldState.invalid}
+              errorMessage={
+                fieldState.error?.message ? t(`validation.${fieldState.error.message}`) : undefined
+              }
+              fullWidth
+            />
+          )}
+        />
 
-          <Controller
-            name="password"
-            control={control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor={field.name}>
-                  <LockKeyIcon className="size-4" />
-                  {t("password")}
-                </FieldLabel>
-                <Input
-                  {...field}
-                  id={field.name}
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder={t("passwordPlaceholder")}
-                  aria-invalid={fieldState.invalid}
-                />
-                {fieldState.invalid && (
-                  <FieldError
-                    errors={[
-                      {
-                        message: fieldState.error?.message
-                          ? t(`validation.${fieldState.error.message}`)
-                          : undefined,
-                      },
-                    ]}
-                  />
-                )}
-              </Field>
-            )}
-          />
+        <Controller
+          name="password"
+          control={control}
+          render={({ field, fieldState }) => (
+            <CustomInput
+              value={field.value}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              label={t("password")}
+              type={InputTypes.password}
+              startContent={<LockKeyIcon className="size-4" />}
+              placeholder={t("passwordPlaceholder")}
+              isInvalid={fieldState.invalid}
+              errorMessage={
+                fieldState.error?.message ? t(`validation.${fieldState.error.message}`) : undefined
+              }
+              fullWidth
+            />
+          )}
+        />
 
-          <Button type="submit" disabled={isSubmitting || isPending} className="h-11 w-full rounded-xl shadow-lg shadow-primary/20">
-            {isPending && <CircleNotchIcon className="size-4 animate-spin" />}
-            {isPending ? t("submitting") : t("submit")}
-          </Button>
-        </FieldGroup>
-      </FieldSet>
+        <CustomButton
+          type={ButtonType.submit}
+          isDisabled={isSubmitting || isPending}
+          loading={isPending}
+          fullWidth
+          className="h-11 rounded-xl"
+        >
+          {isPending ? t("submitting") : t("submit")}
+        </CustomButton>
+      </div>
 
-      <div className="rounded-xl border border-dashed border-border bg-muted/50 p-4 text-sm">
+      <div className="rounded-xl border border-dashed border-border bg-muted-surface/50 p-4 text-sm">
         <p className="font-medium">{t("demoCredentialsTitle")}</p>
         <p className="text-muted-foreground">
           {DEMO_EMAIL} / {DEMO_PASSWORD}
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
+        <CustomButton
+          type={ButtonType.button}
+          variant={ButtonVariant.outline}
           className="mt-2 w-full"
-          disabled={isSubmitting || isPending}
+          isDisabled={isSubmitting || isPending}
           onClick={handleUseDemoCredentials}
         >
           <SparkleIcon className="size-4" />
           {t("useDemoCredentials")}
-        </Button>
+        </CustomButton>
       </div>
     </form>
   )

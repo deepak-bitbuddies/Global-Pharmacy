@@ -1,3 +1,9 @@
 import type { FastifyInstance } from "fastify"
 
-export async function registerAdminRoutes(_fastify: FastifyInstance): Promise<void> {}
+import { uploadsRoutes } from "./uploads/index.js"
+import { reportsRoutes } from "./reports/index.js"
+
+export async function registerAdminRoutes(fastify: FastifyInstance): Promise<void> {
+  await fastify.register(uploadsRoutes, { prefix: "/api/v1/admin/uploads" })
+  await fastify.register(reportsRoutes, { prefix: "/api/v1/admin/reports" })
+}

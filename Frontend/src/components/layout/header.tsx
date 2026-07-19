@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl"
 import { ListIcon, XIcon } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { ButtonVariant, CustomButton } from "@/components/ui"
 import { ThemeToggle, LanguageSwitcher } from "@/components/common"
 
 interface HeaderProps {
@@ -17,9 +17,9 @@ export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:px-6">
-      <Button
-        variant="ghost"
-        size="icon"
+      <CustomButton
+        variant={ButtonVariant.ghost}
+        isIconOnly
         className="relative xl:hidden"
         onClick={() => setSidebarOpen(!sidebarOpen)}
       >
@@ -38,7 +38,7 @@ export function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
         <span className="sr-only">
           {sidebarOpen ? t("closeSidebar") : t("openSidebar")}
         </span>
-      </Button>
+      </CustomButton>
 
       <div className="ml-auto flex items-center gap-2">
         <LanguageSwitcher label={t("language")} />

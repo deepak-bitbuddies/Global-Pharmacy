@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useMutation } from "@tanstack/react-query"
 import { useTranslations } from "next-intl"
-import { toast } from "sonner"
+import { ButtonVariant, CustomButton, customToast, CustomTooltip, TooltipPlacement } from "@/components/ui"
 import {
   CaretLineLeftIcon,
   CaretLineRightIcon,
@@ -15,8 +15,6 @@ import {
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/providers"
 import { logout } from "@/modules/auth"
-import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { navGroups, type NavItem } from "@/config/nav"
 import { BrandIcon, brandName } from "@/config/brand"
@@ -72,10 +70,9 @@ function SidebarNavItem({
   if (!iconRail) return link
 
   return (
-    <Tooltip>
-      <TooltipTrigger render={link} />
-      <TooltipContent side="right">{t(item.labelKey)}</TooltipContent>
-    </Tooltip>
+    <CustomTooltip trigger={link} placement={TooltipPlacement.right}>
+      {t(item.labelKey)}
+    </CustomTooltip>
   )
 }
 
@@ -97,7 +94,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
       setUser(null)
       router.push("/login")
     },
-    onError: () => toast.error(t("logoutError")),
+    onError: () => customToast.danger(t("logoutError")),
   })
   const logoutButton = (
     <button
@@ -137,10 +134,10 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
             </span>
             <span className={labelClassName}>{brandName}</span>
           </Link>
-          <Button variant="ghost" size="icon" className="xl:hidden" onClick={close}>
+          <CustomButton variant={ButtonVariant.ghost} isIconOnly className="xl:hidden" onClick={close}>
             <XIcon className="size-4" />
             <span className="sr-only">{t("closeSidebar")}</span>
-          </Button>
+          </CustomButton>
         </div>
         <button
           type="button"
@@ -169,7 +166,11 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
           ))}
         </nav>
         <div className={cn("border-t border-sidebar-border p-3", collapsed && "xl:px-2")}>
-          {iconRail ? <Tooltip><TooltipTrigger render={logoutButton} /><TooltipContent side="right">{t("logout")}</TooltipContent></Tooltip> : logoutButton}
+          {iconRail ? (
+            <CustomTooltip trigger={logoutButton} placement={TooltipPlacement.right}>
+              {t("logout")}
+            </CustomTooltip>
+          ) : logoutButton}
         </div>
       </aside>
     </>

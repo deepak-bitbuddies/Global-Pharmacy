@@ -3,8 +3,7 @@
 import { ThemeProvider } from "next-themes"
 
 import { QueryProvider } from "@/providers/query-provider"
-import { Toaster } from "@/components/ui/sonner"
-import { TooltipProvider } from "@/components/ui/tooltip"
+import { CustomConfirmDialogProvider, CustomToastProvider } from "@/components/ui"
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -15,10 +14,10 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       disableTransitionOnChange
     >
       <QueryProvider>
-        <TooltipProvider>
+        <CustomConfirmDialogProvider>
           {children}
-          <Toaster richColors closeButton />
-        </TooltipProvider>
+          <CustomToastProvider placement="bottom end" />
+        </CustomConfirmDialogProvider>
       </QueryProvider>
     </ThemeProvider>
   )
