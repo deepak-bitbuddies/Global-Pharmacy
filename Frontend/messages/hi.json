@@ -1,6 +1,18 @@
 {
+  "NoData": "कोई डेटा नहीं",
+  "Show": "दिखाएं",
+  "entries": "प्रविष्टियाँ",
+  "DataNotAvailable": "कोई डेटा उपलब्ध नहीं है",
+  "Close": "बंद करें",
+  "Done": "पूर्ण",
+  "Reset": "रीसेट करें",
+  "Search": "खोजें",
   "Nav": {
     "dashboard": "डैशबोर्ड",
+    "gprs": "जीपीआरएस",
+    "importData": "डेटा आयात करें",
+    "salesReport": "बिक्री रिपोर्ट",
+    "stockReport": "स्टॉक रिपोर्ट",
     "logout": "लॉग आउट",
     "logoutError": "साइन आउट नहीं हो सका।",
     "toggleTheme": "थीम बदलें",

@@ -3,15 +3,15 @@
 import { useTheme } from "next-themes"
 import { MoonIcon, SunIcon } from "@phosphor-icons/react"
 
-import { Button } from "@/components/ui/button"
+import { ButtonVariant, CustomButton } from "@/components/ui"
 
 export function ThemeToggle({ label }: { label: string }) {
   const { resolvedTheme, setTheme } = useTheme()
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
+    <CustomButton
+      variant={ButtonVariant.outline}
+      isIconOnly
       className="cursor-pointer rounded-full"
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
@@ -24,6 +24,6 @@ export function ThemeToggle({ label }: { label: string }) {
         className="absolute size-4 rotate-90 scale-0 text-indigo-400 opacity-0 transition-all duration-300 ease-in-out dark:rotate-0 dark:scale-100 dark:opacity-100"
       />
       <span className="sr-only">{label}</span>
-    </Button>
+    </CustomButton>
   )
 }

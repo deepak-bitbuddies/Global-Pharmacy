@@ -1,6 +1,18 @@
 {
+  "NoData": "No data",
+  "Show": "Show",
+  "entries": "entries",
+  "DataNotAvailable": "No data available",
+  "Close": "Close",
+  "Done": "Done",
+  "Reset": "Reset",
+  "Search": "Search",
   "Nav": {
     "dashboard": "Dashboard",
+    "gprs": "GPRS",
+    "importData": "Import Data",
+    "salesReport": "Sales Report",
+    "stockReport": "Stock Report",
     "logout": "Logout",
     "logoutError": "Unable to sign out.",
     "toggleTheme": "Toggle theme",

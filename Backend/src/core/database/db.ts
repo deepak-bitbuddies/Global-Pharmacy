@@ -1,27 +1,24 @@
-import mongoose from "mongoose"
+import { drizzle } from "drizzle-orm/postgres-js"
+import postgres from "postgres"
 
 import { env } from "../config/env.js"
 import { logger } from "../logger/logger.js"
 
-mongoose.set("strictQuery", true)
+const sql = postgres(env.DATABASE_URL, {
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+  prepare: false,
+})
+
+export const db = drizzle({ client: sql })
 
 export async function connectDatabase(): Promise<void> {
-  mongoose.connection.on("connected", () => logger.info("[mongo] connected"))
-  mongoose.connection.on("error", (err) =>
-    logger.error({ err }, "[mongo] connection error"),
-  )
-  mongoose.connection.on("disconnected", () =>
-    logger.warn("[mongo] disconnected"),
-  )
-
-  await mongoose.connect(env.MONGO_URI, {
-    maxPoolSize: 50,
-    minPoolSize: 5,
-    serverSelectionTimeoutMS: 5000,
-  })
-
+  await sql`select 1`
+  logger.info("[postgres] connected")
 }
 
 export async function disconnectDatabase(): Promise<void> {
-  await mongoose.disconnect()
+  await sql.end({ timeout: 5 })
+  logger.info("[postgres] disconnected")
 }

@@ -1,0 +1,108 @@
+"use client";
+
+import {
+  Calendar,
+  DateField,
+  DatePicker,
+  Description,
+  FieldError,
+  Label,
+} from "@heroui/react";
+import {
+  getLocalTimeZone,
+  parseDate,
+  parseDateTime,
+} from "@internationalized/date";
+import { formatDate } from "@/utils/formatting";
+
+const ReturnFormat = "YYYY-MM-DD";
+
+type CustomDatePickerProps = {
+  date?: string;
+  onChange: (value?: string) => void;
+  className?: string;
+  isInvalid?: boolean;
+  minDate?: string;
+  maxDate?: string;
+  errorMsg?: string;
+  label?: string;
+  description?: string;
+};
+
+export const CustomDatePicker = ({ ...props }: CustomDatePickerProps) => {
+  // Convert DD/MM/YYYY to YYYY-MM-DD for parseDate
+  const convertDateToISO = (dateStr: string): string | undefined => {
+    if (!dateStr) return undefined;
+    const [day, month, year] = dateStr.split("/");
+    if (day && month && year) {
+      return `${year}-${month}-${day}`;
+    }
+    return undefined;
+  };
+
+  const isoDate = convertDateToISO(props.date || "");
+
+  return (
+    <DatePicker
+      shouldForceLeadingZeros
+      isInvalid={props.isInvalid}
+      minValue={props.minDate ? parseDateTime(props.minDate) : undefined}
+      maxValue={props.maxDate ? parseDateTime(props.maxDate) : undefined}
+      value={isoDate ? parseDate(isoDate) : undefined}
+      onChange={(value) => {
+        if (value) {
+          props.onChange(
+            formatDate({
+              date: value?.toDate(getLocalTimeZone()),
+              returnFormat: ReturnFormat,
+            }),
+          );
+        }
+      }}
+    >
+      <Label>{props.label}</Label>
+      <DateField.Group
+        fullWidth
+        className={"border-default rounded-app min-h-10 border-2"}
+      >
+        <DateField.Input>
+          {(segment) => <DateField.Segment segment={segment} />}
+        </DateField.Input>
+        <DateField.Suffix>
+          <DatePicker.Trigger>
+            <DatePicker.TriggerIndicator />
+          </DatePicker.Trigger>
+        </DateField.Suffix>
+      </DateField.Group>
+      <FieldError>{props.errorMsg}</FieldError>
+      <DatePicker.Popover>
+        <>
+          <Calendar aria-label="Event date">
+            <Calendar.Header>
+              <Calendar.YearPickerTrigger>
+                <Calendar.YearPickerTriggerHeading />
+                <Calendar.YearPickerTriggerIndicator />
+              </Calendar.YearPickerTrigger>
+              <Calendar.NavButton slot="previous" />
+              <Calendar.NavButton slot="next" />
+            </Calendar.Header>
+            <Calendar.Grid>
+              <Calendar.GridHeader>
+                {(day) => <Calendar.HeaderCell>{day}</Calendar.HeaderCell>}
+              </Calendar.GridHeader>
+              <Calendar.GridBody>
+                {(date) => <Calendar.Cell date={date} />}
+              </Calendar.GridBody>
+            </Calendar.Grid>
+            <Calendar.YearPickerGrid>
+              <Calendar.YearPickerGridBody>
+                {({ year }) => <Calendar.YearPickerCell year={year} />}
+              </Calendar.YearPickerGridBody>
+            </Calendar.YearPickerGrid>
+          </Calendar>
+        </>
+      </DatePicker.Popover>
+      {props.description && <Description>{props.description}</Description>}
+    </DatePicker>
+  );
+};

@@ -12,7 +12,7 @@ services:
       NODE_ENV: development
       PORT: 4000
       HOST: 0.0.0.0
-      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/quick_commerce}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-please}
       JWT_EXPIRES_IN: 7d
@@ -23,26 +23,8 @@ services:
       - ./tsconfig.json:/app/tsconfig.json
       - app_node_modules:/app/node_modules # keep container's own install
     depends_on:
-      mongo:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    restart: unless-stopped
-
-  mongo:
-    image: mongo:7
-    environment:
-      MONGO_INITDB_DATABASE: quick_commerce
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: unless-stopped
 
   redis:
@@ -62,6 +44,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  mongo_data:
   redis_data:
   app_node_modules:

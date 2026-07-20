@@ -16,7 +16,7 @@ export async function authenticate(input: LoginRequestDto): Promise<LoginRespons
   return {
     token: "",
     user: {
-      id: String(user._id),
+      id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,

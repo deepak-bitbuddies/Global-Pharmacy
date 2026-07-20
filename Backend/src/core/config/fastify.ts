@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from "fastify"
 import cors from "@fastify/cors"
 import helmet from "@fastify/helmet"
+import multipart from "@fastify/multipart"
 
 import { env } from "./env.js"
 import { loggerOptions } from "../logger/logger.js"
@@ -22,6 +23,9 @@ export async function buildFastify(): Promise<FastifyInstance> {
     credentials: true,
   })
   await registerJwtPlugin(fastify)
+  await fastify.register(multipart, {
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB — Marg exports are small, this just guards against bad uploads
+  })
 
   registerRequestLogger(fastify)
 

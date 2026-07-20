@@ -1,6 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "@heroui/styles";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -27,10 +26,11 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
+  --color-accent-foreground: var(--brand-accent-foreground);
+  --color-accent: var(--brand-accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
+  --color-muted-surface: var(--muted-surface);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
@@ -46,6 +46,10 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@utility rounded-app {
+  border-radius: var(--radius-lg);
 }
 
 :root {
@@ -67,13 +71,41 @@
   --secondary: oklch(0.965 0.01 240);
   --secondary-foreground: oklch(0.25 0.015 250);
 
-  /* Neutral */
-  --muted: oklch(0.975 0.005 240);
+  /* Neutral — HeroUI's own compiled CSS uses the Tailwind `text-muted`/
+     `bg-muted` utilities in ~30 places (menu-item checkmarks, descriptions,
+     table headers, tabs, kbd, breadcrumbs...) expecting `--muted` to mean a
+     muted TEXT/icon gray — but we'd been using `--muted` for a muted
+     BACKGROUND surface instead, making all of that near-invisible. `--muted`
+     below is aliased to `--muted-foreground` (text-appropriate) so every
+     HeroUI-native `text-muted` usage renders correctly; our own "muted
+     surface" usages (`bg-muted/50` boxes, hover states) move to the
+     dedicated `--muted-surface` token below instead. */
   --muted-foreground: oklch(0.55 0.015 250);
+  --muted: var(--muted-foreground);
+  --muted-surface: oklch(0.975 0.005 240);
 
-  /* Wellness Green */
-  --accent: oklch(0.82 0.11 155);
-  --accent-foreground: oklch(0.18 0.015 155);
+  /* Wellness Green — our decorative "brand accent" (login gradient, tag
+     colors etc). Named `--brand-*` because HeroUI's own compiled CSS reads
+     a plain `--accent` custom property directly as its interactive/primary
+     color (Button's primary variant, focus rings, Chip/Checkbox/Switch
+     "accent" color...). If we reused `--accent` for this green here, every
+     HeroUI-native control would render green instead of our actual brand
+     blue. `--accent` below is deliberately aliased to `--primary` instead;
+     `@theme inline` maps Tailwind's `bg-accent`/`text-accent-foreground` to
+     this `--brand-*` pair so existing decorative usage is unaffected. */
+  --brand-accent: oklch(0.82 0.11 155);
+  --brand-accent-foreground: oklch(0.18 0.015 155);
+
+  /* HeroUI's own "accent" slot — keep aligned with --primary, not the
+     --brand-accent green above (see comment on --brand-accent). */
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+
+  /* HeroUI derives form-field placeholder/icon color from a plain --muted
+     custom property meant as muted TEXT — but our --muted is a muted
+     BACKGROUND surface token, so left unset this renders near-invisible
+     placeholders/icons. Point it at the token that's actually text-shaped. */
+  --field-placeholder: var(--muted-foreground);
 
   --destructive: oklch(0.63 0.22 27);
 
@@ -121,11 +153,17 @@
   --secondary: oklch(0.27 0.015 250);
   --secondary-foreground: oklch(0.97 0.004 240);
 
-  --muted: oklch(0.25 0.015 250);
   --muted-foreground: oklch(0.73 0.01 240);
+  --muted: var(--muted-foreground);
+  --muted-surface: oklch(0.25 0.015 250);
 
-  --accent: oklch(0.72 0.11 155);
-  --accent-foreground: oklch(0.15 0.01 155);
+  --brand-accent: oklch(0.72 0.11 155);
+  --brand-accent-foreground: oklch(0.15 0.01 155);
+
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+
+  --field-placeholder: var(--muted-foreground);
 
   --destructive: oklch(0.69 0.20 27);
 

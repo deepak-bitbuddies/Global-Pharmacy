@@ -39,7 +39,7 @@ export interface GeoJsonPoint {
   coordinates: [number, number]
 }
 
-/** MongoDB/GeoJSON expects [lng, lat] order — reversed from the usual lat/lng. */
+/** GeoJSON and PostGIS expect [lng, lat] order — reversed from the usual lat/lng. */
 export function toGeoJsonPoint(lat: number, lng: number): GeoJsonPoint {
   return {
     type: "Point",

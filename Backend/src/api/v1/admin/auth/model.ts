@@ -1,19 +1,15 @@
-import { Schema, model, type InferSchemaType } from "mongoose"
+import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
-import type { WithId } from "../../../../shared/types/mongoose-helpers.js"
+export const authUsers = pgTable("users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("admin"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+})
 
-const authUserSchema = new Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true, select: false },
-    role: { type: String, required: true, default: "admin" },
-    isActive: { type: Boolean, default: true },
-  },
-  { timestamps: true },
-)
-
-export type AuthUserDocument = WithId<InferSchemaType<typeof authUserSchema>>
-// Reuse the existing users collection for authentication; this MVP does not
-// create a separate authentication-only collection.
-export const AuthUserModel = model("AuthUser", authUserSchema, "users")
+export type AuthUserDocument = typeof authUsers.$inferSelect
+export type NewAuthUserDocument = typeof authUsers.$inferInsert

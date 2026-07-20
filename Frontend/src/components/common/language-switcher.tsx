@@ -4,13 +4,7 @@ import { useTransition } from "react"
 import { useLocale } from "next-intl"
 import { TranslateIcon } from "@phosphor-icons/react"
 
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { CustomDropdown, SelectionModeEnum } from "@/components/ui"
 import { setLocale } from "@/i18n/actions"
 import { locales, type AppLocale } from "@/i18n/locales"
 
@@ -28,32 +22,29 @@ export function LanguageSwitcher({ label }: { label: string }) {
     return null
   }
 
+  const items = availableLocales.map((loc) => ({ id: loc, name: LOCALE_LABELS[loc] }))
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button
-            variant="outline"
-            size="icon"
-            className="cursor-pointer rounded-full"
-            disabled={isPending}
-          >
-            <TranslateIcon weight="bold" className="size-4 text-sky-500" />
-            <span className="sr-only">{label}</span>
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end">
-        {availableLocales.map((loc) => (
-          <DropdownMenuItem
-            key={loc}
-            data-variant={loc === locale ? "default" : undefined}
-            onClick={() => startTransition(() => setLocale(loc))}
-          >
-            {LOCALE_LABELS[loc]}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <CustomDropdown
+      data={items}
+      itemKey="id"
+      itemLabel="name"
+      selectionMode={SelectionModeEnum.single}
+      selectedKeys={new Set([locale])}
+      itemIcon={() => <TranslateIcon weight="bold" className="size-4" />}
+      onSelectionChange={(keys) => {
+        if (keys === "all") return
+        const [key] = Array.from(keys)
+        if (key) startTransition(() => setLocale(key as AppLocale))
+      }}
+    >
+      <span
+        className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full border border-border text-sky-500 transition-colors hover:bg-muted-surface disabled:pointer-events-none disabled:opacity-50"
+        aria-label={label}
+        aria-disabled={isPending}
+      >
+        <TranslateIcon weight="bold" className="size-4" />
+      </span>
+    </CustomDropdown>
   )
 }
