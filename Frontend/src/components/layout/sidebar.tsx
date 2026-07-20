@@ -83,6 +83,10 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
   const isDesktop = useMediaQuery(SIDEBAR_DESKTOP_BREAKPOINT)
   const iconRail = collapsed && isDesktop
   const setUser = useAuthStore((state) => state.setUser)
+  const role = useAuthStore((state) => state.user?.role)
+  const visibleNavGroups = navGroups
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.superAdminOnly || role === "super_admin") }))
+    .filter((group) => group.items.length > 0)
   const close = () => setSidebarOpen(false)
   const labelClassName = cn(
     "overflow-hidden whitespace-nowrap transition-[width,opacity] duration-200",
@@ -147,7 +151,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
           {collapsed ? <CaretLineRightIcon className="size-3.5" /> : <CaretLineLeftIcon className="size-3.5" />}
         </button>
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
-          {navGroups.map((group) => (
+          {visibleNavGroups.map((group) => (
             <div key={group.headingKey} className="flex flex-col gap-1">
               <span className={cn("px-3 pb-1 text-[10px] font-bold tracking-wide text-sidebar-foreground/50 uppercase", collapsed && "xl:hidden")}>
                 {t(group.headingKey)}

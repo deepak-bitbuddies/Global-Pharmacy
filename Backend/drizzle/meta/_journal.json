@@ -22,6 +22,13 @@
       "when": 1784458180547,
       "tag": "0002_rapid_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784566201978,
+      "tag": "0003_unknown_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

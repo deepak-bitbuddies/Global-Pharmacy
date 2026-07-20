@@ -2,6 +2,7 @@ import type { FileTypeValue } from "./enums.js"
 
 export type UploadFileDto = {
   fileType: FileTypeValue
+  branchId: string
   fileName: string
   buffer: Buffer
 }

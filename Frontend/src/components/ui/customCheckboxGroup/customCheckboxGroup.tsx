@@ -22,6 +22,8 @@ type CustomCheckboxGroupProps<T extends Record<string, unknown>> = {
   setSelectedValue?: (values: string[]) => void;
 
   groupLabel?: string;
+  /** Accessible name when no visible `groupLabel` is rendered. */
+  ariaLabel?: string;
   description?: string;
   orientation?: CheckboxOrientation;
   labelSize?: CustomSize;
@@ -40,6 +42,7 @@ export const CustomCheckboxGroup = <T extends Record<string, unknown>>({
   setSelectedValue,
 
   groupLabel,
+  ariaLabel,
   description,
   orientation = CheckboxOrientation.Vertical,
   labelSize = CustomSize.sm,
@@ -64,15 +67,15 @@ export const CustomCheckboxGroup = <T extends Record<string, unknown>>({
 
   return (
     <div className={className}>
-      {groupLabel && <Label>{groupLabel}</Label>}
-      {description && <Description>{description}</Description>}
-
       <CheckboxGroup
         value={finalValue}
         onChange={handleChange}
         isRequired={isRequired}
         variant="secondary"
+        aria-label={!groupLabel ? (ariaLabel ?? "Options") : undefined}
       >
+        {groupLabel && <Label>{groupLabel}</Label>}
+        {description && <Description>{description}</Description>}
         <div className={directionClass}>
           {data.map((item, index) => {
             const itemValue = String(item[valueKey]);

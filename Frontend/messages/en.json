@@ -10,6 +10,7 @@
   "Nav": {
     "dashboard": "Dashboard",
     "gprs": "GPRS",
+    "branches": "Branches",
     "importData": "Import Data",
     "salesReport": "Sales Report",
     "stockReport": "Stock Report",

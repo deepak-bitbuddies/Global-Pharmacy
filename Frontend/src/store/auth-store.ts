@@ -1,12 +1,13 @@
 import { createStore } from "zustand/vanilla"
 
-export type AuthRole = "super_admin" | "rider" | "customer"
+export type AuthRole = "super_admin" | "rider" | "customer" | "branch_user"
 
 export interface AuthUser {
   id: string
   name: string
   email: string
   role: AuthRole
+  branchId: string | null
 }
 
 export interface AuthState {

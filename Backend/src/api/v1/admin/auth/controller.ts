@@ -8,6 +8,6 @@ import { authenticate } from "./service.js"
 export async function loginHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const credentials = validateSchema(loginSchema, request.body)
   const data = await authenticate(credentials)
-  data.token = await reply.jwtSign({ id: data.user.id, role: data.user.role })
+  data.token = await reply.jwtSign({ id: data.user.id, role: data.user.role, branchId: data.user.branchId })
   sendSuccess(reply, data, "Login successful")
 }

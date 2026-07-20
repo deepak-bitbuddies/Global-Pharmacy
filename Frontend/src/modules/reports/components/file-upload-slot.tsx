@@ -12,9 +12,10 @@ type FileUploadSlotProps = {
   fileType: ImportFileType
   title: string
   description: string
+  branchId?: string
 }
 
-export function FileUploadSlot({ fileType, title, description }: FileUploadSlotProps) {
+export function FileUploadSlot({ fileType, title, description, branchId }: FileUploadSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [lastFileName, setLastFileName] = useState<string | null>(null)
   const { mutate, isPending } = useUploadFile()
@@ -22,10 +23,10 @@ export function FileUploadSlot({ fileType, title, description }: FileUploadSlotP
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = "" // allow re-selecting the same file later
-    if (!file) return
+    if (!file || !branchId) return
 
     mutate(
-      { fileType, file },
+      { fileType, branchId, file },
       {
         onSuccess: (result) => {
           setLastFileName(result.fileName)
@@ -46,8 +47,14 @@ export function FileUploadSlot({ fileType, title, description }: FileUploadSlotP
         <p className="font-semibold">{title}</p>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <input ref={inputRef} type="file" accept=".xls,.xlsx" className="hidden" onChange={handleFileChange} />
-      <CustomButton variant={ButtonVariant.outline} loading={isPending} onClick={() => inputRef.current?.click()} fullWidth>
+      <input ref={inputRef} type="file" accept=".xls,.xlsx" className="hidden" onChange={handleFileChange} disabled={!branchId} />
+      <CustomButton
+        variant={ButtonVariant.outline}
+        loading={isPending}
+        isDisabled={!branchId}
+        onClick={() => inputRef.current?.click()}
+        fullWidth
+      >
         <UploadSimpleIcon className="size-4" />
         {isPending ? "Importing..." : "Choose file"}
       </CustomButton>

@@ -15,6 +15,8 @@ import {
   outstandingHandler,
   purchaseSummaryHandler,
   stockReportHandler,
+  stockSummaryHandler,
+  stockValueByCompanyHandler,
   zeroOrderAlertsHandler,
 } from "./controller.js"
 
@@ -28,6 +30,8 @@ export async function reportsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get("/sales/gross-profit", grossProfitHandler)
   fastify.get("/purchase", purchaseSummaryHandler)
   fastify.get("/stock", stockReportHandler)
+  fastify.get("/stock/summary", stockSummaryHandler)
+  fastify.get("/stock/by-company", stockValueByCompanyHandler)
   fastify.get("/stock/zero-order-alerts", zeroOrderAlertsHandler)
   fastify.get("/stock/expiry", expiryReportHandler)
   fastify.get("/stock/non-moving", nonMovingHandler)

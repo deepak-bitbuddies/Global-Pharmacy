@@ -43,7 +43,7 @@ export function renderActionsCell<T extends object>(
         actions.find((action) => action.key === key)?.onSelect(item);
       }}
     >
-      <CustomAppIcon Icon={DotsThreeVerticalIcon} className="cursor-pointer" />
+      <CustomAppIcon Icon={DotsThreeVerticalIcon} className="cursor-pointer" ariaLabel="Row actions" />
     </CustomDropdown>
   );
 }

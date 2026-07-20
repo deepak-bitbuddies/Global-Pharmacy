@@ -11,3 +11,13 @@ export const reportFiltersSchema = z.object({
 export const expiryQuerySchema = reportFiltersSchema.extend({
   withinDays: z.coerce.number().int().positive().default(30),
 })
+
+export const cursorPaginationSchema = z.object({
+  cursor: z.string().optional(),
+  pageSize: z.coerce.number().int().positive().max(200).default(10),
+})
+
+export const itemWiseSalesQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+export const stockReportQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+export const purchaseSummaryQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+export const grossProfitQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)

@@ -1,64 +1,38 @@
 import { FileType, type FileTypeValue } from "./enums.js"
 import { EmptyImportError } from "./errors.js"
+import { NotFoundError } from "../../../../shared/errors/index.js"
 import type { UploadFileDto, UploadResultDto, ImportBatchListItemDto } from "./dto.js"
 import { parseStockFile } from "./parsers/stock.parser.js"
 import { parseSalesFile } from "./parsers/sales.parser.js"
 import { parsePurchaseFile } from "./parsers/purchase.parser.js"
 import { parseDaySalesFile } from "./parsers/day-sales.parser.js"
-import { normalizeItemName, type BranchHeader } from "./parsers/parse-utils.js"
+import { normalizeItemName } from "./parsers/parse-utils.js"
 import type { BranchDocument } from "./model.js"
 import {
-  createBranch,
   createImportBatch,
   deleteDailySalesSummaryByBatch,
   deleteImportBatch,
   deletePurchaseLinesByBatch,
   deleteSalesLinesByBatch,
   deleteStockSnapshotsByBatch,
-  findBranchByGstin,
-  findBranchByName,
+  findBranchById,
   findImportBatch,
   findImportBatchesByBranchAndType,
-  setBranchGstin,
   insertDailySalesSummary,
   insertPurchaseLines,
   insertSalesLines,
   insertStockSnapshots,
+  listBranches,
   listImportBatches,
   resolveItemIdsByCode,
   resolveItemIdsByName,
 } from "./repository.js"
 
-/**
- * Resolves the branch a file belongs to from its letterhead. GSTIN (present
- * on Sale/Purchase/Day-Wise Sale exports) is the reliable key; the Stock
- * export has no GSTIN, so it falls back to matching by name. Creates the
- * branch on first sight either way.
- */
-async function resolveBranch(header: BranchHeader): Promise<BranchDocument> {
-  if (header.gstin) {
-    const byGstin = await findBranchByGstin(header.gstin)
-    if (byGstin) return byGstin
-  }
-
-  const byName = await findBranchByName(header.name)
-  if (byName) {
-    // Learned the real GSTIN from this (later) file — backfill it so
-    // future GSTIN-bearing files resolve directly instead of by name.
-    if (header.gstin && !byName.gstin) {
-      await setBranchGstin(byName.id, header.gstin)
-      return { ...byName, gstin: header.gstin }
-    }
-    return byName
-  }
-
-  return createBranch({
-    name: header.name,
-    address: header.address,
-    gstin: header.gstin,
-    phone: header.phone,
-    drugLicenseNo: header.drugLicenseNo,
-  })
+/** Branches are now registered explicitly (see `admin/branches`) — letterhead data is no longer used to resolve or create one, just looked up by the id the upload was made against. */
+async function requireBranch(branchId: string): Promise<BranchDocument> {
+  const branch = await findBranchById(branchId)
+  if (!branch) throw new NotFoundError("Branch not found")
+  return branch
 }
 
 /** If this exact file (same branch + type + name) was imported before, wipe its old fact rows so re-uploads replace rather than duplicate. */
@@ -100,11 +74,11 @@ async function replaceAllStockBatchesForBranch(branchId: string): Promise<boolea
   return existingBatches.length > 0
 }
 
-async function importStock(fileName: string, buffer: Buffer): Promise<UploadResultDto> {
+async function importStock(branchId: string, fileName: string, buffer: Buffer): Promise<UploadResultDto> {
   const parsed = parseStockFile(buffer)
   if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Stock)
 
-  const branch = await resolveBranch({ ...parsed.branch, gstin: null, phone: null, drugLicenseNo: null })
+  const branch = await requireBranch(branchId)
   const replaced = await replaceAllStockBatchesForBranch(branch.id)
   const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.Stock, fileName, rowCount: parsed.rows.length })
 
@@ -142,11 +116,11 @@ async function importStock(fileName: string, buffer: Buffer): Promise<UploadResu
   return { branchId: branch.id, branchName: branch.name, fileType: FileType.Stock, fileName, rowCount: inserted, importedAt: batch.importedAt, replaced }
 }
 
-async function importSales(fileName: string, buffer: Buffer): Promise<UploadResultDto> {
+async function importSales(branchId: string, fileName: string, buffer: Buffer): Promise<UploadResultDto> {
   const parsed = parseSalesFile(buffer)
   if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Sales)
 
-  const branch = await resolveBranch(parsed.branch)
+  const branch = await requireBranch(branchId)
   const replaced = await replaceExistingBatchIfPresent(branch.id, FileType.Sales, fileName)
   const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.Sales, fileName, rowCount: parsed.rows.length })
 
@@ -173,11 +147,11 @@ async function importSales(fileName: string, buffer: Buffer): Promise<UploadResu
   return { branchId: branch.id, branchName: branch.name, fileType: FileType.Sales, fileName, rowCount: inserted, importedAt: batch.importedAt, replaced }
 }
 
-async function importPurchase(fileName: string, buffer: Buffer): Promise<UploadResultDto> {
+async function importPurchase(branchId: string, fileName: string, buffer: Buffer): Promise<UploadResultDto> {
   const parsed = parsePurchaseFile(buffer)
   if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Purchase)
 
-  const branch = await resolveBranch(parsed.branch)
+  const branch = await requireBranch(branchId)
   const replaced = await replaceExistingBatchIfPresent(branch.id, FileType.Purchase, fileName)
   const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.Purchase, fileName, rowCount: parsed.rows.length })
 
@@ -204,11 +178,11 @@ async function importPurchase(fileName: string, buffer: Buffer): Promise<UploadR
   return { branchId: branch.id, branchName: branch.name, fileType: FileType.Purchase, fileName, rowCount: inserted, importedAt: batch.importedAt, replaced }
 }
 
-async function importDaySales(fileName: string, buffer: Buffer): Promise<UploadResultDto> {
+async function importDaySales(branchId: string, fileName: string, buffer: Buffer): Promise<UploadResultDto> {
   const parsed = parseDaySalesFile(buffer)
   if (parsed.rows.length === 0) throw new EmptyImportError(FileType.DayWiseSale)
 
-  const branch = await resolveBranch(parsed.branch)
+  const branch = await requireBranch(branchId)
   const replaced = await replaceExistingBatchIfPresent(branch.id, FileType.DayWiseSale, fileName)
   const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.DayWiseSale, fileName, rowCount: parsed.rows.length })
 
@@ -233,22 +207,24 @@ async function importDaySales(fileName: string, buffer: Buffer): Promise<UploadR
 export async function importFile(input: UploadFileDto): Promise<UploadResultDto> {
   switch (input.fileType) {
     case FileType.Stock:
-      return importStock(input.fileName, input.buffer)
+      return importStock(input.branchId, input.fileName, input.buffer)
     case FileType.Sales:
-      return importSales(input.fileName, input.buffer)
+      return importSales(input.branchId, input.fileName, input.buffer)
     case FileType.Purchase:
-      return importPurchase(input.fileName, input.buffer)
+      return importPurchase(input.branchId, input.fileName, input.buffer)
     case FileType.DayWiseSale:
-      return importDaySales(input.fileName, input.buffer)
+      return importDaySales(input.branchId, input.fileName, input.buffer)
   }
 }
 
-export async function getImportBatches(): Promise<ImportBatchListItemDto[]> {
-  const batches = await listImportBatches()
+export async function getImportBatches(branchId?: string): Promise<ImportBatchListItemDto[]> {
+  const [batches, branches] = await Promise.all([listImportBatches(branchId), listBranches()])
+  const branchNameById = new Map(branches.map((branch) => [branch.id, branch.name]))
+
   return batches.map((batch) => ({
     id: batch.id,
     branchId: batch.branchId,
-    branchName: "", // populated by controller-level join if ever needed; not required by the current UI
+    branchName: branchNameById.get(batch.branchId) ?? "",
     fileType: batch.fileType as FileTypeValue,
     fileName: batch.fileName,
     rowCount: batch.rowCount,

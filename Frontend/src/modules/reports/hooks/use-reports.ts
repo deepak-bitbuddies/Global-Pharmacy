@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 
+import type { CursorPaginationParams } from "@/types/pagination"
 import { reportsQueryKeys } from "../constants/query-keys"
 import type { ReportFilters } from "../types"
 import {
@@ -18,6 +19,8 @@ import {
   getOutstanding,
   getPurchaseSummary,
   getStockReport,
+  getStockSummary,
+  getStockValueByCompany,
   getZeroOrderAlerts,
 } from "../api/reports-api"
 
@@ -33,24 +36,32 @@ export function useDashboardSummary(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.dashboardSummary(filters), queryFn: () => getDashboardSummary(filters) })
 }
 
-export function useItemWiseSales(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.itemWiseSales(filters), queryFn: () => getItemWiseSales(filters) })
+export function useItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({ queryKey: reportsQueryKeys.itemWiseSales(filters, pagination), queryFn: () => getItemWiseSales(filters, pagination) })
 }
 
 export function useBranchSales(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.branchSales(filters), queryFn: () => getBranchSales(filters) })
 }
 
-export function useGrossProfit(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.grossProfit(filters), queryFn: () => getGrossProfit(filters) })
+export function useGrossProfit(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({ queryKey: reportsQueryKeys.grossProfit(filters, pagination), queryFn: () => getGrossProfit(filters, pagination) })
 }
 
-export function usePurchaseSummary(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.purchaseSummary(filters), queryFn: () => getPurchaseSummary(filters) })
+export function usePurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({ queryKey: reportsQueryKeys.purchaseSummary(filters, pagination), queryFn: () => getPurchaseSummary(filters, pagination) })
 }
 
-export function useStockReport(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.stock(filters), queryFn: () => getStockReport(filters) })
+export function useStockReport(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({ queryKey: reportsQueryKeys.stock(filters, pagination), queryFn: () => getStockReport(filters, pagination) })
+}
+
+export function useStockSummary(filters: ReportFilters) {
+  return useQuery({ queryKey: reportsQueryKeys.stockSummary(filters), queryFn: () => getStockSummary(filters) })
+}
+
+export function useStockValueByCompany(filters: ReportFilters) {
+  return useQuery({ queryKey: reportsQueryKeys.stockByCompany(filters), queryFn: () => getStockValueByCompany(filters) })
 }
 
 export function useZeroOrderAlerts(filters: ReportFilters) {

@@ -1,7 +1,9 @@
-import { and, eq, inArray } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 
-import { db } from "../../../../core/database/db.js"
+import { db, type DbOrTransaction } from "../../../../core/database/db.js"
 import { InternalServerError } from "../../../../shared/errors/index.js"
+import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
+import type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"
 import { normalizeItemName } from "./parsers/parse-utils.js"
 import {
   branches,
@@ -21,28 +23,56 @@ import {
   type NewStockSnapshotDocument,
 } from "./model.js"
 
-export async function findBranchByGstin(gstin: string): Promise<BranchDocument | null> {
-  const [branch] = await db.select().from(branches).where(eq(branches.gstin, gstin)).limit(1)
+export async function findBranchById(branchId: string): Promise<BranchDocument | null> {
+  const [branch] = await db.select().from(branches).where(eq(branches.id, branchId)).limit(1)
   return branch ?? null
 }
 
-export async function findBranchByName(name: string): Promise<BranchDocument | null> {
-  const [branch] = await db.select().from(branches).where(eq(branches.name, name)).limit(1)
-  return branch ?? null
-}
-
-export async function createBranch(input: NewBranchDocument): Promise<BranchDocument> {
-  const [branch] = await db.insert(branches).values(input).returning()
+/** `dbClient` accepts a transaction (`tx` from `db.transaction(async (tx) => ...)`) so this insert can participate in a caller's transaction; defaults to the module-level `db`. */
+export async function createBranch(input: NewBranchDocument, dbClient: DbOrTransaction = db): Promise<BranchDocument> {
+  const [branch] = await dbClient.insert(branches).values(input).returning()
   if (!branch) throw new InternalServerError("Failed to create branch")
   return branch
 }
 
+export async function updateBranch(branchId: string, input: Partial<NewBranchDocument>): Promise<BranchDocument | null> {
+  const [branch] = await db
+    .update(branches)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(branches.id, branchId))
+    .returning()
+  return branch ?? null
+}
+
+export async function deleteBranch(branchId: string, dbClient: DbOrTransaction = db): Promise<void> {
+  await dbClient.delete(branches).where(eq(branches.id, branchId))
+}
+
+/** Full, unpaginated list — used only for branch-filter dropdowns (dashboard/report pages), which must always show every branch. Do not add pagination here; see `listBranchesPaginated` for the management page's list. */
 export async function listBranches(): Promise<BranchDocument[]> {
   return db.select().from(branches).orderBy(branches.name)
 }
 
-export async function setBranchGstin(branchId: string, gstin: string): Promise<void> {
-  await db.update(branches).set({ gstin, updatedAt: new Date() }).where(eq(branches.id, branchId))
+type BranchCursor = { name: string; id: string }
+
+/** Paginated branches list — for the branch-management page only. */
+export async function listBranchesPaginated(pagination: CursorPaginationParams): Promise<PaginatedResult<BranchDocument>> {
+  const cursor = decodeCursor<BranchCursor>(pagination.cursor)
+  const where = cursor ? sql`(${branches.name}, ${branches.id}) > (${cursor.name}, ${cursor.id})` : undefined
+
+  const [rows, countRows] = await Promise.all([
+    db.select().from(branches).where(where).orderBy(branches.name, branches.id).limit(pagination.pageSize + 1),
+    db.select({ count: sql<string>`count(*)` }).from(branches),
+  ])
+
+  const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ name: r.name, id: r.id }))
+
+  return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) }
+}
+
+export async function countImportBatchesForBranch(branchId: string): Promise<number> {
+  const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(importBatches).where(eq(importBatches.branchId, branchId))
+  return row?.count ?? 0
 }
 
 /** Bulk-resolves item ids by normalized name, creating any item that doesn't exist yet. */
@@ -135,8 +165,9 @@ export async function deleteImportBatch(batchId: string): Promise<void> {
   await db.delete(importBatches).where(eq(importBatches.id, batchId))
 }
 
-export async function listImportBatches(): Promise<ImportBatchDocument[]> {
-  return db.select().from(importBatches).orderBy(importBatches.importedAt)
+export async function listImportBatches(branchId?: string): Promise<ImportBatchDocument[]> {
+  const query = db.select().from(importBatches)
+  return (branchId ? query.where(eq(importBatches.branchId, branchId)) : query).orderBy(importBatches.importedAt)
 }
 
 export async function deleteStockSnapshotsByBatch(batchId: string): Promise<void> {

@@ -28,6 +28,8 @@ type CustomRadioGroupProps<T extends Record<string, unknown>> = {
   setSelectedValue?: (value: string) => void;
 
   groupLabel?: string;
+  /** Accessible name when no visible `groupLabel` is rendered. */
+  ariaLabel?: string;
   description?: string;
   errorMessage?: string;
 
@@ -48,6 +50,7 @@ export const CustomRadioGroup = <T extends Record<string, unknown>>({
   setSelectedValue,
 
   groupLabel,
+  ariaLabel,
   description,
   errorMessage,
 
@@ -75,15 +78,15 @@ export const CustomRadioGroup = <T extends Record<string, unknown>>({
 
   return (
     <div className={className}>
-      {groupLabel && <Label>{groupLabel}</Label>}
-      {description && <Description>{description}</Description>}
-
       <RadioGroup
         value={finalValue}
         onChange={handleChange}
         isRequired={isRequired}
         variant="secondary"
+        aria-label={!groupLabel ? (ariaLabel ?? "Options") : undefined}
       >
+        {groupLabel && <Label>{groupLabel}</Label>}
+        {description && <Description>{description}</Description>}
         <div className={directionClass}>
           {data.map((item, index) => {
             const itemValue = String(item[valueKey]);
