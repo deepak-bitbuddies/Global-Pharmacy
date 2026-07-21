@@ -58,6 +58,8 @@ export type CustomInputProps = {
   onClear?: () => void;
   /** Label text to display above/beside the input */
   label?: string;
+  /** Accessible name when no visible `label` is rendered (required by React Aria whenever there's no connected `<Label>`) */
+  ariaLabel?: string;
   /** Type of input (text, email, password, etc.). Default: InputTypes.text */
   type?: InputTypes;
   /** Content to display before the input (e.g., icon) */
@@ -101,6 +103,7 @@ export type CustomInputProps = {
 export const CustomInput = ({ ...props }: CustomInputProps) => {
   return (
     <TextField
+      aria-label={!props.label ? (props.ariaLabel ?? props.placeholder) : undefined}
       isRequired={props.isRequired}
       isInvalid={props.isInvalid}
       isDisabled={props.isDisabled}

@@ -1,4 +1,5 @@
 import { api } from "@/lib/axios"
+import type { CursorPaginationParams, PaginatedResponse } from "@/types/pagination"
 import type {
   Branch,
   CashInHandRow,
@@ -32,9 +33,9 @@ export async function getDashboardSummary(filters: ReportFilters): Promise<Dashb
   return data.data
 }
 
-export async function getItemWiseSales(filters: ReportFilters): Promise<ItemWiseSalesRow[]> {
-  const { data } = await api.get<{ data: ItemWiseSalesRow[] }>(`${BASE}/sales/item-wise`, { params: filters })
-  return data.data
+export async function getItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<ItemWiseSalesRow>> {
+  const { data } = await api.get<PaginatedResponse<ItemWiseSalesRow>>(`${BASE}/sales/item-wise`, { params: { ...filters, ...pagination } })
+  return data
 }
 
 export async function getBranchSales(filters: ReportFilters): Promise<{ branchId: string; branchName: string; totalAmount: number }[]> {
@@ -42,18 +43,28 @@ export async function getBranchSales(filters: ReportFilters): Promise<{ branchId
   return data.data
 }
 
-export async function getGrossProfit(filters: ReportFilters): Promise<GrossProfitRow[]> {
-  const { data } = await api.get<{ data: GrossProfitRow[] }>(`${BASE}/sales/gross-profit`, { params: filters })
+export async function getGrossProfit(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<GrossProfitRow>> {
+  const { data } = await api.get<PaginatedResponse<GrossProfitRow>>(`${BASE}/sales/gross-profit`, { params: { ...filters, ...pagination } })
+  return data
+}
+
+export async function getPurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<PurchaseSummaryRow>> {
+  const { data } = await api.get<PaginatedResponse<PurchaseSummaryRow>>(`${BASE}/purchase`, { params: { ...filters, ...pagination } })
+  return data
+}
+
+export async function getStockReport(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<StockRow>> {
+  const { data } = await api.get<PaginatedResponse<StockRow>>(`${BASE}/stock`, { params: { ...filters, ...pagination } })
+  return data
+}
+
+export async function getStockSummary(filters: ReportFilters): Promise<{ totalValue: number; uniqueItemCount: number; levelCounts: { bucket: string; count: number }[] }> {
+  const { data } = await api.get(`${BASE}/stock/summary`, { params: filters })
   return data.data
 }
 
-export async function getPurchaseSummary(filters: ReportFilters): Promise<PurchaseSummaryRow[]> {
-  const { data } = await api.get<{ data: PurchaseSummaryRow[] }>(`${BASE}/purchase`, { params: filters })
-  return data.data
-}
-
-export async function getStockReport(filters: ReportFilters): Promise<StockRow[]> {
-  const { data } = await api.get<{ data: StockRow[] }>(`${BASE}/stock`, { params: filters })
+export async function getStockValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
+  const { data } = await api.get(`${BASE}/stock/by-company`, { params: filters })
   return data.data
 }
 

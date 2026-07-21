@@ -60,6 +60,8 @@ export type CustomAutoCompleteProps<T> = {
   endContent?: ReactNode;
   /** Label displayed above the input */
   label?: string;
+  /** Accessible name when no visible `label` is rendered (required by React Aria whenever there's no connected `<Label>`) */
+  ariaLabel?: string;
   /** Marks the field as required (shows asterisk) */
   isRequired?: boolean;
   fullWidth?: boolean;
@@ -254,6 +256,7 @@ export function CustomAutoComplete<T>({
   return (
     <Autocomplete
       className={props.className}
+      aria-label={!props.label ? (props.ariaLabel ?? props.placeholder) : undefined}
       value={selectedKey}
       placeholder={props.placeholder}
       fullWidth={props.fullWidth}
@@ -332,7 +335,7 @@ export function CustomAutoComplete<T>({
               );
             }
             return (
-              <TagGroup size="sm" onRemove={onRemoveTags}>
+              <TagGroup size="sm" onRemove={onRemoveTags} aria-label={props.label ?? "Selected items"}>
                 <TagGroup.List>
                   {state.selectedItems.map((selectedItem) => {
                     const itemKey = String(selectedItem.key);

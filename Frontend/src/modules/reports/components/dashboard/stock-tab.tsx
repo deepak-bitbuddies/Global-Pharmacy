@@ -22,8 +22,17 @@ import {
   TremorStatCard,
   TremorTone,
 } from "@/components/ui"
+import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
-import { useCompanies, useExpiryReport, useNonMovingItems, useStockReport, useZeroOrderAlerts } from "../../hooks/use-reports"
+import {
+  useCompanies,
+  useExpiryReport,
+  useNonMovingItems,
+  useStockReport,
+  useStockSummary,
+  useStockValueByCompany,
+  useZeroOrderAlerts,
+} from "../../hooks/use-reports"
 import type { ReportFilters, StockRow } from "../../types"
 
 type CompanyOption = { id: string; label: string }
@@ -39,17 +48,14 @@ function expiryBucketIndex(daysToExpiry: number): number {
   return EXPIRY_BUCKETS.findIndex((bucket) => daysToExpiry <= bucket.maxDays)
 }
 
+// Must match the bucket labels the backend's getStockSummary computes via SQL CASE.
 const STOCK_LEVEL_BUCKETS = [
-  { label: "Zero Stock", maxQty: 0, color: "var(--danger)" },
-  { label: "1–5 units", maxQty: 5, color: "var(--danger)" },
-  { label: "6–20 units", maxQty: 20, color: "var(--warning)" },
-  { label: "21–50 units", maxQty: 50, color: "var(--default)" },
-  { label: "50+ units", maxQty: Infinity, color: "var(--success)" },
+  { label: "Zero Stock", color: "var(--danger)" },
+  { label: "1–5 units", color: "var(--danger)" },
+  { label: "6–20 units", color: "var(--warning)" },
+  { label: "21–50 units", color: "var(--default)" },
+  { label: "50+ units", color: "var(--success)" },
 ]
-
-function stockLevelBucketIndex(qty: number): number {
-  return STOCK_LEVEL_BUCKETS.findIndex((bucket) => qty <= bucket.maxQty)
-}
 
 function ChartCard({
   title,
@@ -76,9 +82,12 @@ function ChartCard({
 export function StockTab({ filters }: { filters: ReportFilters }) {
   const [search, setSearch] = useState<string | undefined>(undefined)
   const [company, setCompany] = useState<string | undefined>(undefined)
+  const pagination = useCursorPagination()
   const stockFilters = useMemo<ReportFilters>(() => ({ ...filters, item: search || undefined, company }), [filters, search, company])
 
-  const { data: stock, isLoading: isStockLoading } = useStockReport(stockFilters)
+  const { data: stock, isLoading: isStockLoading } = useStockReport(stockFilters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
+  const { data: stockSummary, isLoading: isSummaryLoading } = useStockSummary(stockFilters)
+  const { data: stockByCompanyData, isLoading: isByCompanyLoading } = useStockValueByCompany(stockFilters)
   const { data: companies } = useCompanies()
   const { data: zeroOrder, isLoading: isZeroOrderLoading } = useZeroOrderAlerts(filters)
   const { data: expiry, isLoading: isExpiryLoading } = useExpiryReport({ ...filters, withinDays: 180 })
@@ -87,38 +96,21 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
   const companyOptions = useMemo<CompanyOption[]>(() => (companies ?? []).map((c) => ({ id: c, label: c })), [companies])
   const selectedCompany = companyOptions.find((option) => option.id === company)
 
-  // KPI headline numbers — computed client-side from data already fetched
-  // for the sections below, so the tab opens with the gist before the
-  // reader has to parse any chart or table.
-  const totalStockValue = useMemo(() => (stock ?? []).reduce((sum, row) => sum + (row.value ?? 0), 0), [stock])
-  const uniqueItemCount = useMemo(() => new Set((stock ?? []).map((row) => row.itemName)).size, [stock])
+  // KPI headline numbers — computed server-side (`useStockSummary`) since the
+  // detail table is now paginated and can no longer be summed client-side.
   const expiringSoonValue = useMemo(
     () => (expiry ?? []).filter((row) => row.daysToExpiry <= 30).reduce((sum, row) => sum + (row.value ?? 0), 0),
     [expiry],
   )
   const nonMovingValue = useMemo(() => (nonMoving ?? []).reduce((sum, row) => sum + (row.value ?? 0), 0), [nonMoving])
-  const isKpiLoading = isStockLoading || isExpiryLoading || isNonMovingLoading || isZeroOrderLoading
+  const isKpiLoading = isSummaryLoading || isExpiryLoading || isNonMovingLoading || isZeroOrderLoading
 
-  const stockByCompany = useMemo(() => {
-    const totals = new Map<string, number>()
-    for (const row of stock ?? []) {
-      if (!row.company) continue
-      totals.set(row.company, (totals.get(row.company) ?? 0) + (row.value ?? 0))
-    }
-    return [...totals.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([name, value]) => ({ name, value }))
-  }, [stock])
+  const stockByCompany = useMemo(() => (stockByCompanyData ?? []).map((row) => ({ name: row.company, value: row.total })), [stockByCompanyData])
 
   const stockLevelData = useMemo(() => {
-    const counts = STOCK_LEVEL_BUCKETS.map(() => 0)
-    for (const row of stock ?? []) {
-      const bucket = stockLevelBucketIndex(row.currentStock)
-      counts[bucket === -1 ? STOCK_LEVEL_BUCKETS.length - 1 : bucket] += 1
-    }
-    return STOCK_LEVEL_BUCKETS.map((bucket, i) => ({ label: bucket.label, value: counts[i] }))
-  }, [stock])
+    const countByBucket = new Map((stockSummary?.levelCounts ?? []).map((row) => [row.bucket, row.count]))
+    return STOCK_LEVEL_BUCKETS.map((bucket) => ({ label: bucket.label, value: countByBucket.get(bucket.label) ?? 0 }))
+  }, [stockSummary])
 
   const zeroOrderItems = useMemo(
     () =>
@@ -152,13 +144,22 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-2">
-        <CustomSearchFilter placeholder="Search item..." value={search} onChange={(value) => setSearch(value || undefined)} />
+        <CustomSearchFilter
+          placeholder="Search item..."
+          value={search}
+          onChange={(value) => {
+            setSearch(value || undefined)
+            pagination.reset()
+          }}
+        />
         <CustomSelectFilter<CompanyOption>
+          ariaLabel="Company"
           data={companyOptions}
           value={selectedCompany}
           onChange={(value) => {
             const option = Array.isArray(value) ? value[0] : value
             setCompany(option?.id)
+            pagination.reset()
           }}
           displayKey="label"
           idKey="id"
@@ -167,8 +168,8 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <TremorStatCard label="Stock Value" value={formatCurrency(totalStockValue)} icon={PackageIcon} tone={TremorTone.primary} loading={isKpiLoading} />
-        <TremorStatCard label="Unique Items" value={formatNumber(uniqueItemCount)} icon={ListBulletsIcon} tone={TremorTone.accent} loading={isKpiLoading} />
+        <TremorStatCard label="Stock Value" value={formatCurrency(stockSummary?.totalValue ?? 0)} icon={PackageIcon} tone={TremorTone.primary} loading={isKpiLoading} />
+        <TremorStatCard label="Unique Items" value={formatNumber(stockSummary?.uniqueItemCount ?? 0)} icon={ListBulletsIcon} tone={TremorTone.accent} loading={isKpiLoading} />
         <TremorStatCard label="Zero-Order Alerts" value={zeroOrder?.length ?? 0} icon={WarningIcon} tone={TremorTone.danger} loading={isKpiLoading} />
         <TremorStatCard label="Expiring ≤30 days" value={formatCurrency(expiringSoonValue)} icon={ClockCountdownIcon} tone={TremorTone.warning} loading={isKpiLoading} />
         <TremorStatCard label="Non-Moving Value" value={formatCurrency(nonMovingValue)} icon={ArrowsCounterClockwiseIcon} tone={TremorTone.danger} loading={isKpiLoading} />
@@ -176,7 +177,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard title="Stock Value by Company (Top 8)" icon={BuildingsIcon}>
-          <TremorDonutChart data={stockByCompany} valueFormatter={(value) => formatCurrency(value)} isLoading={isStockLoading} height={240} />
+          <TremorDonutChart data={stockByCompany} valueFormatter={(value) => formatCurrency(value)} isLoading={isByCompanyLoading} height={240} />
         </ChartCard>
 
         <ChartCard title="Stock Health — Quantity Distribution" icon={GaugeIcon}>
@@ -186,7 +187,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
             categories={["value"]}
             barColors={STOCK_LEVEL_BUCKETS.map((bucket) => bucket.color)}
             valueFormatter={(value) => formatNumber(value)}
-            isLoading={isStockLoading}
+            isLoading={isSummaryLoading}
             height={240}
           />
         </ChartCard>
@@ -226,12 +227,21 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
             { key: "company", label: "Company" },
             { key: "batch", label: "Batch" },
           ]}
-          data={stock ?? []}
+          data={stock?.data ?? []}
           loading={isStockLoading}
           rowKey="id"
           itemId="id"
-          totalItems={stock?.length ?? 0}
+          totalItems={stock?.meta.total ?? 0}
           emptyText="No stock data — import a Stock Register file first."
+          onRowsPerPageChange={pagination.setPageSize}
+          cursorPagination={{
+            page: pagination.page,
+            totalPages: stock?.meta.totalPages,
+            hasNextPage: stock?.meta.hasNextPage ?? false,
+            hasPreviousPage: pagination.page > 1,
+            onNext: () => pagination.goNext(stock?.meta.nextCursor ?? null),
+            onPrevious: pagination.goPrevious,
+          }}
           renderCustomCell={(row, key) => {
             if (key === "value") return row.value === null ? "-" : formatCurrency(row.value)
             if (key === "currentStock") return formatNumber(row.currentStock)

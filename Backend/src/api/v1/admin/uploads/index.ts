@@ -15,5 +15,13 @@ export {
   type PurchaseLineDocument,
   type DailySalesSummaryDocument,
 } from "./model.js"
-export { listBranches } from "./repository.js"
+export {
+  listBranches,
+  listBranchesPaginated,
+  findBranchById,
+  createBranch,
+  updateBranch,
+  deleteBranch,
+  countImportBatchesForBranch,
+} from "./repository.js"
 export { FileType, type FileTypeValue } from "./enums.js"

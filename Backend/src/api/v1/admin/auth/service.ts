@@ -21,6 +21,7 @@ export async function authenticate(input: LoginRequestDto): Promise<LoginRespons
       email: user.email,
       role: user.role,
       isActive: user.isActive,
+      branchId: user.branchId,
       createdAt: user.createdAt,
     },
   }

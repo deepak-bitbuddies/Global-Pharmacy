@@ -10,6 +10,7 @@ import { CustomAppIcon } from "../customAppIcon/customAppIcon";
 import { BulkAction, CustomBulkActionsToolbar } from "../customActions/customBulkActionsToolbar";
 import { CustomEmptyState } from "../customEmptyState/customEmptyState";
 import { CustomSearchFilter } from "../customFilters/customSearchFilter";
+import CustomCursorPagination from "../customPagination/customCursorPagination";
 import CustomPagination from "../customPagination/customPagination";
 import { CustomSelect } from "../customSelect/customSelect";
 import { CustomSkeleton } from "../customSkeleton/customSkeleton";
@@ -168,6 +169,20 @@ type CustomTableProps<T extends object> = {
    * rows are selected. Requires `selectionMode="multiple"`.
    */
   bulkActions?: BulkAction[];
+  /**
+   * Renders Previous/Next keyset-pagination controls instead of the default
+   * numbered-page `CustomPagination` — for backend cursor-paginated data,
+   * which can't jump to an arbitrary unvisited page. When set, `data` is
+   * trusted to already be the correct page (same as controlled `currentPage`).
+   */
+  cursorPagination?: {
+    page: number;
+    totalPages?: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+    onNext: () => void;
+    onPrevious: () => void;
+  };
 };
 
 /**
@@ -306,11 +321,11 @@ export const CustomTable = <T extends object>({
 
   const paginatedItems = useMemo(() => {
     if (!showPagination) return sortedItems;
-    if (controlledPage !== undefined) return sortedItems;
+    if (controlledPage !== undefined || props.cursorPagination) return sortedItems;
     const startIndex = (finalPage - 1) * parseInt(rowsPerPage);
     const endIndex = startIndex + parseInt(rowsPerPage);
     return sortedItems.slice(startIndex, endIndex);
-  }, [sortedItems, finalPage, rowsPerPage, showPagination, controlledPage]);
+  }, [sortedItems, finalPage, rowsPerPage, showPagination, controlledPage, props.cursorPagination]);
 
   const handleDropdown = useCallback(
     (value: { value: string; label?: string }) => {
@@ -357,6 +372,7 @@ export const CustomTable = <T extends object>({
           <Label>{t("Show")}</Label>
           <CustomSelect
             key={`rows-${rowsPerPage}`}
+            ariaLabel={t("Show")}
             data={rowOptions}
             idKey="value"
             displayKey="label"
@@ -374,16 +390,29 @@ export const CustomTable = <T extends object>({
         </div>
 
         <div className="flex justify-end gap-2">
-          <CustomPagination
-            page={finalPage}
-            total={Math.ceil((props.totalItems ?? 0) / parseInt(rowsPerPage))}
-            totalItems={props.totalItems ?? 0}
-            itemsPerPage={parseInt(rowsPerPage)}
-            onChange={(page: number) => {
-              setPage(page);
-              onPageChange?.(page);
-            }}
-          />
+          {props.cursorPagination ? (
+            <CustomCursorPagination
+              page={props.cursorPagination.page}
+              totalPages={props.cursorPagination.totalPages}
+              totalItems={props.totalItems ?? 0}
+              itemsPerPage={parseInt(rowsPerPage)}
+              hasNextPage={props.cursorPagination.hasNextPage}
+              hasPreviousPage={props.cursorPagination.hasPreviousPage}
+              onNext={props.cursorPagination.onNext}
+              onPrevious={props.cursorPagination.onPrevious}
+            />
+          ) : (
+            <CustomPagination
+              page={finalPage}
+              total={Math.ceil((props.totalItems ?? 0) / parseInt(rowsPerPage))}
+              totalItems={props.totalItems ?? 0}
+              itemsPerPage={parseInt(rowsPerPage)}
+              onChange={(page: number) => {
+                setPage(page);
+                onPageChange?.(page);
+              }}
+            />
+          )}
         </div>
       </div>
     );
@@ -394,6 +423,7 @@ export const CustomTable = <T extends object>({
     handleDropdown,
     finalPage,
     props.totalItems,
+    props.cursorPagination,
     onPageChange,
   ]);
 

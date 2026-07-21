@@ -26,6 +26,8 @@ type CustomDatePickerProps = {
   maxDate?: string;
   errorMsg?: string;
   label?: string;
+  /** Accessible name when no visible `label` is rendered. */
+  ariaLabel?: string;
   description?: string;
 };
 
@@ -45,6 +47,7 @@ export const CustomDatePicker = ({ ...props }: CustomDatePickerProps) => {
   return (
     <DatePicker
       shouldForceLeadingZeros
+      aria-label={!props.label ? (props.ariaLabel ?? "Date") : undefined}
       isInvalid={props.isInvalid}
       minValue={props.minDate ? parseDateTime(props.minDate) : undefined}
       maxValue={props.maxDate ? parseDateTime(props.maxDate) : undefined}
@@ -60,7 +63,7 @@ export const CustomDatePicker = ({ ...props }: CustomDatePickerProps) => {
         }
       }}
     >
-      <Label>{props.label}</Label>
+      {props.label && <Label>{props.label}</Label>}
       <DateField.Group
         fullWidth
         className={"border-default rounded-app min-h-10 border-2"}

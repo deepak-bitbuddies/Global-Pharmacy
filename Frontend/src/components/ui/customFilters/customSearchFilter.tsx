@@ -8,6 +8,8 @@ type CustomSearchFilterProps = {
   value?: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Accessible name for the search box. Falls back to `placeholder` when omitted. */
+  ariaLabel?: string;
   debounceMs?: number;
   className?: string;
 };
@@ -16,6 +18,7 @@ export const CustomSearchFilter = ({
   value = "",
   onChange,
   placeholder = "Search",
+  ariaLabel,
   debounceMs = 300,
   className,
 }: CustomSearchFilterProps) => {
@@ -34,6 +37,7 @@ export const CustomSearchFilter = ({
       value={inputValue}
       onChange={setInputValue}
       placeholder={placeholder}
+      ariaLabel={ariaLabel ?? placeholder}
       startContent={<MagnifyingGlassIcon className="size-4" />}
       className={className}
       fullWidth

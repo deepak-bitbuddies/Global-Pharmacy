@@ -10,6 +10,7 @@ export interface AuthUserDto {
   email: string
   role: string
   isActive: boolean
+  branchId: string | null
   createdAt: Date
 }
 

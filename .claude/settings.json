@@ -32,7 +32,8 @@
       "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard3.html)",
       "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard4.html)",
       "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard5.html)",
-      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard6.html)"
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" -b /tmp/cookies.txt \"http://localhost:3001/\" -o /tmp/dashboard6.html)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" http://localhost:4000/api/v1/admin/branches)"
     ]
   }
 }

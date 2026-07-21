@@ -40,6 +40,8 @@ type CustomSelectProps<T> = {
   placeholder?: string;
   /** Label text to display above the select */
   label?: string;
+  /** Accessible name when no visible `label` is rendered (required by React Aria whenever there's no connected `<Label>`) */
+  ariaLabel?: string;
   /** Additional CSS classes to apply to the select */
   className?: string;
   /** Helper text to display below the select */
@@ -115,6 +117,7 @@ export const CustomSelect = <T,>({
     <div className={`relative ${props.fullWidth ? "w-full" : "w-fit"}`}>
       <Select
         key={`select-${hasSelection}`}
+        aria-label={!props.label ? (props.ariaLabel ?? props.placeholder) : undefined}
         placeholder={props.placeholder}
         value={selectedKeyArray}
         isDisabled={props.disabled}
@@ -191,6 +194,7 @@ export const CustomSelect = <T,>({
             variant={IconVariant.light}
             size={11.5}
             className="h-5 w-5 cursor-pointer rounded-full"
+            ariaLabel="Clear selection"
           />
         </div>
       )}

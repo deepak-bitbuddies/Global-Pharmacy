@@ -6,14 +6,7 @@ export type ReportFilters = {
   item?: string
 }
 
-export type Branch = {
-  id: string
-  name: string
-  address: string | null
-  gstin: string | null
-  phone: string | null
-  drugLicenseNo: string | null
-}
+export type { Branch } from "@/modules/branches"
 
 export type ItemWiseSalesRow = {
   itemNameRaw: string

@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import { CreditCardIcon, HandCoinsIcon, ScalesIcon } from "@phosphor-icons/react"
 
 import { CustomTable, TremorBarList, TremorCard } from "@/components/ui"
+import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { useCashInHand, useGrossProfit, useOutstanding } from "../../hooks/use-reports"
 import type { GrossProfitRow, ReportFilters } from "../../types"
@@ -11,18 +12,18 @@ import type { GrossProfitRow, ReportFilters } from "../../types"
 export function FinanceTab({ filters }: { filters: ReportFilters }) {
   const { data: cashInHand, isLoading: isCashLoading } = useCashInHand(filters)
   const { data: outstanding, isLoading: isOutstandingLoading } = useOutstanding(filters)
-  const { data: grossProfit, isLoading: isGpLoading } = useGrossProfit(filters)
+
+  const pagination = useCursorPagination()
+  // Independent of the table's own pagination — page 1 of the same
+  // amount-DESC sort is already the true top 10, no separate endpoint needed.
+  const { data: topGpData } = useGrossProfit(filters, { pageSize: 10 })
+  const { data: grossProfit, isLoading: isGpLoading } = useGrossProfit(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
 
   const cashItems = useMemo(() => (cashInHand ?? []).map((row) => ({ name: row.branchName, value: row.cashTotal })), [cashInHand])
   const outstandingItems = useMemo(() => (outstanding ?? []).map((row) => ({ name: row.branchName, value: row.outstandingTotal })), [outstanding])
   const topGp = useMemo(
-    () =>
-      (grossProfit ?? [])
-        .filter((row) => row.estimatedGp !== null)
-        .sort((a, b) => (b.estimatedGp ?? 0) - (a.estimatedGp ?? 0))
-        .slice(0, 10)
-        .map((row) => ({ name: row.itemName, value: row.estimatedGp ?? 0 })),
-    [grossProfit],
+    () => (topGpData?.data ?? []).filter((row) => row.estimatedGp !== null).map((row) => ({ name: row.itemName, value: row.estimatedGp ?? 0 })),
+    [topGpData],
   )
 
   return (
@@ -66,12 +67,21 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
           { key: "estimatedGp", label: "Est. GP", sortable: true },
           { key: "estimatedGpPct", label: "GP %" },
         ]}
-        data={grossProfit ?? []}
+        data={grossProfit?.data ?? []}
         loading={isGpLoading}
         rowKey="itemName"
         itemId="itemName"
-        totalItems={grossProfit?.length ?? 0}
+        totalItems={grossProfit?.meta.total ?? 0}
         emptyText="No gross profit data — import Sales and Stock files first."
+        onRowsPerPageChange={pagination.setPageSize}
+        cursorPagination={{
+          page: pagination.page,
+          totalPages: grossProfit?.meta.totalPages,
+          hasNextPage: grossProfit?.meta.hasNextPage ?? false,
+          hasPreviousPage: pagination.page > 1,
+          onNext: () => pagination.goNext(grossProfit?.meta.nextCursor ?? null),
+          onPrevious: pagination.goPrevious,
+        }}
         renderCustomCell={(row, key) => {
           if (key === "salesAmount" || key === "estimatedGp" || key === "avgCostPrice") return row[key] === null ? "-" : formatCurrency(row[key] as number)
           if (key === "salesQty") return formatNumber(row[key])

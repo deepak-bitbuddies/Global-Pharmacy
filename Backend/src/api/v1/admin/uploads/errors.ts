@@ -11,9 +11,3 @@ export class EmptyImportError extends ValidationError {
     super(`Parsed 0 rows from the uploaded ${fileType} file — check the file format`)
   }
 }
-
-export class UnresolvableBranchError extends ValidationError {
-  constructor() {
-    super("Could not identify the branch from this file's letterhead")
-  }
-}

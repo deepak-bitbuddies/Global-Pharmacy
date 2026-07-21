@@ -6,6 +6,8 @@ export type ReportFilters = {
   item?: string
 }
 
+export type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"
+
 export type ItemWiseSalesRowDto = {
   itemNameRaw: string
   totalQty: number
@@ -99,4 +101,16 @@ export type DashboardSummaryDto = {
   outstanding: number
   nearExpiryCount: number
   nonMovingCount: number
+}
+
+/** Aggregates for the Stock tab's KPI row + quantity-distribution chart — computed server-side since `getStockReport` is now paginated and can no longer be summed/bucketed client-side from a full fetch. */
+export type StockSummaryDto = {
+  totalValue: number
+  uniqueItemCount: number
+  levelCounts: { bucket: string; count: number }[]
+}
+
+export type StockByCompanyRowDto = {
+  company: string
+  total: number
 }

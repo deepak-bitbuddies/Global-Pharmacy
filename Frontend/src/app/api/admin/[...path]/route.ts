@@ -21,12 +21,11 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
   const contentType = request.headers.get("content-type") ?? ""
   const isMultipart = contentType.includes("multipart/form-data")
 
+  const headers: HeadersInit = { Authorization: `Bearer ${token}` }
+
   const init: RequestInit = {
     method: request.method,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(isMultipart ? {} : { "Content-Type": "application/json" }),
-    },
+    headers,
     cache: "no-store",
   }
 
@@ -34,7 +33,18 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
     // Re-serializing FormData lets `fetch` generate a fresh multipart
     // boundary — forwarding the raw body/content-type from the incoming
     // request would carry a stale boundary that no longer matches.
-    init.body = isMultipart ? await request.formData() : await request.text()
+    if (isMultipart) {
+      init.body = await request.formData()
+    } else {
+      const text = await request.text()
+      // Only attach a body/Content-Type when there actually is one — DELETE
+      // (and sometimes PATCH) requests often have none, and Fastify's JSON
+      // body parser rejects an empty body sent with Content-Type: application/json.
+      if (text) {
+        init.body = text
+        headers["Content-Type"] = "application/json"
+      }
+    }
   }
 
   let backendResponse: Response
@@ -55,5 +65,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
+  return proxy(request, (await params).path)
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  return proxy(request, (await params).path)
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
   return proxy(request, (await params).path)
 }

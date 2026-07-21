@@ -1,11 +1,13 @@
 import type { ComponentType } from "react"
 import type { IconProps } from "@phosphor-icons/react"
-import { ChartLineUpIcon, HouseIcon, PackageIcon, UploadSimpleIcon } from "@phosphor-icons/react"
+import { BuildingsIcon, ChartLineUpIcon, HouseIcon, PackageIcon, UploadSimpleIcon } from "@phosphor-icons/react"
 
 export interface NavItem {
   labelKey: string
   href: string
   icon: ComponentType<IconProps>
+  /** Hidden from the sidebar for anyone but super_admin (the backend enforces this regardless — this only controls visibility). */
+  superAdminOnly?: boolean
 }
 
 export interface NavGroup {
@@ -21,6 +23,7 @@ export const navGroups: NavGroup[] = [
   {
     headingKey: "gprs",
     items: [
+      // { labelKey: "branches", href: "/branches", icon: BuildingsIcon, superAdminOnly: true },
       { labelKey: "importData", href: "/import", icon: UploadSimpleIcon },
       { labelKey: "salesReport", href: "/reports/sales", icon: ChartLineUpIcon },
       { labelKey: "stockReport", href: "/reports/stock", icon: PackageIcon },
