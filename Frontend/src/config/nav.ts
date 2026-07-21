@@ -23,7 +23,7 @@ export const navGroups: NavGroup[] = [
   {
     headingKey: "gprs",
     items: [
-      { labelKey: "branches", href: "/branches", icon: BuildingsIcon, superAdminOnly: true },
+      // { labelKey: "branches", href: "/branches", icon: BuildingsIcon, superAdminOnly: true },
       { labelKey: "importData", href: "/import", icon: UploadSimpleIcon },
       { labelKey: "salesReport", href: "/reports/sales", icon: ChartLineUpIcon },
       { labelKey: "stockReport", href: "/reports/stock", icon: PackageIcon },
