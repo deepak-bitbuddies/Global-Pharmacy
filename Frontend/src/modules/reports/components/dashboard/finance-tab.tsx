@@ -72,15 +72,15 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
         loading={isGpLoading}
         rowKey="itemName"
         itemId="itemName"
-        totalItems={grossProfit?.meta.total ?? 0}
+        totalItems={grossProfit?.meta?.total ?? 0}
         emptyText="No gross profit data — import Sales and Stock files first."
         onRowsPerPageChange={pagination.setPageSize}
         cursorPagination={{
           page: pagination.page,
-          totalPages: grossProfit?.meta.totalPages,
-          hasNextPage: grossProfit?.meta.hasNextPage ?? false,
+          totalPages: grossProfit?.meta?.totalPages,
+          hasNextPage: grossProfit?.meta?.hasNextPage ?? false,
           hasPreviousPage: pagination.page > 1,
-          onNext: () => pagination.goNext(grossProfit?.meta.nextCursor ?? null),
+          onNext: () => pagination.goNext(grossProfit?.meta?.nextCursor ?? null),
           onPrevious: pagination.goPrevious,
         }}
         renderCustomCell={(row, key) => {

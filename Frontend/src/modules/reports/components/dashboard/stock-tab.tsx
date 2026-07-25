@@ -222,15 +222,15 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           loading={isStockLoading}
           rowKey="id"
           itemId="id"
-          totalItems={stock?.meta.total ?? 0}
+          totalItems={stock?.meta?.total ?? 0}
           emptyText="No stock data — import a Stock Register file first."
           onRowsPerPageChange={pagination.setPageSize}
           cursorPagination={{
             page: pagination.page,
-            totalPages: stock?.meta.totalPages,
-            hasNextPage: stock?.meta.hasNextPage ?? false,
+            totalPages: stock?.meta?.totalPages,
+            hasNextPage: stock?.meta?.hasNextPage ?? false,
             hasPreviousPage: pagination.page > 1,
-            onNext: () => pagination.goNext(stock?.meta.nextCursor ?? null),
+            onNext: () => pagination.goNext(stock?.meta?.nextCursor ?? null),
             onPrevious: pagination.goPrevious,
           }}
           renderCustomCell={(row, key) => {

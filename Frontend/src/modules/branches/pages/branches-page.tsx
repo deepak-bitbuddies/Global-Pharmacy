@@ -142,14 +142,14 @@ export function BranchesPage() {
         loading={isLoading}
         rowKey="id"
         itemId="id"
-        totalItems={branches?.meta.total ?? 0}
+        totalItems={branches?.meta?.total ?? 0}
         onRowsPerPageChange={pagination.setPageSize}
         cursorPagination={{
           page: pagination.page,
-          totalPages: branches?.meta.totalPages,
-          hasNextPage: branches?.meta.hasNextPage ?? false,
+          totalPages: branches?.meta?.totalPages,
+          hasNextPage: branches?.meta?.hasNextPage ?? false,
           hasPreviousPage: pagination.page > 1,
-          onNext: () => pagination.goNext(branches?.meta.nextCursor ?? null),
+          onNext: () => pagination.goNext(branches?.meta?.nextCursor ?? null),
           onPrevious: pagination.goPrevious,
         }}
         emptyText="No branches yet — register one to start importing data."

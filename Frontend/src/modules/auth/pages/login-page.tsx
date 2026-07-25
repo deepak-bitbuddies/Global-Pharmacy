@@ -2,7 +2,7 @@ import Image from "next/image"
 import { getTranslations } from "next-intl/server"
 import { ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr"
 
-import { brandLogoIcon, brandLogoIconHeight, brandLogoIconWidth, brandName, brandTitle, brandDescription } from "@/config/brand"
+import { brandLogoIcon, brandLogoIconHeight, brandLogoIconWidth, brandName, brandTitle, brandDescription, brandLogo } from "@/config/brand"
 import { LoginForm } from "../components/login-form"
 
 export async function LoginPage() {
@@ -17,7 +17,7 @@ export async function LoginPage() {
         <div className="relative flex w-full justify-start">
           <span className="inline-flex items-center rounded-2xl bg-white p-2 shadow-lg shadow-black/10">
             <Image
-              src={brandLogoIcon}
+              src={brandLogo}
               alt={brandName}
               width={brandLogoIconWidth}
               height={brandLogoIconHeight}
@@ -48,7 +48,7 @@ export async function LoginPage() {
       <section className="flex min-h-155 flex-col justify-center p-6 sm:p-10 lg:p-12">
         <div className="mb-10 flex items-center lg:hidden">
           <Image
-            src={brandLogoIcon}
+            src={brandLogo}
             alt={brandName}
             width={brandLogoIconWidth}
             height={brandLogoIconHeight}

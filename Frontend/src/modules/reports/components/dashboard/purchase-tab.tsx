@@ -41,15 +41,15 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
         loading={isLoading}
         rowKey="supplierGroup"
         itemId="supplierGroup"
-        totalItems={data?.meta.total ?? 0}
+        totalItems={data?.meta?.total ?? 0}
         emptyText="No purchase data — import a Purchase Register file first."
         onRowsPerPageChange={pagination.setPageSize}
         cursorPagination={{
           page: pagination.page,
-          totalPages: data?.meta.totalPages,
-          hasNextPage: data?.meta.hasNextPage ?? false,
+          totalPages: data?.meta?.totalPages,
+          hasNextPage: data?.meta?.hasNextPage ?? false,
           hasPreviousPage: pagination.page > 1,
-          onNext: () => pagination.goNext(data?.meta.nextCursor ?? null),
+          onNext: () => pagination.goNext(data?.meta?.nextCursor ?? null),
           onPrevious: pagination.goPrevious,
         }}
         renderCustomCell={(row, key) => {
