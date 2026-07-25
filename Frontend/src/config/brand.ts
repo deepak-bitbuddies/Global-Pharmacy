@@ -1,6 +1,10 @@
-import * as Icons from "@phosphor-icons/react/dist/ssr"
+export const brandLogo = "/logo.png"
+export const brandLogoWidth = 761
+export const brandLogoHeight = 635
 
-const iconName = process.env.NEXT_PUBLIC_BRAND_ICON ?? "CodeIcon"
+export const brandLogoIcon = "/logo-icon.png"
+export const brandLogoIconWidth = 761
+export const brandLogoIconHeight = 541
 
 export const brandName =
   process.env.NEXT_PUBLIC_BRAND_NAME ?? "Bit Buddies"
@@ -12,7 +16,3 @@ export const brandTitle =
 export const brandDescription =
   process.env.NEXT_PUBLIC_BRAND_DESCRIPTION ??
   "Sign in to access the Bit Buddies platform."
-
-export const BrandIcon =
-  (Icons[iconName as keyof typeof Icons] as typeof Icons.HeartbeatIcon) ??
-  Icons.CodeIcon

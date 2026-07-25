@@ -224,6 +224,7 @@ export const CustomTable = <T extends object>({
   selectionMode = TableSelectionModeEnum.Single,
   onPageChange,
   onRowsPerPageChange,
+  onSortChange,
   ...props
 }: CustomTableProps<T>) => {
   const t = useTranslations();
@@ -243,13 +244,13 @@ export const CustomTable = <T extends object>({
       setPage(1);
       onPageChange?.(1);
       if (lastSortedColumnKey && descriptor.direction) {
-        props.onSortChange?.(
+        onSortChange?.(
           lastSortedColumnKey,
           descriptor.direction == "ascending" ? "asc" : "desc",
         );
       }
     },
-    [onPageChange, lastSortedColumnKey, props],
+    [onPageChange, lastSortedColumnKey, onSortChange],
   );
 
   const selectedKeys: Selection = useMemo(() => {
@@ -371,7 +372,6 @@ export const CustomTable = <T extends object>({
         <div className="flex flex-row items-center gap-2">
           <Label>{t("Show")}</Label>
           <CustomSelect
-            key={`rows-${rowsPerPage}`}
             ariaLabel={t("Show")}
             data={rowOptions}
             idKey="value"
@@ -430,9 +430,17 @@ export const CustomTable = <T extends object>({
   const selectedCount =
     selectedKeys instanceof Set ? selectedKeys.size : props.data.length;
 
+  const tableBodyItems = useMemo(
+    () =>
+      paginatedItems.map((item) => ({
+        ...item,
+        key: String(item[props.rowKey as keyof T] ?? "fallback-row"),
+      })),
+    [paginatedItems, props.rowKey],
+  );
+
   return (
     <Table
-      key={`table-${String(props.loading ?? false)}`}
       className="w-full max-w-[calc(100vw-32px)] lg:max-w-[calc(100vw-128px)]"
     >
       {(props.onGlobalFilterChange || props.bulkActions) && (
@@ -550,10 +558,7 @@ export const CustomTable = <T extends object>({
                   <></>
                 )
               }
-              items={paginatedItems.map((item) => ({
-                ...item,
-                key: String(item[props.rowKey as keyof T] ?? "fallback-row"),
-              }))}
+              items={tableBodyItems}
             >
               {(item) => {
                 const keyValue =

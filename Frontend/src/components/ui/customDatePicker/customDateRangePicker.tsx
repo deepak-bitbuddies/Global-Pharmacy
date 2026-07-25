@@ -39,6 +39,7 @@ export const CustomDateRangePicker = ({
     <div className={`w-full ${props.className ?? ""}`}>
       {props.label && <Label>{props.label}</Label>}
       <CustomPopover
+        ariaLabel={props.label ?? "Date range"}
         trigger={
           <CustomButton variant={ButtonVariant.outline} className="w-full justify-start font-normal" fullWidth>
             {displayText}

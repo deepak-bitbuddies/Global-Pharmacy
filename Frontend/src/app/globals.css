@@ -53,23 +53,30 @@
 }
 
 :root {
-  /* Base */
-  --background: oklch(0.988 0.004 240);
-  --foreground: oklch(0.22 0.015 250);
+  /* HeroUI's Tooltip defaults to a 1.5s hover delay before first showing
+     (react-stately's TOOLTIP_DELAY) — reads from this CSS variable if set,
+     see @heroui/react's tooltip.js. 150ms feels responsive without being
+     so instant it fires on incidental mouse-over. */
+  --tooltip-delay: 150ms;
+
+  /* Base — warm neutral undertone to sit with the logo's orange/red */
+  --background: oklch(0.988 0.004 60);
+  --foreground: oklch(0.22 0.015 50);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.015 250);
+  --card-foreground: oklch(0.22 0.015 50);
 
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.22 0.015 250);
+  --popover-foreground: oklch(0.22 0.015 50);
 
-  /* Medical Blue */
-  --primary: oklch(0.63 0.17 245);
-  --primary-foreground: oklch(0.99 0.002 250);
+  /* Pharmacy Orange — primary, extracted from the "C"/"P" shapes in
+     public/logo.png (source swatches ~#d86800 / ~#f07800). */
+  --primary: oklch(0.64 0.17 50);
+  --primary-foreground: oklch(0.99 0.002 50);
 
-  /* Light Blue Surface */
-  --secondary: oklch(0.965 0.01 240);
-  --secondary-foreground: oklch(0.25 0.015 250);
+  /* Light Orange Surface */
+  --secondary: oklch(0.965 0.015 50);
+  --secondary-foreground: oklch(0.25 0.02 50);
 
   /* Neutral — HeroUI's own compiled CSS uses the Tailwind `text-muted`/
      `bg-muted` utilities in ~30 places (menu-item checkmarks, descriptions,
@@ -80,24 +87,26 @@
      HeroUI-native `text-muted` usage renders correctly; our own "muted
      surface" usages (`bg-muted/50` boxes, hover states) move to the
      dedicated `--muted-surface` token below instead. */
-  --muted-foreground: oklch(0.55 0.015 250);
+  --muted-foreground: oklch(0.55 0.015 50);
   --muted: var(--muted-foreground);
-  --muted-surface: oklch(0.975 0.005 240);
+  --muted-surface: oklch(0.975 0.006 50);
 
-  /* Wellness Green — our decorative "brand accent" (login gradient, tag
-     colors etc). Named `--brand-*` because HeroUI's own compiled CSS reads
-     a plain `--accent` custom property directly as its interactive/primary
-     color (Button's primary variant, focus rings, Chip/Checkbox/Switch
-     "accent" color...). If we reused `--accent` for this green here, every
-     HeroUI-native control would render green instead of our actual brand
-     blue. `--accent` below is deliberately aliased to `--primary` instead;
-     `@theme inline` maps Tailwind's `bg-accent`/`text-accent-foreground` to
-     this `--brand-*` pair so existing decorative usage is unaffected. */
-  --brand-accent: oklch(0.82 0.11 155);
-  --brand-accent-foreground: oklch(0.18 0.015 155);
+  /* Medical Red — our decorative "brand accent" (login gradient, tag
+     colors etc), extracted from the red cross in public/logo.png (source
+     swatch ~#d01810). Named `--brand-*` because HeroUI's own compiled CSS
+     reads a plain `--accent` custom property directly as its interactive/
+     primary color (Button's primary variant, focus rings, Chip/Checkbox/
+     Switch "accent" color...). If we reused `--accent` for this red here,
+     every HeroUI-native control would render red instead of our actual
+     brand orange. `--accent` below is deliberately aliased to `--primary`
+     instead; `@theme inline` maps Tailwind's `bg-accent`/
+     `text-accent-foreground` to this `--brand-*` pair so existing
+     decorative usage is unaffected. */
+  --brand-accent: oklch(0.80 0.10 29);
+  --brand-accent-foreground: oklch(0.20 0.02 29);
 
   /* HeroUI's own "accent" slot — keep aligned with --primary, not the
-     --brand-accent green above (see comment on --brand-accent). */
+     --brand-accent red above (see comment on --brand-accent). */
   --accent: var(--primary);
   --accent-foreground: var(--primary-foreground);
 
@@ -109,13 +118,14 @@
 
   --destructive: oklch(0.63 0.22 27);
 
-  --border: oklch(0.92 0.005 240);
-  --input: oklch(0.93 0.005 240);
-  --ring: oklch(0.63 0.17 245);
+  --border: oklch(0.92 0.006 50);
+  --input: oklch(0.93 0.006 50);
+  --ring: oklch(0.64 0.17 50);
 
-  /* Charts */
-  --chart-1: oklch(0.63 0.17 245);
-  --chart-2: oklch(0.78 0.11 155);
+  /* Charts — chart-1 mirrors primary, chart-2 a stronger variant of the
+     brand-accent red; chart-3/4/5 kept as distinct categorical colors. */
+  --chart-1: oklch(0.64 0.17 50);
+  --chart-2: oklch(0.62 0.18 29);
   --chart-3: oklch(0.72 0.14 205);
   --chart-4: oklch(0.82 0.10 110);
   --chart-5: oklch(0.69 0.18 30);
@@ -123,42 +133,42 @@
   --radius: 0.625rem;
 
   /* Sidebar */
-  --sidebar: oklch(0.982 0.005 240);
-  --sidebar-foreground: oklch(0.22 0.015 250);
+  --sidebar: oklch(0.982 0.006 50);
+  --sidebar-foreground: oklch(0.22 0.015 50);
 
-  --sidebar-primary: oklch(0.63 0.17 245);
-  --sidebar-primary-foreground: oklch(0.99 0.002 250);
+  --sidebar-primary: oklch(0.64 0.17 50);
+  --sidebar-primary-foreground: oklch(0.99 0.002 50);
 
-  --sidebar-accent: oklch(0.95 0.01 240);
-  --sidebar-accent-foreground: oklch(0.22 0.015 250);
+  --sidebar-accent: oklch(0.95 0.01 50);
+  --sidebar-accent-foreground: oklch(0.22 0.015 50);
 
-  --sidebar-border: oklch(0.91 0.005 240);
-  --sidebar-ring: oklch(0.63 0.17 245);
+  --sidebar-border: oklch(0.91 0.006 50);
+  --sidebar-ring: oklch(0.64 0.17 50);
 }
 
 .dark {
-  /* Dark Medical Theme */
-  --background: oklch(0.17 0.015 250);
-  --foreground: oklch(0.97 0.004 240);
+  /* Dark Theme */
+  --background: oklch(0.17 0.015 50);
+  --foreground: oklch(0.97 0.004 50);
 
-  --card: oklch(0.21 0.015 250);
-  --card-foreground: oklch(0.97 0.004 240);
+  --card: oklch(0.21 0.015 50);
+  --card-foreground: oklch(0.97 0.004 50);
 
-  --popover: oklch(0.21 0.015 250);
-  --popover-foreground: oklch(0.97 0.004 240);
+  --popover: oklch(0.21 0.015 50);
+  --popover-foreground: oklch(0.97 0.004 50);
 
-  --primary: oklch(0.70 0.17 245);
-  --primary-foreground: oklch(0.16 0.01 250);
+  --primary: oklch(0.71 0.17 50);
+  --primary-foreground: oklch(0.16 0.01 50);
 
-  --secondary: oklch(0.27 0.015 250);
-  --secondary-foreground: oklch(0.97 0.004 240);
+  --secondary: oklch(0.27 0.02 50);
+  --secondary-foreground: oklch(0.97 0.006 50);
 
-  --muted-foreground: oklch(0.73 0.01 240);
+  --muted-foreground: oklch(0.73 0.01 50);
   --muted: var(--muted-foreground);
-  --muted-surface: oklch(0.25 0.015 250);
+  --muted-surface: oklch(0.25 0.02 50);
 
-  --brand-accent: oklch(0.72 0.11 155);
-  --brand-accent-foreground: oklch(0.15 0.01 155);
+  --brand-accent: oklch(0.72 0.12 29);
+  --brand-accent-foreground: oklch(0.15 0.02 29);
 
   --accent: var(--primary);
   --accent-foreground: var(--primary-foreground);
@@ -169,27 +179,27 @@
 
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.70 0.17 245);
+  --ring: oklch(0.71 0.17 50);
 
   /* Charts */
-  --chart-1: oklch(0.70 0.17 245);
-  --chart-2: oklch(0.72 0.11 155);
+  --chart-1: oklch(0.71 0.17 50);
+  --chart-2: oklch(0.66 0.18 29);
   --chart-3: oklch(0.75 0.14 205);
   --chart-4: oklch(0.76 0.11 110);
   --chart-5: oklch(0.73 0.18 30);
 
   /* Sidebar */
-  --sidebar: oklch(0.19 0.015 250);
-  --sidebar-foreground: oklch(0.97 0.004 240);
+  --sidebar: oklch(0.19 0.015 50);
+  --sidebar-foreground: oklch(0.97 0.004 50);
 
-  --sidebar-primary: oklch(0.70 0.17 245);
-  --sidebar-primary-foreground: oklch(0.16 0.01 250);
+  --sidebar-primary: oklch(0.71 0.17 50);
+  --sidebar-primary-foreground: oklch(0.16 0.01 50);
 
-  --sidebar-accent: oklch(0.28 0.015 250);
-  --sidebar-accent-foreground: oklch(0.97 0.004 240);
+  --sidebar-accent: oklch(0.28 0.015 50);
+  --sidebar-accent-foreground: oklch(0.97 0.004 50);
 
   --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.70 0.17 245);
+  --sidebar-ring: oklch(0.71 0.17 50);
 }
 
 @layer base {

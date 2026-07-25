@@ -14,7 +14,7 @@ import {
   WalletIcon,
 } from "@phosphor-icons/react"
 
-import { TremorAreaChart, TremorBarChart, TremorCard, TremorStatCard, TremorTone } from "@/components/ui"
+import { TremorAreaChart, TremorBarChart, TremorCard, TremorStatCard, TremorTone } from "@/components/ui/tremor"
 import { formatCurrency } from "@/utils/formatting"
 import { useBranchSales, useDailyCollection, useDashboardSummary } from "../../hooks/use-reports"
 import type { ReportFilters } from "../../types"

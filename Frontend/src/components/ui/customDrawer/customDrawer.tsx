@@ -47,7 +47,10 @@ export const CustomDrawer = ({
         className={props.wrapperStyle}
       >
         <Drawer.Content placement={placement}>
-          <Drawer.Dialog className={`${props.className ?? ""}`}>
+          <Drawer.Dialog
+            className={`${props.className ?? ""}`}
+            aria-label={props.title ? undefined : "Panel"}
+          >
             <Drawer.CloseTrigger />
             {props.title && (
               <Drawer.Header className={props.headerStyle}>

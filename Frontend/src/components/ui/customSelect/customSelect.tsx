@@ -116,7 +116,6 @@ export const CustomSelect = <T,>({
   return (
     <div className={`relative ${props.fullWidth ? "w-full" : "w-fit"}`}>
       <Select
-        key={`select-${hasSelection}`}
         aria-label={!props.label ? (props.ariaLabel ?? props.placeholder) : undefined}
         placeholder={props.placeholder}
         value={selectedKeyArray}

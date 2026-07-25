@@ -3,7 +3,8 @@
 import { useMemo } from "react"
 import { ShoppingCartIcon } from "@phosphor-icons/react"
 
-import { CustomTable, TremorBarList, TremorCard } from "@/components/ui"
+import { CustomTable } from "@/components/ui"
+import { TremorBarList, TremorCard } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { usePurchaseSummary } from "../../hooks/use-reports"

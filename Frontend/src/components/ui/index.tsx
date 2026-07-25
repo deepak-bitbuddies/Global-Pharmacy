@@ -1,6 +1,14 @@
 /*
 this folder consist Hero Ui component
 will be helpfull to switch the the library if needed in future
+
+Note: "./tremor" (recharts-based dashboard charts) is deliberately NOT
+re-exported here. This barrel is imported by AppProviders at the app root,
+so anything exported from it ends up in the JS bundle shared by every
+route — re-exporting tremor previously pulled recharts into every page's
+initial load, including routes with no charts at all (e.g. /login).
+Dashboard chart consumers import directly from "@/components/ui/tremor"
+instead so recharts stays scoped to the reports dashboard route.
 */
 
 export * from "./customAccordion/customAccordion";
@@ -11,7 +19,6 @@ export * from "./customAvatar/customAvatar";
 export * from "./customBreadcrumb/customBreadcrumb";
 export * from "./customButton/customButton";
 export * from "./customCard/customCard";
-export * from "./customChart/customChart";
 export * from "./customCheckboxGroup/customCheckbox";
 export * from "./customCheckboxGroup/customCheckboxGroup";
 export * from "./customChip/customChip";
@@ -49,4 +56,3 @@ export * from "./customTabs/customTabs";
 export * from "./customText/customText";
 export * from "./customToast/customToast";
 export * from "./customTooltip/customTooltip";
-export * from "./tremor";

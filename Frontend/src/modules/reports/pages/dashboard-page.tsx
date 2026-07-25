@@ -1,15 +1,21 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 
-import { CustomDateRangeFilter, CustomFilterBar, CustomPageHeader, CustomSelectFilter, CustomTabs } from "@/components/ui"
-import { FinanceTab } from "../components/dashboard/finance-tab"
-import { OverviewTab } from "../components/dashboard/overview-tab"
-import { PurchaseTab } from "../components/dashboard/purchase-tab"
-import { SalesTab } from "../components/dashboard/sales-tab"
-import { StockTab } from "../components/dashboard/stock-tab"
+import { CustomDateRangeFilter, CustomFilterBar, CustomPageHeader, CustomSelectFilter, CustomSkeleton, CustomTabs } from "@/components/ui"
 import { useBranches } from "../hooks/use-reports"
 import type { Branch, ReportFilters } from "../types"
+
+// Dynamically imported: each tab (and the recharts-based Tremor charts it
+// pulls in) is only fetched when the user actually opens that tab, instead
+// of all 5 tabs' code loading upfront on first visit to the dashboard.
+const tabLoading = <CustomSkeleton className="h-96 w-full" />
+const OverviewTab = dynamic(() => import("../components/dashboard/overview-tab").then((m) => m.OverviewTab), { loading: () => tabLoading })
+const SalesTab = dynamic(() => import("../components/dashboard/sales-tab").then((m) => m.SalesTab), { loading: () => tabLoading })
+const PurchaseTab = dynamic(() => import("../components/dashboard/purchase-tab").then((m) => m.PurchaseTab), { loading: () => tabLoading })
+const StockTab = dynamic(() => import("../components/dashboard/stock-tab").then((m) => m.StockTab), { loading: () => tabLoading })
+const FinanceTab = dynamic(() => import("../components/dashboard/finance-tab").then((m) => m.FinanceTab), { loading: () => tabLoading })
 
 export function ReportsDashboardPage() {
   const [filters, setFilters] = useState<ReportFilters>({})

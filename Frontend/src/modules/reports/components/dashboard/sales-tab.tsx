@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react"
 import { ChartLineUpIcon } from "@phosphor-icons/react"
 
-import { CustomSearchFilter, CustomTable, TremorBarList, TremorCard } from "@/components/ui"
+import { CustomSearchFilter, CustomTable } from "@/components/ui"
+import { TremorBarList, TremorCard } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { useItemWiseSales } from "../../hooks/use-reports"

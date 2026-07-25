@@ -138,7 +138,7 @@ export const CustomModal = ({
           scroll={props.scrollBehavior}
           className={`rounded-app`}
         >
-          <Modal.Dialog>
+          <Modal.Dialog aria-label={props.title ? undefined : "Dialog"}>
             <Modal.CloseTrigger />
             {props.title && (
               <Modal.Header className="px-1">

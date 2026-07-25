@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useMutation } from "@tanstack/react-query"
@@ -17,7 +18,15 @@ import { useAuthStore } from "@/providers"
 import { logout } from "@/modules/auth"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { navGroups, type NavItem } from "@/config/nav"
-import { BrandIcon, brandName } from "@/config/brand"
+import {
+  brandLogo,
+  brandLogoHeight,
+  brandLogoWidth,
+  brandLogoIcon,
+  brandLogoIconHeight,
+  brandLogoIconWidth,
+  brandName,
+} from "@/config/brand"
 import { SIDEBAR_DESKTOP_BREAKPOINT } from "./sidebar-constants"
 
 interface SidebarProps {
@@ -67,10 +76,12 @@ function SidebarNavItem({
     </Link>
   )
 
-  if (!iconRail) return link
-
+  // Always mounted (never conditionally swapped for a bare `link`) so
+  // toggling sidebar collapse doesn't force every nav item to unmount and
+  // remount into a different wrapper — `isDisabled` just turns the actual
+  // popover behavior on/off in place.
   return (
-    <CustomTooltip trigger={link} placement={TooltipPlacement.right}>
+    <CustomTooltip trigger={link} placement={TooltipPlacement.right} isDisabled={!iconRail}>
       {t(item.labelKey)}
     </CustomTooltip>
   )
@@ -131,12 +142,24 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
           collapsed ? "xl:w-17" : "xl:w-64",
         )}
       >
-        <div className={cn("flex h-14 items-center justify-between px-4", collapsed && "xl:justify-center xl:px-2")}>
-          <Link href="/" className="flex items-center gap-2.5 font-semibold">
-            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm shadow-primary/20">
-              <BrandIcon weight="fill" className="size-5" />
-            </span>
-            <span className={labelClassName}>{brandName}</span>
+        <div className={cn("flex items-center justify-between p-3", collapsed && "xl:justify-center xl:px-2")}>
+          <Link href="/" className="w-full flex items-center justify-center">
+            <Image
+              src={brandLogo}
+              alt={brandName}
+              width={brandLogoWidth}
+              height={brandLogoHeight}
+              className={cn("h-28 w-auto shrink-0", collapsed && "xl:hidden")}
+              priority
+            />
+            <Image
+              src={brandLogoIcon}
+              alt={brandName}
+              width={brandLogoIconWidth}
+              height={brandLogoIconHeight}
+              className={cn("hidden h-8 w-auto shrink-0", collapsed && "xl:block")}
+              priority
+            />
           </Link>
           <CustomButton variant={ButtonVariant.ghost} isIconOnly className="xl:hidden" onClick={close}>
             <XIcon className="size-4" />
@@ -170,11 +193,9 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
           ))}
         </nav>
         <div className={cn("border-t border-sidebar-border p-3", collapsed && "xl:px-2")}>
-          {iconRail ? (
-            <CustomTooltip trigger={logoutButton} placement={TooltipPlacement.right}>
-              {t("logout")}
-            </CustomTooltip>
-          ) : logoutButton}
+          <CustomTooltip trigger={logoutButton} placement={TooltipPlacement.right} isDisabled={!iconRail} triggerClassName="w-full">
+            {t("logout")}
+          </CustomTooltip>
         </div>
       </aside>
     </>

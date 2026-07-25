@@ -1,6 +1,6 @@
 "use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import type { CursorPaginationParams } from "@/types/pagination"
 import { createBranch, deleteBranch, getBranches, updateBranch } from "../api/branches-api"
@@ -12,7 +12,14 @@ export const branchesQueryKeys = {
 }
 
 export function useBranches(pagination: CursorPaginationParams) {
-  return useQuery({ queryKey: branchesQueryKeys.list(pagination), queryFn: () => getBranches(pagination) })
+  return useQuery({
+    queryKey: branchesQueryKeys.list(pagination),
+    queryFn: () => getBranches(pagination),
+    // Keeps the current page's rows on screen (with `isFetching` true)
+    // while a page/page-size change is in flight, instead of the table
+    // blanking out on every pagination interaction.
+    placeholderData: keepPreviousData,
+  })
 }
 
 export function useCreateBranch() {

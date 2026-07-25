@@ -11,17 +11,8 @@ import {
   WarningIcon,
 } from "@phosphor-icons/react"
 
-import {
-  CustomSearchFilter,
-  CustomSelectFilter,
-  CustomTable,
-  TremorBarChart,
-  TremorBarList,
-  TremorCard,
-  TremorDonutChart,
-  TremorStatCard,
-  TremorTone,
-} from "@/components/ui"
+import { CustomSearchFilter, CustomSelectFilter, CustomTable } from "@/components/ui"
+import { TremorBarChart, TremorBarList, TremorCard, TremorDonutChart, TremorStatCard, TremorTone } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import {

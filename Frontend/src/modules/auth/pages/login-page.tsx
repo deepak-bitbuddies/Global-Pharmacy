@@ -1,7 +1,8 @@
+import Image from "next/image"
 import { getTranslations } from "next-intl/server"
 import { ShieldCheckIcon } from "@phosphor-icons/react/dist/ssr"
 
-import { BrandIcon, brandName, brandTitle, brandDescription } from "@/config/brand"
+import { brandLogoIcon, brandLogoIconHeight, brandLogoIconWidth, brandName, brandTitle, brandDescription } from "@/config/brand"
 import { LoginForm } from "../components/login-form"
 
 export async function LoginPage() {
@@ -13,11 +14,17 @@ export async function LoginPage() {
         <div className="absolute inset-0 bg-linear-to-br from-primary via-primary to-accent/60" />
         <div className="absolute -right-24 -top-24 size-80 rounded-full border border-primary-foreground/15" />
         <div className="absolute -bottom-32 -left-20 size-96 rounded-full border border-primary-foreground/10" />
-        <div className="relative flex items-center gap-3 text-lg font-semibold">
-          <span className="grid size-10 place-items-center rounded-full bg-primary-foreground/15 backdrop-blur-sm">
-            <BrandIcon weight="fill" className="size-6" />
+        <div className="relative flex w-full justify-start">
+          <span className="inline-flex items-center rounded-2xl bg-white p-2 shadow-lg shadow-black/10">
+            <Image
+              src={brandLogoIcon}
+              alt={brandName}
+              width={brandLogoIconWidth}
+              height={brandLogoIconHeight}
+              className="h-12 w-auto"
+              priority
+            />
           </span>
-          {brandName}
         </div>
 
         <div className="relative my-auto max-w-sm space-y-5">
@@ -39,11 +46,15 @@ export async function LoginPage() {
       </section>
 
       <section className="flex min-h-155 flex-col justify-center p-6 sm:p-10 lg:p-12">
-        <div className="mb-10 flex items-center gap-3 lg:hidden">
-          <span className="grid size-10 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-            <BrandIcon weight="fill" className="size-6" />
-          </span>
-          <span className="font-semibold">{brandName}</span>
+        <div className="mb-10 flex items-center lg:hidden">
+          <Image
+            src={brandLogoIcon}
+            alt={brandName}
+            width={brandLogoIconWidth}
+            height={brandLogoIconHeight}
+            className="h-16 w-auto"
+            priority
+          />
         </div>
         <div className="mb-8 space-y-2">
           <p className="text-sm font-medium text-primary">Welcome back</p>

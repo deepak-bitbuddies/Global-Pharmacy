@@ -1,0 +1,12 @@
+diff --git a/node_modules/@heroui/react/dist/components/autocomplete/autocomplete.js b/node_modules/@heroui/react/dist/components/autocomplete/autocomplete.js
+index 1fe6552..63d9825 100644
+--- a/node_modules/@heroui/react/dist/components/autocomplete/autocomplete.js
++++ b/node_modules/@heroui/react/dist/components/autocomplete/autocomplete.js
+@@ -207,6 +207,7 @@ const AutocompletePopover = ({
+       children: /*#__PURE__*/jsx(Dialog, {
+         className: slots?.popoverDialog(),
+         "data-slot": "autocomplete-popover-dialog",
++        "aria-label": "Options",
+         children: children
+       })
+     })

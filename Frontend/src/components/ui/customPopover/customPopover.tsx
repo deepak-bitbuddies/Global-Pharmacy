@@ -15,6 +15,8 @@ type CustomPopoverProps = {
   offset?: number;
   isOpen?: boolean;
   setIsOpen?: (open: boolean) => void;
+  /** Accessible name for the popover content. Required since it has no visible title. */
+  ariaLabel?: string;
 };
 
 export const CustomPopover = (props: CustomPopoverProps) => {
@@ -29,7 +31,10 @@ export const CustomPopover = (props: CustomPopoverProps) => {
         offset={props.offset}
         className="p-2"
       >
-        <Popover.Dialog className="border-none p-0 outline-none">
+        <Popover.Dialog
+          className="border-none p-0 outline-none"
+          aria-label={props.ariaLabel ?? "Popover"}
+        >
           {props.children}
         </Popover.Dialog>
       </Popover.Content>
