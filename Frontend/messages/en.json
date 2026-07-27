@@ -13,6 +13,7 @@
     "branches": "Branches",
     "importData": "Import Data",
     "salesReport": "Sales Report",
+    "purchaseReport": "Purchase Report",
     "stockReport": "Stock Report",
     "logout": "Logout",
     "logoutError": "Unable to sign out.",

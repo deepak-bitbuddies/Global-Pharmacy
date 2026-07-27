@@ -39,6 +39,18 @@ export type PurchaseSummaryRowDto = {
   totalFreeQty: number
 }
 
+export type PurchaseDetailRowDto = {
+  id: string
+  supplierGroup: string
+  itemNameRaw: string
+  packSizeRaw: string | null
+  qty: number | null
+  freeQty: number | null
+  rate: number | null
+  amount: number
+  schemePct: number | null
+}
+
 export type StockRowDto = {
   id: string
   itemCode: string | null

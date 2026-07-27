@@ -12,6 +12,7 @@ export type ParsedPurchaseRow = {
   rate: number | null
   amount: number
   pctContribution: number | null
+  schemePct: number | null
 }
 
 export type ParsedPurchaseFile = {
@@ -52,6 +53,7 @@ export function parsePurchaseFile(buffer: Buffer): ParsedPurchaseFile {
       rate: parseMargNumber(cells[2] ?? ""),
       amount,
       pctContribution: parseMargNumber(cells[4] ?? ""),
+      schemePct: calculateSchemePct(qty, freeQty),
     })
   }
 
@@ -81,4 +83,16 @@ function splitTrailingQty(raw: string): { namePack: string; qty: number | null }
 function splitPackSize(raw: string): string | null {
   const match = /^(.*\S)\s{2,}(\S+)$/.exec(raw)
   return match ? match[2] : null
+}
+
+/**
+ * The scheme % implied by the free qty on a line: billing 100 units and
+ * receiving 10 free means the party effectively delivered 110 units at the
+ * billed rate, i.e. a (free / (billed + free)) discount off list rate. This
+ * is independent of the actual rate value — amount = rate * qty always
+ * holds in the source data, so the rate cancels out of the ratio.
+ */
+function calculateSchemePct(qty: number | null, freeQty: number | null): number | null {
+  if (!qty || qty <= 0 || !freeQty || freeQty <= 0) return null
+  return Math.round((freeQty / (qty + freeQty)) * 10000) / 100
 }

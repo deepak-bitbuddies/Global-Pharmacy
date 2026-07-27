@@ -10,6 +10,7 @@ import type {
   NonMovingRowDto,
   OutstandingRowDto,
   PaginatedResult,
+  PurchaseDetailRowDto,
   PurchaseSummaryRowDto,
   ReportFilters,
   StockByCompanyRowDto,
@@ -26,6 +27,7 @@ import {
   getItemWiseSales,
   getNonMovingItems,
   getOutstanding,
+  getPurchaseDetail,
   getPurchaseSummary,
   getStockReport,
   getStockSummary,
@@ -83,6 +85,24 @@ export async function purchaseSummary(filters: ReportFilters, pagination: Cursor
       totalAmount: num(row.totalAmount),
       totalQty: num(row.totalQty),
       totalFreeQty: num(row.totalFreeQty),
+    })),
+  }
+}
+
+export async function purchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<PurchaseDetailRowDto>> {
+  const { rows, ...page } = await getPurchaseDetail(filters, pagination)
+  return {
+    ...page,
+    rows: rows.map((row) => ({
+      id: row.id,
+      supplierGroup: row.supplierGroup,
+      itemNameRaw: row.itemNameRaw,
+      packSizeRaw: row.packSizeRaw,
+      qty: row.qty === null ? null : num(row.qty),
+      freeQty: row.freeQty === null ? null : num(row.freeQty),
+      rate: row.rate === null ? null : num(row.rate),
+      amount: num(row.amount),
+      schemePct: row.schemePct === null ? null : num(row.schemePct),
     })),
   }
 }

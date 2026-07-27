@@ -17,6 +17,7 @@ import {
   getItemWiseSales,
   getNonMovingItems,
   getOutstanding,
+  getPurchaseDetail,
   getPurchaseSummary,
   getStockReport,
   getStockSummary,
@@ -55,6 +56,10 @@ export function useGrossProfit(filters: ReportFilters, pagination: CursorPaginat
 
 export function usePurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams) {
   return useQuery({ queryKey: reportsQueryKeys.purchaseSummary(filters, pagination), queryFn: () => getPurchaseSummary(filters, pagination), placeholderData: keepPreviousData })
+}
+
+export function usePurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({ queryKey: reportsQueryKeys.purchaseDetail(filters, pagination), queryFn: () => getPurchaseDetail(filters, pagination), placeholderData: keepPreviousData })
 }
 
 export function useStockReport(filters: ReportFilters, pagination: CursorPaginationParams) {

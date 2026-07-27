@@ -162,6 +162,9 @@ export const purchaseLines = pgTable(
     rate: numeric("rate", { precision: 14, scale: 2, mode: "number" }),
     amount: numeric("amount", { precision: 14, scale: 2, mode: "number" }).notNull(),
     pctContribution: numeric("pct_contribution", { precision: 6, scale: 2, mode: "number" }),
+    // Scheme % implied by the free qty received on this purchase line, e.g. 100 billed + 10 free = 9.09% —
+    // distinct from `pctContribution` above, which is the line's % share of the party's total purchase amount.
+    schemePct: numeric("scheme_pct", { precision: 6, scale: 2, mode: "number" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

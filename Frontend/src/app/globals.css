@@ -17,6 +17,9 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-chart-8: var(--chart-8);
+  --color-chart-7: var(--chart-7);
+  --color-chart-6: var(--chart-6);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -122,13 +125,19 @@
   --input: oklch(0.93 0.006 50);
   --ring: oklch(0.64 0.17 50);
 
-  /* Charts — chart-1 mirrors primary, chart-2 a stronger variant of the
-     brand-accent red; chart-3/4/5 kept as distinct categorical colors. */
-  --chart-1: oklch(0.64 0.17 50);
-  --chart-2: oklch(0.62 0.18 29);
-  --chart-3: oklch(0.72 0.14 205);
-  --chart-4: oklch(0.82 0.10 110);
-  --chart-5: oklch(0.69 0.18 30);
+  /* Charts — fixed, industry-standard categorical palette, deliberately NOT
+     derived from --primary/brand color. Chart series identity must stay
+     stable and colorblind-safe regardless of app theming; validated with
+     the data-viz palette validator (CVD ΔE >= 8, normal-vision ΔE >= 15 on
+     every adjacent pair, both light and dark). Do not re-theme these. */
+  --chart-1: #2a78d6; /* blue */
+  --chart-2: #eb6834; /* orange */
+  --chart-3: #1baf7a; /* aqua */
+  --chart-4: #eda100; /* yellow */
+  --chart-5: #e87ba4; /* magenta */
+  --chart-6: #008300; /* green */
+  --chart-7: #4a3aa7; /* violet */
+  --chart-8: #e34948; /* red */
 
   --radius: 0.625rem;
 
@@ -181,12 +190,16 @@
   --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.71 0.17 50);
 
-  /* Charts */
-  --chart-1: oklch(0.71 0.17 50);
-  --chart-2: oklch(0.66 0.18 29);
-  --chart-3: oklch(0.75 0.14 205);
-  --chart-4: oklch(0.76 0.11 110);
-  --chart-5: oklch(0.73 0.18 30);
+  /* Charts — same fixed categorical palette, stepped for the dark surface
+     (see :root comment above). */
+  --chart-1: #3987e5; /* blue */
+  --chart-2: #d95926; /* orange */
+  --chart-3: #199e70; /* aqua */
+  --chart-4: #c98500; /* yellow */
+  --chart-5: #d55181; /* magenta */
+  --chart-6: #008300; /* green */
+  --chart-7: #9085e9; /* violet */
+  --chart-8: #e66767; /* red */
 
   /* Sidebar */
   --sidebar: oklch(0.19 0.015 50);

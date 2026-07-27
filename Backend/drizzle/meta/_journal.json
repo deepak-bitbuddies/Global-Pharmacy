@@ -29,6 +29,13 @@
       "when": 1784566201978,
       "tag": "0003_unknown_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785168533375,
+      "tag": "0004_add_purchase_lines_scheme_pct",
+      "breakpoints": true
     }
   ]
 }

@@ -10,6 +10,7 @@ import type {
   ItemWiseSalesRow,
   NonMovingRow,
   OutstandingRow,
+  PurchaseDetailRow,
   PurchaseSummaryRow,
   ReportFilters,
   StockRow,
@@ -50,6 +51,11 @@ export async function getGrossProfit(filters: ReportFilters, pagination: CursorP
 
 export async function getPurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<PurchaseSummaryRow>> {
   const { data } = await api.get<PaginatedResponse<PurchaseSummaryRow>>(`${BASE}/purchase`, { params: { ...filters, ...pagination } })
+  return data
+}
+
+export async function getPurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<PurchaseDetailRow>> {
+  const { data } = await api.get<PaginatedResponse<PurchaseDetailRow>>(`${BASE}/purchase/detail`, { params: { ...filters, ...pagination } })
   return data
 }
 

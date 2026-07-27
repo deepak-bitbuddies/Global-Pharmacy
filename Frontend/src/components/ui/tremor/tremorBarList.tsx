@@ -29,7 +29,7 @@ export const TremorBarList = ({ data, valueFormatter = (value) => value.toLocale
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted-surface">
             <div
               className="h-full rounded-full"
-              style={{ width: `${(item.value / max) * 100}%`, backgroundColor: `var(--color-chart-${(index % 5) + 1})` }}
+              style={{ width: `${(item.value / max) * 100}%`, backgroundColor: `var(--color-chart-${(index % 8) + 1})` }}
             />
           </div>
           <span className="w-20 shrink-0 text-right text-xs font-semibold tabular-nums text-foreground">{valueFormatter(item.value)}</span>

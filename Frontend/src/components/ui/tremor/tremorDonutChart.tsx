@@ -5,7 +5,16 @@ import { CustomSkeleton } from "../customSkeleton/customSkeleton";
 
 export type TremorDonutDatum = { name: string; value: number };
 
-const DEFAULT_COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
+const DEFAULT_COLORS = [
+  "var(--color-chart-1)",
+  "var(--color-chart-2)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-5)",
+  "var(--color-chart-6)",
+  "var(--color-chart-7)",
+  "var(--color-chart-8)",
+];
 
 type TremorDonutChartProps = {
   data: TremorDonutDatum[];

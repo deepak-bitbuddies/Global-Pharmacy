@@ -1,0 +1,1 @@
+ALTER TABLE "purchase_lines" ADD COLUMN "scheme_pct" numeric(6, 2);

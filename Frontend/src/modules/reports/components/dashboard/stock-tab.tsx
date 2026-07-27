@@ -28,11 +28,21 @@ import type { ReportFilters, StockRow } from "../../types"
 
 type CompanyOption = { id: string; label: string }
 
+// Fixed status/severity colors — deliberately hardcoded, not the app theme's
+// --danger/--warning/--success tokens, so risk color-coding on these charts
+// stays the standard red/orange/amber/green regardless of app theming. Same
+// hex in light and dark (status color is never themed).
+const STATUS_CRITICAL = "#d03b3b"
+const STATUS_SERIOUS = "#ec835a"
+const STATUS_WARNING = "#fab219"
+const STATUS_GOOD = "#0ca30c"
+const STATUS_NEUTRAL = "#898781"
+
 const EXPIRY_BUCKETS = [
-  { label: "Expired", maxDays: 0, color: "var(--danger)" },
-  { label: "≤ 30 days", maxDays: 30, color: "var(--danger)" },
-  { label: "31–90 days", maxDays: 90, color: "var(--warning)" },
-  { label: "91–180 days", maxDays: 180, color: "var(--default)" },
+  { label: "Expired", maxDays: 0, color: STATUS_CRITICAL },
+  { label: "≤ 30 days", maxDays: 30, color: STATUS_SERIOUS },
+  { label: "31–90 days", maxDays: 90, color: STATUS_WARNING },
+  { label: "91–180 days", maxDays: 180, color: STATUS_GOOD },
 ]
 
 function expiryBucketIndex(daysToExpiry: number): number {
@@ -41,11 +51,11 @@ function expiryBucketIndex(daysToExpiry: number): number {
 
 // Must match the bucket labels the backend's getStockSummary computes via SQL CASE.
 const STOCK_LEVEL_BUCKETS = [
-  { label: "Zero Stock", color: "var(--danger)" },
-  { label: "1–5 units", color: "var(--danger)" },
-  { label: "6–20 units", color: "var(--warning)" },
-  { label: "21–50 units", color: "var(--default)" },
-  { label: "50+ units", color: "var(--success)" },
+  { label: "Zero Stock", color: STATUS_CRITICAL },
+  { label: "1–5 units", color: STATUS_SERIOUS },
+  { label: "6–20 units", color: STATUS_WARNING },
+  { label: "21–50 units", color: STATUS_NEUTRAL },
+  { label: "50+ units", color: STATUS_GOOD },
 ]
 
 function ChartCard({

@@ -163,6 +163,47 @@ export async function getPurchaseSummary(filters: ReportFilters, pagination: Cur
   return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
 }
 
+type PurchaseDetailCursor = { itemNameRaw: string; id: string }
+
+export async function getPurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  const filterWhere = and(
+    branchFilter(purchaseLines.branchId, filters),
+    itemFilter(purchaseLines.itemNameRaw, filters),
+    ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
+  )
+
+  const cursor = decodeCursor<PurchaseDetailCursor>(pagination.cursor)
+  const dataWhere = cursor
+    ? and(filterWhere, sql`(${purchaseLines.itemNameRaw}, ${purchaseLines.id}) > (${cursor.itemNameRaw}, ${cursor.id})`)
+    : filterWhere
+
+  const [rows, countRows] = await Promise.all([
+    db
+      .select({
+        id: purchaseLines.id,
+        supplierGroup: purchaseLines.supplierGroup,
+        itemNameRaw: purchaseLines.itemNameRaw,
+        packSizeRaw: purchaseLines.packSizeRaw,
+        qty: purchaseLines.qty,
+        freeQty: purchaseLines.freeQty,
+        rate: purchaseLines.rate,
+        amount: purchaseLines.amount,
+        schemePct: purchaseLines.schemePct,
+      })
+      .from(purchaseLines)
+      .where(dataWhere)
+      // `id` is a tiebreaker — many lines share an item name across suppliers/batches,
+      // and keyset pagination needs a fully-deterministic sort to seek on.
+      .orderBy(purchaseLines.itemNameRaw, purchaseLines.id)
+      .limit(pagination.pageSize + 1),
+    db.select({ count: sql<string>`count(*)` }).from(purchaseLines).where(filterWhere),
+  ])
+
+  const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ itemNameRaw: r.itemNameRaw, id: r.id }))
+
+  return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
+}
+
 type StockReportCursor = { itemName: string; id: string }
 
 export async function getStockReport(filters: ReportFilters, pagination: CursorPaginationParams) {

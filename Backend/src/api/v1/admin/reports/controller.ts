@@ -9,6 +9,7 @@ import {
   expiryQuerySchema,
   grossProfitQuerySchema,
   itemWiseSalesQuerySchema,
+  purchaseDetailQuerySchema,
   purchaseSummaryQuerySchema,
   reportFiltersSchema,
   stockReportQuerySchema,
@@ -24,6 +25,7 @@ import {
   itemWiseSales,
   nonMovingItems,
   outstanding,
+  purchaseDetail,
   purchaseSummary,
   stockReport,
   stockSummary,
@@ -79,6 +81,13 @@ export async function purchaseSummaryHandler(request: FastifyRequest, reply: Fas
   const { cursor, pageSize, ...rest } = validateSchema(purchaseSummaryQuerySchema, request.query)
   const filters = scopeToUserBranch(request, rest)
   const { rows, ...page } = await purchaseSummary(filters, { cursor, pageSize })
+  sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
+}
+
+export async function purchaseDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { cursor, pageSize, ...rest } = validateSchema(purchaseDetailQuerySchema, request.query)
+  const filters = scopeToUserBranch(request, rest)
+  const { rows, ...page } = await purchaseDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 

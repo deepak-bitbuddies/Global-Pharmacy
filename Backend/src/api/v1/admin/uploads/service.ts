@@ -172,6 +172,7 @@ async function importPurchase(branchId: string, fileName: string, buffer: Buffer
       rate: row.rate,
       amount: row.amount,
       pctContribution: row.pctContribution,
+      schemePct: row.schemePct,
     })),
   )
 

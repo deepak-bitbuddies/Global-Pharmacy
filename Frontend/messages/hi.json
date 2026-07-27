@@ -13,6 +13,7 @@
     "branches": "शाखाएं",
     "importData": "डेटा आयात करें",
     "salesReport": "बिक्री रिपोर्ट",
+    "purchaseReport": "खरीद रिपोर्ट",
     "stockReport": "स्टॉक रिपोर्ट",
     "logout": "लॉग आउट",
     "logoutError": "साइन आउट नहीं हो सका।",
