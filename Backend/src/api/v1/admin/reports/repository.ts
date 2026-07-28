@@ -27,6 +27,30 @@ function dateRangeOverlap(fromCol: AnyColumn, toCol: AnyColumn, filters: ReportF
   return clauses
 }
 
+// Bucket boundaries must match the tier labels the frontend's SCHEME_TIER_OPTIONS shows.
+function schemeTierFilter(filters: ReportFilters): SQL | undefined {
+  switch (filters.schemeTier) {
+    case "none":
+      return sql`${purchaseLines.schemePct} is null`
+    case "lt5":
+      return sql`${purchaseLines.schemePct} < 5`
+    case "5to10":
+      return sql`${purchaseLines.schemePct} >= 5 and ${purchaseLines.schemePct} < 10`
+    case "10to20":
+      return sql`${purchaseLines.schemePct} >= 10 and ${purchaseLines.schemePct} < 20`
+    case "20to30":
+      return sql`${purchaseLines.schemePct} >= 20 and ${purchaseLines.schemePct} < 30`
+    case "30to50":
+      return sql`${purchaseLines.schemePct} >= 30 and ${purchaseLines.schemePct} < 50`
+    case "50to100":
+      return sql`${purchaseLines.schemePct} >= 50 and ${purchaseLines.schemePct} <= 100`
+    case "gte100":
+      return sql`${purchaseLines.schemePct} > 100`
+    default:
+      return undefined
+  }
+}
+
 
 type ItemWiseSalesCursor = { totalAmount: number; itemNameRaw: string }
 
@@ -166,9 +190,14 @@ export async function getPurchaseSummary(filters: ReportFilters, pagination: Cur
 type PurchaseDetailCursor = { itemNameRaw: string; id: string }
 
 export async function getPurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  // Purchase register rows carry no company field of their own — it's only reachable via the
+  // (name-matched, best-effort) item link, so it's null wherever that item hasn't also matched a
+  // Stock import. Left join so rows without a match still come back, just with company: null.
   const filterWhere = and(
     branchFilter(purchaseLines.branchId, filters),
     itemFilter(purchaseLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
+    schemeTierFilter(filters),
     ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
   )
 
@@ -189,14 +218,20 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
         rate: purchaseLines.rate,
         amount: purchaseLines.amount,
         schemePct: purchaseLines.schemePct,
+        company: items.company,
       })
       .from(purchaseLines)
+      .leftJoin(items, eq(items.id, purchaseLines.itemId))
       .where(dataWhere)
       // `id` is a tiebreaker — many lines share an item name across suppliers/batches,
       // and keyset pagination needs a fully-deterministic sort to seek on.
       .orderBy(purchaseLines.itemNameRaw, purchaseLines.id)
       .limit(pagination.pageSize + 1),
-    db.select({ count: sql<string>`count(*)` }).from(purchaseLines).where(filterWhere),
+    db
+      .select({ count: sql<string>`count(*)` })
+      .from(purchaseLines)
+      .leftJoin(items, eq(items.id, purchaseLines.itemId))
+      .where(filterWhere),
   ])
 
   const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ itemNameRaw: r.itemNameRaw, id: r.id }))

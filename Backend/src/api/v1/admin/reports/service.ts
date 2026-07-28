@@ -103,6 +103,7 @@ export async function purchaseDetail(filters: ReportFilters, pagination: CursorP
       rate: row.rate === null ? null : num(row.rate),
       amount: num(row.amount),
       schemePct: row.schemePct === null ? null : num(row.schemePct),
+      company: row.company,
     })),
   }
 }

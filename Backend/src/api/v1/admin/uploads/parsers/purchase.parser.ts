@@ -86,13 +86,11 @@ function splitPackSize(raw: string): string | null {
 }
 
 /**
- * The scheme % implied by the free qty on a line: billing 100 units and
- * receiving 10 free means the party effectively delivered 110 units at the
- * billed rate, i.e. a (free / (billed + free)) discount off list rate. This
- * is independent of the actual rate value — amount = rate * qty always
- * holds in the source data, so the rate cancels out of the ratio.
+ * The scheme % implied by the free qty on a line, e.g. billing 100 units and
+ * receiving 10 free is a "10% scheme" (free / billed qty), not free / total
+ * received — that's the trade convention this is meant to match.
  */
 function calculateSchemePct(qty: number | null, freeQty: number | null): number | null {
   if (!qty || qty <= 0 || !freeQty || freeQty <= 0) return null
-  return Math.round((freeQty / (qty + freeQty)) * 10000) / 100
+  return Math.round((freeQty / qty) * 10000) / 100
 }

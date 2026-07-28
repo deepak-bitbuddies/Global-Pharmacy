@@ -20,5 +20,7 @@ export const cursorPaginationSchema = z.object({
 export const itemWiseSalesQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 export const stockReportQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 export const purchaseSummaryQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
-export const purchaseDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+export const purchaseDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({
+  schemeTier: z.enum(["none", "lt5", "5to10", "10to20", "20to30", "30to50", "50to100", "gte100"]).optional(),
+})
 export const grossProfitQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)

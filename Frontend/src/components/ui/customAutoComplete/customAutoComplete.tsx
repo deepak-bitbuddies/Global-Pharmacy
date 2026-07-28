@@ -14,6 +14,10 @@ import {
   TagGroup,
   useFilter,
 } from "@heroui/react";
+// react-aria-components is the primitive layer HeroUI's Autocomplete/ListBox are built on — HeroUI
+// doesn't re-export virtualization itself, so this is the sanctioned place to reach for it directly
+// (this file IS the wrapper boundary), rather than rendering every option as a DOM node up front.
+import { ListLayout, Virtualizer } from "react-aria-components";
 
 import { CustomSize } from "@/lib/types";
 import { ReactNode, useMemo } from "react";
@@ -153,86 +157,95 @@ export function CustomAutoComplete<T>({
     props.onChange?.(allItems);
   };
 
+  // Virtualized: only the rows currently scrolled into view are ever mounted as DOM nodes,
+  // regardless of how many options the list has (search/filtering still runs over the full,
+  // unvirtualized `itemsData`/`sectionsData` array — this only affects what gets rendered).
+  // `estimatedRowSize` lets rows measure their real height instead of assuming a fixed one,
+  // so this stays correct for both the default single-line row and a custom `renderItem`.
   const renderSections = () => {
     return (
-      <ListBox
-        renderEmptyState={() => <CustomEmptyState title="No results found" />}
-      >
-        {showSelectAllOption && (
-          <>
-            <ListBox.Item
-              key="__select-all"
-              id="__select-all"
-              className="font-semibold"
-              textValue="Select All"
-              onPress={handleSelectAll}
-            >
-              <Label>Select All</Label>
-            </ListBox.Item>
-            <Separator />
-          </>
-        )}
-        {props.sectionsData?.map(([sectionName, sectionItems]) => (
-          <ListBox.Section key={sectionName}>
-            <Header>{sectionName}</Header>
-            {sectionItems.map((item) => (
+      <Virtualizer layout={ListLayout} layoutOptions={{ estimatedRowSize: 40, headingSize: 32, gap: 2 }}>
+        <ListBox
+          renderEmptyState={() => <CustomEmptyState title="No results found" />}
+        >
+          {showSelectAllOption && (
+            <>
               <ListBox.Item
-                key={String(item[props.idKey])}
-                id={String(item[props.idKey])}
-                textValue={
-                  props.clearContent ? "" : String(item[props.displayKey])
-                }
-                aria-label={String(item[props.displayKey])}
+                key="__select-all"
+                id="__select-all"
+                className="font-semibold"
+                textValue="Select All"
+                onPress={handleSelectAll}
               >
-                {props.renderItem ? (
-                  <>{props.renderItem(item)}</>
-                ) : (
-                  <Label>{String(item[props.displayKey])}</Label>
-                )}
-                <ListBox.ItemIndicator />
+                <Label>Select All</Label>
               </ListBox.Item>
-            ))}
-          </ListBox.Section>
-        ))}
-      </ListBox>
+              <Separator />
+            </>
+          )}
+          {props.sectionsData?.map(([sectionName, sectionItems]) => (
+            <ListBox.Section key={sectionName}>
+              <Header>{sectionName}</Header>
+              {sectionItems.map((item) => (
+                <ListBox.Item
+                  key={String(item[props.idKey])}
+                  id={String(item[props.idKey])}
+                  textValue={
+                    props.clearContent ? "" : String(item[props.displayKey])
+                  }
+                  aria-label={String(item[props.displayKey])}
+                >
+                  {props.renderItem ? (
+                    <>{props.renderItem(item)}</>
+                  ) : (
+                    <Label>{String(item[props.displayKey])}</Label>
+                  )}
+                  <ListBox.ItemIndicator />
+                </ListBox.Item>
+              ))}
+            </ListBox.Section>
+          ))}
+        </ListBox>
+      </Virtualizer>
     );
   };
 
   const renderItems = () => {
     return (
-      <ListBox
-        renderEmptyState={() => <CustomEmptyState title="No results found" />}
-      >
-        {showSelectAllOption && (
-          <>
+      <Virtualizer layout={ListLayout} layoutOptions={{ estimatedRowSize: 40, gap: 2 }}>
+        <ListBox
+          renderEmptyState={() => <CustomEmptyState title="No results found" />}
+        >
+          {showSelectAllOption && (
+            <>
+              <ListBox.Item
+                key="__select-all"
+                id="__select-all"
+                className="font-semibold"
+                textValue="Select All"
+                onPress={handleSelectAll}
+              >
+                <Label>Select All</Label>
+              </ListBox.Item>
+              <Separator />
+            </>
+          )}
+          {props.itemsData?.map((item) => (
             <ListBox.Item
-              key="__select-all"
-              id="__select-all"
-              className="font-semibold"
-              textValue="Select All"
-              onPress={handleSelectAll}
+              key={String(item[props.idKey])}
+              id={String(item[props.idKey])}
+              textValue={props.clearContent ? "" : String(item[props.displayKey])}
+              aria-label={String(item[props.displayKey])}
             >
-              <Label>Select All</Label>
+              {props.renderItem ? (
+                <>{props.renderItem(item)}</>
+              ) : (
+                <Label>{String(item[props.displayKey])}</Label>
+              )}
+              <ListBox.ItemIndicator />
             </ListBox.Item>
-            <Separator />
-          </>
-        )}
-        {props.itemsData?.map((item) => (
-          <ListBox.Item
-            key={String(item[props.idKey])}
-            id={String(item[props.idKey])}
-            textValue={props.clearContent ? "" : String(item[props.displayKey])}
-            aria-label={String(item[props.displayKey])}
-          >
-            {props.renderItem ? (
-              <>{props.renderItem(item)}</>
-            ) : (
-              <Label>{String(item[props.displayKey])}</Label>
-            )}
-            <ListBox.ItemIndicator />
-          </ListBox.Item>
-        ))}
-      </ListBox>
+          ))}
+        </ListBox>
+      </Virtualizer>
     );
   };
 

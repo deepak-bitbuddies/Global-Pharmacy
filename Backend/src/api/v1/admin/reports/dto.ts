@@ -1,9 +1,14 @@
+// Purchase-only filter (schemePct only exists on purchase_lines) — kept on the shared
+// ReportFilters type regardless, same precedent as `company` above (Sales/Stock just ignore it).
+export type SchemeTier = "none" | "lt5" | "5to10" | "10to20" | "20to30" | "30to50" | "50to100" | "gte100"
+
 export type ReportFilters = {
   branchId?: string
   dateFrom?: string
   dateTo?: string
   company?: string
   item?: string
+  schemeTier?: SchemeTier
 }
 
 export type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"
@@ -49,6 +54,7 @@ export type PurchaseDetailRowDto = {
   rate: number | null
   amount: number
   schemePct: number | null
+  company: string | null
 }
 
 export type StockRowDto = {
