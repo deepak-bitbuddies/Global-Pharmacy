@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import { CheckCircleIcon, UploadSimpleIcon } from "@phosphor-icons/react"
+import { useTranslations } from "next-intl"
 
 import { ButtonVariant, CustomButton, CustomCard, customToast } from "@/components/ui"
 import type { ApiErrorPayload } from "@/lib/axios"
@@ -16,6 +17,7 @@ type FileUploadSlotProps = {
 }
 
 export function FileUploadSlot({ fileType, title, description, branchId }: FileUploadSlotProps) {
+  const t = useTranslations("Import")
   const inputRef = useRef<HTMLInputElement>(null)
   const [lastFileName, setLastFileName] = useState<string | null>(null)
   const { mutate, isPending } = useUploadFile()
@@ -31,11 +33,11 @@ export function FileUploadSlot({ fileType, title, description, branchId }: FileU
         onSuccess: (result) => {
           setLastFileName(result.fileName)
           customToast.success(
-            `Imported ${result.rowCount} rows from ${result.fileName}${result.replaced ? " (replaced previous import)" : ""}`,
+            t(result.replaced ? "importSuccessReplaced" : "importSuccess", { rowCount: String(result.rowCount), fileName: result.fileName }),
           )
         },
         onError: (error: ApiErrorPayload) => {
-          customToast.danger(error.message || "Import failed")
+          customToast.danger(error.message || t("importFailed"))
         },
       },
     )
@@ -56,7 +58,7 @@ export function FileUploadSlot({ fileType, title, description, branchId }: FileU
         fullWidth
       >
         <UploadSimpleIcon className="size-4" />
-        {isPending ? "Importing..." : "Choose file"}
+        {isPending ? t("importing") : t("chooseFile")}
       </CustomButton>
       {lastFileName && !isPending && (
         <p className="flex items-center gap-1.5 text-xs text-success">

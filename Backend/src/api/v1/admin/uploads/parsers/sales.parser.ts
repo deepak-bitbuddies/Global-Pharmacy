@@ -16,8 +16,10 @@ export type ParsedSalesRow = {
 
 export type ParsedSalesFile = {
   branch: BranchHeader
-  reportDateFrom: string
-  reportDateTo: string
+  // Null when the "FROM dd-mm-yyyy-dd-mm-yyyy" header couldn't be parsed — callers must validate,
+  // not silently default to today (a wrong silent date would corrupt the upload sequence gate).
+  reportDateFrom: string | null
+  reportDateTo: string | null
   rows: ParsedSalesRow[]
 }
 
@@ -56,8 +58,8 @@ export function parseSalesFile(buffer: Buffer): ParsedSalesFile {
 
   return {
     branch,
-    reportDateFrom: reportDateFrom ?? new Date().toISOString().slice(0, 10),
-    reportDateTo: reportDateTo ?? new Date().toISOString().slice(0, 10),
+    reportDateFrom,
+    reportDateTo,
     rows: parsedRows,
   }
 }

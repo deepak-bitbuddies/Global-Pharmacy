@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
+import { useTranslations } from "next-intl"
 
 import {
   ButtonVariant,
@@ -22,19 +23,17 @@ import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { useBranches, useCreateBranch, useUpdateBranch, useDeleteBranch } from "../hooks/use-branches"
 import type { Branch } from "../types"
 
-const branchFormSchema = z.object({
-  name: z.string().min(1, "Branch name is required"),
-  address: z.string().optional(),
-  gstin: z.string().optional(),
-  phone: z.string().optional(),
-  drugLicenseNo: z.string().optional(),
-  contactFirstName: z.string().min(1, "First name is required"),
-  contactLastName: z.string().min(1, "Last name is required"),
-  contactEmail: z.string().email("A valid email is required"),
-  contactPhone: z.string().min(1, "Contact phone is required"),
-})
-
-type BranchFormValues = z.infer<typeof branchFormSchema>
+type BranchFormValues = {
+  name: string
+  address?: string
+  gstin?: string
+  phone?: string
+  drugLicenseNo?: string
+  contactFirstName: string
+  contactLastName: string
+  contactEmail: string
+  contactPhone: string
+}
 
 const EMPTY_FORM: BranchFormValues = {
   name: "",
@@ -49,6 +48,25 @@ const EMPTY_FORM: BranchFormValues = {
 }
 
 export function BranchesPage() {
+  const t = useTranslations("Branches")
+  const tCommon = useTranslations("Common")
+
+  const branchFormSchema = useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t("nameRequired")),
+        address: z.string().optional(),
+        gstin: z.string().optional(),
+        phone: z.string().optional(),
+        drugLicenseNo: z.string().optional(),
+        contactFirstName: z.string().min(1, t("firstNameRequired")),
+        contactLastName: z.string().min(1, t("lastNameRequired")),
+        contactEmail: z.string().email(t("validEmailRequired")),
+        contactPhone: z.string().min(1, t("contactPhoneRequired")),
+      }),
+    [t],
+  )
+
   const pagination = useCursorPagination()
   const { data: branches, isLoading } = useBranches({ cursor: pagination.cursor, pageSize: pagination.pageSize })
   const { mutateAsync: createBranch, isPending: isCreating } = useCreateBranch()
@@ -90,53 +108,53 @@ export function BranchesPage() {
     try {
       if (editingBranch) {
         await updateBranchMutation({ id: editingBranch.id, input: values })
-        customToast.success("Branch updated")
+        customToast.success(t("branchUpdated"))
       } else {
         await createBranch(values)
-        customToast.success("Branch registered — the contact person can log in with the default account password")
+        customToast.success(t("branchRegistered"))
       }
       setIsFormOpen(false)
     } catch (error) {
-      customToast.danger((error as ApiErrorPayload).message || "Something went wrong")
+      customToast.danger((error as ApiErrorPayload).message || t("somethingWentWrong"))
     }
   })
 
   const handleDelete = async (branch: Branch) => {
     const confirmed = await confirm({
-      title: `Delete ${branch.name}?`,
-      description: "This also removes the branch's login account. Blocked if the branch already has imports on record.",
+      title: t("deleteTitle", { name: branch.name }),
+      description: t("deleteDescription"),
       variant: ConfirmVariant.danger,
-      confirmLabel: "Delete",
+      confirmLabel: t("delete"),
     })
     if (!confirmed) return
 
     try {
       await deleteBranchMutation(branch.id)
-      customToast.success("Branch deleted")
+      customToast.success(t("branchDeleted"))
     } catch (error) {
-      customToast.danger((error as ApiErrorPayload).message || "Could not delete this branch")
+      customToast.danger((error as ApiErrorPayload).message || t("couldNotDelete"))
     }
   }
 
   return (
     <div className="space-y-4">
       <CustomPageHeader
-        title="Branches"
-        description="Register pharmacy branches. Each branch's contact person also becomes its login user."
+        title={t("title")}
+        description={t("description")}
         actions={
           <CustomButton onClick={openCreateForm}>
             <PlusIcon className="size-4" />
-            Add Branch
+            {t("addBranch")}
           </CustomButton>
         }
       />
 
       <CustomTable<Branch>
         columns={[
-          { key: "name", label: "Branch", sortable: true },
-          { key: "gstin", label: "GSTIN" },
-          { key: "contactFirstName", label: "Contact" },
-          { key: "id", label: "Actions" },
+          { key: "name", label: tCommon("branch"), sortable: true },
+          { key: "gstin", label: t("gstin") },
+          { key: "contactFirstName", label: t("contact") },
+          { key: "id", label: t("actions") },
         ]}
         data={branches?.data ?? []}
         loading={isLoading}
@@ -152,7 +170,7 @@ export function BranchesPage() {
           onNext: () => pagination.goNext(branches?.meta?.nextCursor ?? null),
           onPrevious: pagination.goPrevious,
         }}
-        emptyText="No branches yet — register one to start importing data."
+        emptyText={t("emptyText")}
         renderCustomCell={(branch, key) => {
           if (key === "gstin") return branch.gstin ?? "-"
           if (key === "contactFirstName") {
@@ -182,34 +200,34 @@ export function BranchesPage() {
       <CustomModal
         isOpen={isFormOpen}
         setIsOpen={setIsFormOpen}
-        title={editingBranch ? "Edit Branch" : "Register Branch"}
-        subTitle={editingBranch ? undefined : "The contact person below also becomes this branch's login user, with the standard default password."}
-        positiveText={editingBranch ? "Save" : "Register"}
+        title={editingBranch ? t("editBranch") : t("registerBranch")}
+        subTitle={editingBranch ? undefined : t("registerSubtitle")}
+        positiveText={editingBranch ? t("save") : t("register")}
         onPositivePress={onSubmit}
-        negativeText="Cancel"
+        negativeText={t("cancel")}
         onNegativePress={() => setIsFormOpen(false)}
         loading={isCreating || isUpdating}
         size="lg"
       >
         <div className="space-y-5">
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Branch Details</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("branchDetails")}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormInput control={control} name="name" label="Branch Name" fullWidth />
-              <FormInput control={control} name="gstin" label="GSTIN" fullWidth />
-              <FormInput control={control} name="address" label="Address" fullWidth />
-              <FormInput control={control} name="phone" label="Branch Phone" fullWidth />
-              <FormInput control={control} name="drugLicenseNo" label="Drug License No." fullWidth />
+              <FormInput control={control} name="name" label={t("branchName")} fullWidth />
+              <FormInput control={control} name="gstin" label={t("gstin")} fullWidth />
+              <FormInput control={control} name="address" label={t("address")} fullWidth />
+              <FormInput control={control} name="phone" label={t("branchPhone")} fullWidth />
+              <FormInput control={control} name="drugLicenseNo" label={t("drugLicenseNo")} fullWidth />
             </div>
           </div>
 
           <div className="space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact Person (also the login user)</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("contactPerson")}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormInput control={control} name="contactFirstName" label="First Name" fullWidth />
-              <FormInput control={control} name="contactLastName" label="Last Name" fullWidth />
-              <FormInput control={control} name="contactEmail" label="Email" fullWidth />
-              <FormInput control={control} name="contactPhone" label="Phone" fullWidth />
+              <FormInput control={control} name="contactFirstName" label={t("firstName")} fullWidth />
+              <FormInput control={control} name="contactLastName" label={t("lastName")} fullWidth />
+              <FormInput control={control} name="contactEmail" label={t("email")} fullWidth />
+              <FormInput control={control} name="contactPhone" label={t("phone")} fullWidth />
             </div>
           </div>
         </div>

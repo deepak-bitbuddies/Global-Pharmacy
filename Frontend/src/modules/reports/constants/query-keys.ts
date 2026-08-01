@@ -17,7 +17,9 @@ export const reportsQueryKeys = {
   expiry: (filters: ReportFilters & { withinDays?: number }) => ["reports", "expiry", filters] as const,
   nonMoving: (filters: ReportFilters) => ["reports", "non-moving", filters] as const,
   dailyCollection: (filters: ReportFilters) => ["reports", "daily-collection", filters] as const,
+  daySalesDetail: (filters: ReportFilters, pagination: CursorPaginationParams) => ["reports", "day-sales-detail", filters, pagination] as const,
   cashInHand: (filters: ReportFilters) => ["reports", "cash-in-hand", filters] as const,
   outstanding: (filters: ReportFilters) => ["reports", "outstanding", filters] as const,
-  importBatches: (branchId?: string) => ["reports", "import-batches", branchId] as const,
+  importBatches: (branchId?: string, fileType?: string) => ["reports", "import-batches", branchId, fileType] as const,
+  uploadCycleStatus: (branchId?: string) => ["reports", "upload-cycle-status", branchId] as const,
 }

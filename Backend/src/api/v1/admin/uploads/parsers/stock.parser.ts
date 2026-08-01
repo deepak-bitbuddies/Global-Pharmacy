@@ -30,7 +30,9 @@ export type ParsedStockRow = {
 
 export type ParsedStockFile = {
   branch: { name: string; address: string | null }
-  asOfDate: string
+  // Null when "AS ON DATE dd-mm-yyyy" couldn't be parsed — callers must validate, not silently
+  // default to today (a wrong silent date would corrupt the upload sequence gate).
+  asOfDate: string | null
   rows: ParsedStockRow[]
 }
 
@@ -63,7 +65,7 @@ export function parseStockFile(buffer: Buffer): ParsedStockFile {
   const branch = extractStockBranchHeader(rows)
 
   const asOfDateMatch = /AS ON DATE\s+(\d{2}-\d{2}-\d{4})/i.exec(rows[1]?.[0] ?? "")
-  const asOfDate = asOfDateMatch ? isoFromDdMmYyyy(asOfDateMatch[1]) : new Date().toISOString().slice(0, 10)
+  const asOfDate = asOfDateMatch ? isoFromDdMmYyyy(asOfDateMatch[1]) : null
 
   const parsedRows: ParsedStockRow[] = []
 

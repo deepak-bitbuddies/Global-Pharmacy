@@ -8,6 +8,7 @@ import {
   companiesHandler,
   dailyCollectionHandler,
   dashboardSummaryHandler,
+  daySalesDetailHandler,
   expiryReportHandler,
   grossProfitHandler,
   itemWiseSalesHandler,
@@ -38,6 +39,7 @@ export async function reportsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get("/stock/expiry", expiryReportHandler)
   fastify.get("/stock/non-moving", nonMovingHandler)
   fastify.get("/collection/daily", dailyCollectionHandler)
+  fastify.get("/collection/detail", daySalesDetailHandler)
   fastify.get("/finance/cash-in-hand", cashInHandHandler)
   fastify.get("/finance/outstanding", outstandingHandler)
   fastify.get("/dashboard/summary", dashboardSummaryHandler)

@@ -27,3 +27,11 @@ export type ImportBatchListItemDto = {
   status: string
   importedAt: Date
 }
+
+export type UploadCycleStatusDto = {
+  /** The branch's latest Stock date, whether or not its Purchase/Sales are done yet; null if Stock has never been uploaded. */
+  openDate: string | null
+  stockDone: boolean
+  purchaseDone: boolean
+  salesDone: boolean
+}

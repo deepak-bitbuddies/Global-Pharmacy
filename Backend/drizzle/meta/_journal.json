@@ -36,6 +36,13 @@
       "when": 1785168533375,
       "tag": "0004_add_purchase_lines_scheme_pct",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785562980669,
+      "tag": "0005_add_import_batches_date",
+      "breakpoints": true
     }
   ]
 }

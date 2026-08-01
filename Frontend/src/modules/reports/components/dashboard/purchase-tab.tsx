@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { ShoppingCartIcon } from "@phosphor-icons/react"
+import { useTranslations } from "next-intl"
 
 import { CustomTable } from "@/components/ui"
 import { TremorBarList, TremorCard } from "@/components/ui/tremor"
@@ -11,6 +12,8 @@ import { usePurchaseSummary } from "../../hooks/use-reports"
 import type { PurchaseSummaryRow, ReportFilters } from "../../types"
 
 export function PurchaseTab({ filters }: { filters: ReportFilters }) {
+  const t = useTranslations("Dashboard.purchase")
+  const tCommon = useTranslations("Common")
   const pagination = useCursorPagination()
 
   // Independent of the table's own pagination — page 1 of the same
@@ -25,24 +28,24 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
       <TremorCard className="space-y-3">
         <div className="flex items-center gap-2">
           <ShoppingCartIcon className="size-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">Top Suppliers by Purchase</p>
+          <p className="text-sm font-semibold text-foreground">{t("topSuppliers")}</p>
         </div>
         <TremorBarList data={topSuppliers} valueFormatter={(value) => formatCurrency(value)} />
       </TremorCard>
 
       <CustomTable<PurchaseSummaryRow>
         columns={[
-          { key: "supplierGroup", label: "Supplier", sortable: true },
-          { key: "totalAmount", label: "Amount", sortable: true },
-          { key: "totalQty", label: "Qty", sortable: true },
-          { key: "totalFreeQty", label: "Free Qty" },
+          { key: "supplierGroup", label: t("supplier"), sortable: true },
+          { key: "totalAmount", label: tCommon("amount"), sortable: true },
+          { key: "totalQty", label: tCommon("qty"), sortable: true },
+          { key: "totalFreeQty", label: t("freeQty") },
         ]}
         data={data?.data ?? []}
         loading={isLoading}
         rowKey="supplierGroup"
         itemId="supplierGroup"
         totalItems={data?.meta?.total ?? 0}
-        emptyText="No purchase data — import a Purchase Register file first."
+        emptyText={t("emptyText")}
         onRowsPerPageChange={pagination.setPageSize}
         cursorPagination={{
           page: pagination.page,

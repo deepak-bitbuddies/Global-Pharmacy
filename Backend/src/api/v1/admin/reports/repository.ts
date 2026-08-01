@@ -219,6 +219,7 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
         amount: purchaseLines.amount,
         schemePct: purchaseLines.schemePct,
         company: items.company,
+        date: purchaseLines.reportDateFrom,
       })
       .from(purchaseLines)
       .leftJoin(items, eq(items.id, purchaseLines.itemId))
@@ -242,9 +243,7 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
 type StockReportCursor = { itemName: string; id: string }
 
 export async function getStockReport(filters: ReportFilters, pagination: CursorPaginationParams) {
-  const clauses = [branchFilter(stockSnapshots.branchId, filters), itemFilter(stockSnapshots.itemName, filters)]
-  if (filters.company) clauses.push(eq(stockSnapshots.company, filters.company))
-  const filterWhere = and(...clauses)
+  const filterWhere = and(...stockFilterClauses(filters))
 
   const cursor = decodeCursor<StockReportCursor>(pagination.cursor)
   const dataWhere = cursor
@@ -265,6 +264,7 @@ export async function getStockReport(filters: ReportFilters, pagination: CursorP
         batch: stockSnapshots.batch,
         expDate: stockSnapshots.expDate,
         supplier: stockSnapshots.supplier,
+        asOfDate: stockSnapshots.asOfDate,
       })
       .from(stockSnapshots)
       .where(dataWhere)
@@ -375,6 +375,47 @@ export async function getDailyCollection(filters: ReportFilters) {
     .orderBy(dailySalesSummary.date)
 }
 
+type DaySalesDetailCursor = { date: string; id: string }
+
+/** Day-Wise Sale is exempt from the dated Stock->Purchase->Sales pipeline (one row per day, inherently multi-day) — this is its own itemized listing, not summed with anything else. */
+export async function getDaySalesDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  const clauses = [branchFilter(dailySalesSummary.branchId, filters)]
+  if (filters.dateFrom) clauses.push(gte(dailySalesSummary.date, filters.dateFrom))
+  if (filters.dateTo) clauses.push(lte(dailySalesSummary.date, filters.dateTo))
+  const filterWhere = and(...clauses)
+
+  const cursor = decodeCursor<DaySalesDetailCursor>(pagination.cursor)
+  const dataWhere = cursor
+    ? and(filterWhere, sql`(${dailySalesSummary.date}, ${dailySalesSummary.id}) > (${cursor.date}, ${cursor.id})`)
+    : filterWhere
+
+  const [rows, countRows] = await Promise.all([
+    db
+      .select({
+        id: dailySalesSummary.id,
+        date: dailySalesSummary.date,
+        billNoRange: dailySalesSummary.billNoRange,
+        billValue: dailySalesSummary.billValue,
+        taxable: dailySalesSummary.taxable,
+        taxPayable: dailySalesSummary.taxPayable,
+        taxFree: dailySalesSummary.taxFree,
+        exempted: dailySalesSummary.exempted,
+        roundOff: dailySalesSummary.roundOff,
+      })
+      .from(dailySalesSummary)
+      .where(dataWhere)
+      // `id` is a tiebreaker — multiple rows can share a date, and keyset pagination
+      // needs a fully-deterministic sort to seek on.
+      .orderBy(dailySalesSummary.date, dailySalesSummary.id)
+      .limit(pagination.pageSize + 1),
+    db.select({ count: sql<string>`count(*)` }).from(dailySalesSummary).where(filterWhere),
+  ])
+
+  const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ date: r.date, id: r.id }))
+
+  return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
+}
+
 export async function getCashInHand(filters: ReportFilters) {
   const where = and(
     branchFilter(salesLines.branchId, filters),
@@ -421,9 +462,17 @@ export async function getTotalStockValue(filters: ReportFilters): Promise<number
   return Number(row?.total ?? 0)
 }
 
+/**
+ * Stock now accumulates one snapshot per uploaded date (only a same-date re-upload replaces),
+ * instead of always holding just the single "current" snapshot — so without a date filter,
+ * every query here would silently sum/list every historical date together. `asOfDate` is a
+ * single-day column (not a from/to range like Sales/Purchase), so this is a plain range check.
+ */
 function stockFilterClauses(filters: ReportFilters): SQL[] {
   const clauses = [branchFilter(stockSnapshots.branchId, filters), itemFilter(stockSnapshots.itemName, filters)].filter((c): c is SQL => c !== undefined)
   if (filters.company) clauses.push(eq(stockSnapshots.company, filters.company))
+  if (filters.dateFrom) clauses.push(gte(stockSnapshots.asOfDate, filters.dateFrom))
+  if (filters.dateTo) clauses.push(lte(stockSnapshots.asOfDate, filters.dateTo))
   return clauses
 }
 

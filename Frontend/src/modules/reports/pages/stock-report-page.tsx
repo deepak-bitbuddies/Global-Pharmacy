@@ -1,25 +1,21 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState } from "react"
+import { useTranslations } from "next-intl"
 
-import { CustomFilterBar, CustomPageHeader, CustomSearchFilter, CustomSelectFilter, CustomTable } from "@/components/ui"
+import { CustomPageHeader, CustomTable } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
-import { useBranches, useCompanies, useStockReport } from "../hooks/use-reports"
-import type { Branch, ReportFilters, StockRow } from "../types"
-
-type CompanyOption = { id: string; label: string }
+import { ReportFilterPanel } from "../components/filters"
+import { useStockReport } from "../hooks/use-reports"
+import type { ReportFilters, StockRow } from "../types"
 
 export function StockReportPage() {
+  const t = useTranslations("Reports.stock")
+  const tCommon = useTranslations("Common")
   const [filters, setFilters] = useState<ReportFilters>({})
   const pagination = useCursorPagination()
   const { data, isLoading } = useStockReport(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
-  const { data: companies } = useCompanies()
-  const { data: branches } = useBranches()
-
-  const companyOptions = useMemo<CompanyOption[]>(() => (companies ?? []).map((company) => ({ id: company, label: company })), [companies])
-  const selectedCompany = companyOptions.find((option) => option.id === filters.company)
-  const selectedBranch = branches?.find((branch) => branch.id === filters.branchId)
 
   const updateFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
     setFilters(updater)
@@ -28,56 +24,32 @@ export function StockReportPage() {
 
   return (
     <div className="space-y-4">
-      <CustomPageHeader title="Stock Report" description="Current stock by batch, across branches." />
+      <CustomPageHeader title={t("title")} description={t("description")} />
 
-      <CustomSearchFilter
-        placeholder="Search item..."
-        value={filters.item}
-        onChange={(value) => updateFilters((prev) => ({ ...prev, item: value || undefined }))}
+      <ReportFilterPanel
+        filters={filters}
+        onFiltersChange={updateFilters}
+        show={{ search: true, branch: true, company: true, dateRange: true }}
+        className="sm:grid-cols-1! md:grid-cols-3!"
       />
-      <CustomFilterBar>
-        <CustomSelectFilter<Branch>
-          ariaLabel="Branch"
-          data={branches ?? []}
-          value={selectedBranch}
-          onChange={(value) => {
-            const branch = Array.isArray(value) ? value[0] : value
-            updateFilters((prev) => ({ ...prev, branchId: branch?.id }))
-          }}
-          displayKey="name"
-          idKey="id"
-          placeholder="All branches"
-        />
-        <CustomSelectFilter<CompanyOption>
-          ariaLabel="Company"
-          data={companyOptions}
-          value={selectedCompany}
-          onChange={(value) => {
-            const option = Array.isArray(value) ? value[0] : value
-            updateFilters((prev) => ({ ...prev, company: option?.id }))
-          }}
-          displayKey="label"
-          idKey="id"
-          placeholder="All companies"
-        />
-      </CustomFilterBar>
 
       <CustomTable<StockRow>
         columns={[
-          { key: "itemName", label: "Item", sortable: true },
-          { key: "currentStock", label: "Stock", sortable: true },
-          { key: "unit", label: "Unit" },
-          { key: "value", label: "Value", sortable: true },
-          { key: "expDate", label: "Expiry", sortable: true },
-          { key: "company", label: "Company" },
-          { key: "batch", label: "Batch" },
+          { key: "asOfDate", label: tCommon("date"), sortable: true },
+          { key: "itemName", label: tCommon("item"), sortable: true },
+          { key: "currentStock", label: t("stockColumn"), sortable: true },
+          { key: "unit", label: tCommon("unit") },
+          { key: "value", label: t("value"), sortable: true },
+          { key: "expDate", label: t("expiry"), sortable: true },
+          { key: "company", label: tCommon("company") },
+          { key: "batch", label: t("batch") },
         ]}
         data={data?.data ?? []}
         loading={isLoading}
         rowKey="id"
         itemId="id"
         totalItems={data?.meta?.total ?? 0}
-        emptyText="No stock data — import a Stock Register file first."
+        emptyText={t("emptyText")}
         onRowsPerPageChange={pagination.setPageSize}
         cursorPagination={{
           page: pagination.page,

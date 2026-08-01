@@ -6,6 +6,7 @@ import { ForbiddenError } from "../../../../shared/errors/index.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
 import { listBranches } from "../uploads/index.js"
 import {
+  daySalesDetailQuerySchema,
   expiryQuerySchema,
   grossProfitQuerySchema,
   itemWiseSalesQuerySchema,
@@ -20,6 +21,7 @@ import {
   companies,
   dailyCollection,
   dashboardSummary,
+  daySalesDetail,
   expiryReport,
   grossProfitByItem,
   itemWiseSales,
@@ -127,6 +129,13 @@ export async function nonMovingHandler(request: FastifyRequest, reply: FastifyRe
 export async function dailyCollectionHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await dailyCollection(filters))
+}
+
+export async function daySalesDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { cursor, pageSize, ...rest } = validateSchema(daySalesDetailQuerySchema, request.query)
+  const filters = scopeToUserBranch(request, rest)
+  const { rows, ...page } = await daySalesDetail(filters, { cursor, pageSize })
+  sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function cashInHandHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {

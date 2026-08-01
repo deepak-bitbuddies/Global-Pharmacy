@@ -4,9 +4,9 @@ import { sendSuccess } from "../../../../shared/helpers/http-response.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
 import { ForbiddenError } from "../../../../shared/errors/index.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
-import { listImportBatchesQuerySchema, uploadFileTypeSchema } from "./schema.js"
+import { cycleStatusQuerySchema, listImportBatchesQuerySchema, uploadFileTypeSchema } from "./schema.js"
 import { MissingFileError } from "./errors.js"
-import { getImportBatches, importFile } from "./service.js"
+import { getImportBatches, getUploadCycleStatus, importFile } from "./service.js"
 
 function readMultipartField(file: NonNullable<Awaited<ReturnType<FastifyRequest["file"]>>>, name: string): string | undefined {
   const field = file.fields[name]
@@ -38,8 +38,14 @@ export async function uploadFileHandler(request: FastifyRequest, reply: FastifyR
 }
 
 export async function listImportBatchesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const { branchId: requestedBranchId } = validateSchema(listImportBatchesQuerySchema, request.query)
+  const { branchId: requestedBranchId, fileType } = validateSchema(listImportBatchesQuerySchema, request.query)
   const branchId = resolveBranchScope(request, requestedBranchId)
-  const batches = await getImportBatches(branchId)
+  const batches = await getImportBatches(branchId, fileType)
   sendSuccess(reply, batches)
+}
+
+export async function uploadCycleStatusHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { branchId: requestedBranchId } = validateSchema(cycleStatusQuerySchema, request.query)
+  const branchId = resolveBranchScope(request, requestedBranchId)
+  sendSuccess(reply, await getUploadCycleStatus(branchId!))
 }

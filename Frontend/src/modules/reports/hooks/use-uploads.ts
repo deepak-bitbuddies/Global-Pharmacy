@@ -4,12 +4,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { reportsQueryKeys } from "../constants/query-keys"
 import type { ImportFileType } from "../types"
-import { getImportBatches, uploadFile } from "../api/uploads-api"
+import { getImportBatches, getUploadCycleStatus, uploadFile } from "../api/uploads-api"
 
-export function useImportBatches(branchId?: string) {
+export function useImportBatches(branchId?: string, fileType?: ImportFileType) {
   return useQuery({
-    queryKey: reportsQueryKeys.importBatches(branchId),
-    queryFn: () => getImportBatches(branchId),
+    queryKey: reportsQueryKeys.importBatches(branchId, fileType),
+    queryFn: () => getImportBatches(branchId, fileType),
+    enabled: !!branchId,
+  })
+}
+
+export function useUploadCycleStatus(branchId?: string) {
+  return useQuery({
+    queryKey: reportsQueryKeys.uploadCycleStatus(branchId),
+    queryFn: () => getUploadCycleStatus(branchId!),
     enabled: !!branchId,
   })
 }

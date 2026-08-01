@@ -30,7 +30,7 @@ export async function LoginPage() {
         <div className="relative my-auto max-w-sm space-y-5">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1 text-xs font-medium tracking-wide uppercase">
             <ShieldCheckIcon weight="fill" className="size-4" />
-            Secure administration
+            {t("secureAdmin")}
           </span>
           <h2 className="text-4xl font-semibold tracking-tight">
             {brandTitle}
@@ -41,7 +41,7 @@ export async function LoginPage() {
         </div>
 
         <p className="relative text-sm text-primary-foreground/65">
-          Protected workspace for authorized administrators.
+          {t("protectedWorkspace")}
         </p>
       </section>
 
@@ -57,7 +57,7 @@ export async function LoginPage() {
           />
         </div>
         <div className="mb-8 space-y-2">
-          <p className="text-sm font-medium text-primary">Welcome back</p>
+          <p className="text-sm font-medium text-primary">{t("welcomeBack")}</p>
           <h1 className="text-3xl font-semibold tracking-tight">{t("title")}</h1>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{t("subtitle")}</p>
         </div>

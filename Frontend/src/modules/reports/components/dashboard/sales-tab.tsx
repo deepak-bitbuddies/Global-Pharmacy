@@ -2,18 +2,29 @@
 
 import { useMemo, useState } from "react"
 import { ChartLineUpIcon } from "@phosphor-icons/react"
+import { useTranslations } from "next-intl"
 
-import { CustomSearchFilter, CustomTable } from "@/components/ui"
+import { CustomTable } from "@/components/ui"
 import { TremorBarList, TremorCard } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
+import { ReportFilterPanel } from "../filters"
 import { useItemWiseSales } from "../../hooks/use-reports"
 import type { ItemWiseSalesRow, ReportFilters } from "../../types"
 
 export function SalesTab({ filters }: { filters: ReportFilters }) {
-  const [search, setSearch] = useState<string | undefined>(undefined)
+  const t = useTranslations("Dashboard.sales")
+  const tCommon = useTranslations("Common")
+  // Only `item` is ever set here — kept as a full `ReportFilters` shape (all fields optional)
+  // purely so it drops straight into `ReportFilterPanel` without a cast.
+  const [localFilters, setLocalFilters] = useState<ReportFilters>({})
   const pagination = useCursorPagination()
-  const combinedFilters = useMemo<ReportFilters>(() => ({ ...filters, item: search || undefined }), [filters, search])
+  const combinedFilters = useMemo<ReportFilters>(() => ({ ...filters, ...localFilters }), [filters, localFilters])
+
+  const updateLocalFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
+    setLocalFilters(updater)
+    pagination.reset()
+  }
 
   // Independent of the table's own pagination — page 1 of the same
   // amount-DESC sort is already the true top 10, no separate endpoint needed.
@@ -27,34 +38,27 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
       <TremorCard className="space-y-3">
         <div className="flex items-center gap-2">
           <ChartLineUpIcon className="size-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">Top Items by Sales</p>
+          <p className="text-sm font-semibold text-foreground">{t("topItemsBySales")}</p>
         </div>
         <TremorBarList data={topItems} valueFormatter={(value) => formatCurrency(value)} />
       </TremorCard>
 
       <div className="space-y-2">
-        <CustomSearchFilter
-          placeholder="Search item..."
-          value={search}
-          onChange={(value) => {
-            setSearch(value || undefined)
-            pagination.reset()
-          }}
-        />
+        <ReportFilterPanel filters={localFilters} onFiltersChange={updateLocalFilters} show={{ search: true }} />
         <CustomTable<ItemWiseSalesRow>
           columns={[
-            { key: "itemNameRaw", label: "Item", sortable: true },
-            { key: "totalQty", label: "Qty Sold", sortable: true },
-            { key: "totalAmount", label: "Amount", sortable: true },
-            { key: "returnQty", label: "Return Qty" },
-            { key: "returnAmount", label: "Return Amount" },
+            { key: "itemNameRaw", label: tCommon("item"), sortable: true },
+            { key: "totalQty", label: t("qtySold"), sortable: true },
+            { key: "totalAmount", label: tCommon("amount"), sortable: true },
+            { key: "returnQty", label: t("returnQty") },
+            { key: "returnAmount", label: t("returnAmount") },
           ]}
           data={data?.data ?? []}
           loading={isLoading}
           rowKey="itemNameRaw"
           itemId="itemNameRaw"
           totalItems={data?.meta?.total ?? 0}
-          emptyText="No sales data — import a Sales Register file first."
+          emptyText={t("emptyText")}
           onRowsPerPageChange={pagination.setPageSize}
           cursorPagination={{
             page: pagination.page,

@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { useTranslations } from "next-intl"
 import {
   ArrowsCounterClockwiseIcon,
   ChartLineUpIcon,
@@ -46,6 +47,7 @@ function ChartPanel({
 }
 
 export function OverviewTab({ filters }: { filters: ReportFilters }) {
+  const t = useTranslations("Dashboard.overview")
   const { data: summary, isLoading: isSummaryLoading } = useDashboardSummary(filters)
   const { data: dailyCollection, isLoading: isCollectionLoading } = useDailyCollection(filters)
   const { data: branchSales, isLoading: isBranchSalesLoading } = useBranchSales(filters)
@@ -53,27 +55,27 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <SectionTitle>Business Overview</SectionTitle>
+        <SectionTitle>{t("businessOverview")}</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <TremorStatCard label="Total Sales" value={formatCurrency(summary?.totalSales ?? 0)} icon={CurrencyInrIcon} tone={TremorTone.primary} loading={isSummaryLoading} />
-          <TremorStatCard label="Total Purchase" value={formatCurrency(summary?.totalPurchase ?? 0)} icon={ShoppingCartIcon} tone={TremorTone.accent} loading={isSummaryLoading} />
-          <TremorStatCard label="Stock Value" value={formatCurrency(summary?.totalStockValue ?? 0)} icon={PackageIcon} tone={TremorTone.primary} loading={isSummaryLoading} />
-          <TremorStatCard label="Collection" value={formatCurrency(summary?.totalCollection ?? 0)} icon={WalletIcon} tone={TremorTone.success} loading={isSummaryLoading} />
+          <TremorStatCard label={t("totalSales")} value={formatCurrency(summary?.totalSales ?? 0)} icon={CurrencyInrIcon} tone={TremorTone.primary} loading={isSummaryLoading} />
+          <TremorStatCard label={t("totalPurchase")} value={formatCurrency(summary?.totalPurchase ?? 0)} icon={ShoppingCartIcon} tone={TremorTone.accent} loading={isSummaryLoading} />
+          <TremorStatCard label={t("stockValue")} value={formatCurrency(summary?.totalStockValue ?? 0)} icon={PackageIcon} tone={TremorTone.primary} loading={isSummaryLoading} />
+          <TremorStatCard label={t("collection")} value={formatCurrency(summary?.totalCollection ?? 0)} icon={WalletIcon} tone={TremorTone.success} loading={isSummaryLoading} />
         </div>
       </div>
 
       <div className="space-y-2">
-        <SectionTitle>Finance &amp; Alerts</SectionTitle>
+        <SectionTitle>{t("financeAlerts")}</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <TremorStatCard label="Cash in Hand" value={formatCurrency(summary?.cashInHand ?? 0)} icon={HandCoinsIcon} tone={TremorTone.primary} loading={isSummaryLoading} />
-          <TremorStatCard label="Outstanding" value={formatCurrency(summary?.outstanding ?? 0)} icon={CreditCardIcon} tone={TremorTone.warning} loading={isSummaryLoading} />
-          <TremorStatCard label="Near-Expiry Batches" value={summary?.nearExpiryCount ?? 0} icon={ClockCountdownIcon} tone={TremorTone.warning} loading={isSummaryLoading} />
-          <TremorStatCard label="Non-Moving Items" value={summary?.nonMovingCount ?? 0} icon={ArrowsCounterClockwiseIcon} tone={TremorTone.danger} loading={isSummaryLoading} />
+          <TremorStatCard label={t("cashInHand")} value={formatCurrency(summary?.cashInHand ?? 0)} icon={HandCoinsIcon} tone={TremorTone.primary} loading={isSummaryLoading} />
+          <TremorStatCard label={t("outstanding")} value={formatCurrency(summary?.outstanding ?? 0)} icon={CreditCardIcon} tone={TremorTone.warning} loading={isSummaryLoading} />
+          <TremorStatCard label={t("nearExpiryBatches")} value={summary?.nearExpiryCount ?? 0} icon={ClockCountdownIcon} tone={TremorTone.warning} loading={isSummaryLoading} />
+          <TremorStatCard label={t("nonMovingItems")} value={summary?.nonMovingCount ?? 0} icon={ArrowsCounterClockwiseIcon} tone={TremorTone.danger} loading={isSummaryLoading} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChartPanel title="Daily Collection Trend" icon={ChartLineUpIcon} className="lg:col-span-2">
+        <ChartPanel title={t("dailyCollectionTrend")} icon={ChartLineUpIcon} className="lg:col-span-2">
           <TremorAreaChart
             data={(dailyCollection ?? []).map((row) => ({ date: row.date, billValue: row.billValue }))}
             index="date"
@@ -83,11 +85,11 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
           />
         </ChartPanel>
 
-        <ChartPanel title="Sales vs Purchase" icon={ScalesIcon}>
+        <ChartPanel title={t("salesVsPurchase")} icon={ScalesIcon}>
           <TremorBarChart
             data={[
-              { label: "Sales", value: summary?.totalSales ?? 0 },
-              { label: "Purchase", value: summary?.totalPurchase ?? 0 },
+              { label: t("salesLabel"), value: summary?.totalSales ?? 0 },
+              { label: t("purchaseLabel"), value: summary?.totalPurchase ?? 0 },
             ]}
             index="label"
             categories={["value"]}
@@ -97,7 +99,7 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
         </ChartPanel>
       </div>
 
-      <ChartPanel title="Branch-wise Sales" icon={PackageIcon}>
+      <ChartPanel title={t("branchWiseSales")} icon={PackageIcon}>
         <TremorBarChart
           data={(branchSales ?? []).map((row) => ({ branch: row.branchName, amount: row.totalAmount }))}
           index="branch"

@@ -27,12 +27,19 @@ export const CustomTabs = ({ items, className, orientation }: CustomTabsProps) =
         <Tabs.ListContainer>
           <Tabs.List>
             {items.map((item) => (
-              <Tabs.Tab key={item.key} id={item.key}>
+              // Colored directly on the tab rather than via Tabs.Indicator — the indicator's
+              // JS-measured position/size wasn't rendering reliably (selected text turned light
+              // with no pill behind it, i.e. invisible). Trades the slide animation for a
+              // guaranteed-visible selected state.
+              <Tabs.Tab
+                key={item.key}
+                id={item.key}
+                className="data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground"
+              >
                 {item.label}
               </Tabs.Tab>
             ))}
           </Tabs.List>
-          <Tabs.Indicator />
         </Tabs.ListContainer>
         {items.map((item) => (
           <Tabs.Panel key={item.key} id={item.key}>

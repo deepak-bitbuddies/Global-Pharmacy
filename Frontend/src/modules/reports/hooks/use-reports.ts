@@ -12,6 +12,7 @@ import {
   getCompanies,
   getDailyCollection,
   getDashboardSummary,
+  getDaySalesDetail,
   getExpiryReport,
   getGrossProfit,
   getItemWiseSales,
@@ -88,6 +89,10 @@ export function useNonMovingItems(filters: ReportFilters) {
 
 export function useDailyCollection(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.dailyCollection(filters), queryFn: () => getDailyCollection(filters), placeholderData: keepPreviousData })
+}
+
+export function useDaySalesDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({ queryKey: reportsQueryKeys.daySalesDetail(filters, pagination), queryFn: () => getDaySalesDetail(filters, pagination), placeholderData: keepPreviousData })
 }
 
 export function useCashInHand(filters: ReportFilters) {

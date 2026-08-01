@@ -1,4 +1,5 @@
 export { ReportsDashboardPage } from "./pages/dashboard-page"
+export { DaySalesReportPage } from "./pages/day-sales-report-page"
 export { ImportPage } from "./pages/import-page"
 export { PurchaseReportPage } from "./pages/purchase-report-page"
 export { SalesReportPage } from "./pages/sales-report-page"

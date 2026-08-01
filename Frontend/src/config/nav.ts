@@ -1,6 +1,6 @@
 import type { ComponentType } from "react"
 import type { IconProps } from "@phosphor-icons/react"
-import { BuildingsIcon, ChartLineUpIcon, HouseIcon, PackageIcon, ShoppingCartIcon, UploadSimpleIcon } from "@phosphor-icons/react"
+import { BuildingsIcon, CalendarCheckIcon, ChartLineUpIcon, HouseIcon, PackageIcon, ShoppingCartIcon, UploadSimpleIcon } from "@phosphor-icons/react"
 
 export interface NavItem {
   labelKey: string
@@ -28,6 +28,7 @@ export const navGroups: NavGroup[] = [
       { labelKey: "salesReport", href: "/reports/sales", icon: ChartLineUpIcon },
       { labelKey: "purchaseReport", href: "/reports/purchase", icon: ShoppingCartIcon },
       { labelKey: "stockReport", href: "/reports/stock", icon: PackageIcon },
+      { labelKey: "dayWiseSales", href: "/reports/day-wise-sales", icon: CalendarCheckIcon },
     ],
   },
 ]

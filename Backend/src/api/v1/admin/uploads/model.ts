@@ -52,18 +52,29 @@ export const items = pgTable(
 export type ItemDocument = typeof items.$inferSelect
 export type NewItemDocument = typeof items.$inferInsert
 
-export const importBatches = pgTable("import_batches", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  branchId: uuid("branch_id")
-    .notNull()
-    .references(() => branches.id),
-  fileType: text("file_type").notNull(), // "stock" | "sales" | "purchase" | "day_wise_sale"
-  fileName: text("file_name").notNull(),
-  rowCount: integer("row_count").notNull().default(0),
-  status: text("status").notNull().default("completed"), // "completed" | "failed"
-  errorMessage: text("error_message"),
-  importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
-})
+export const importBatches = pgTable(
+  "import_batches",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => branches.id),
+    fileType: text("file_type").notNull(), // "stock" | "sales" | "purchase" | "day_wise_sale"
+    fileName: text("file_name").notNull(),
+    // The single calendar date this batch represents (Stock's "as on" date, Sales/Purchase's
+    // report date, now that both are enforced single-day) — null for Day-Wise Sale, which is
+    // exempt from the dated pipeline and can span many days in one file. Backs the date-keyed
+    // replace lookup and the Stock -> Purchase -> Sales sequence gate.
+    date: date("date"),
+    rowCount: integer("row_count").notNull().default(0),
+    status: text("status").notNull().default("completed"), // "completed" | "failed"
+    errorMessage: text("error_message"),
+    importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("import_batches_branch_type_date_idx").on(table.branchId, table.fileType, table.date),
+  ],
+)
 
 export type ImportBatchDocument = typeof importBatches.$inferSelect
 export type NewImportBatchDocument = typeof importBatches.$inferInsert

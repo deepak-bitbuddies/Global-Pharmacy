@@ -10,13 +10,14 @@ import {
   PackageIcon,
   WarningIcon,
 } from "@phosphor-icons/react"
+import { useTranslations } from "next-intl"
 
-import { CustomSearchFilter, CustomSelectFilter, CustomTable } from "@/components/ui"
+import { CustomTable } from "@/components/ui"
 import { TremorBarChart, TremorBarList, TremorCard, TremorDonutChart, TremorStatCard, TremorTone } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
+import { ReportFilterPanel } from "../filters"
 import {
-  useCompanies,
   useExpiryReport,
   useNonMovingItems,
   useStockReport,
@@ -25,8 +26,6 @@ import {
   useZeroOrderAlerts,
 } from "../../hooks/use-reports"
 import type { ReportFilters, StockRow } from "../../types"
-
-type CompanyOption = { id: string; label: string }
 
 // Fixed status/severity colors — deliberately hardcoded, not the app theme's
 // --danger/--warning/--success tokens, so risk color-coding on these charts
@@ -38,6 +37,9 @@ const STATUS_WARNING = "#fab219"
 const STATUS_GOOD = "#0ca30c"
 const STATUS_NEUTRAL = "#898781"
 
+// Deliberately not translated: these labels are also used as matching keys against the
+// backend's fixed English bucket strings (getStockSummary's SQL CASE) — translating them
+// would break that lookup. Chart axis labels stay English regardless of app language.
 const EXPIRY_BUCKETS = [
   { label: "Expired", maxDays: 0, color: STATUS_CRITICAL },
   { label: "≤ 30 days", maxDays: 30, color: STATUS_SERIOUS },
@@ -81,21 +83,25 @@ function ChartCard({
 }
 
 export function StockTab({ filters }: { filters: ReportFilters }) {
-  const [search, setSearch] = useState<string | undefined>(undefined)
-  const [company, setCompany] = useState<string | undefined>(undefined)
+  const t = useTranslations("Dashboard.stock")
+  const tCommon = useTranslations("Common")
+  // Only `item`/`company` are ever set here — kept as a full `ReportFilters` shape (all fields
+  // optional) purely so it drops straight into `ReportFilterPanel` without a cast.
+  const [localFilters, setLocalFilters] = useState<ReportFilters>({})
   const pagination = useCursorPagination()
-  const stockFilters = useMemo<ReportFilters>(() => ({ ...filters, item: search || undefined, company }), [filters, search, company])
+  const stockFilters = useMemo<ReportFilters>(() => ({ ...filters, ...localFilters }), [filters, localFilters])
+
+  const updateLocalFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
+    setLocalFilters(updater)
+    pagination.reset()
+  }
 
   const { data: stock, isLoading: isStockLoading } = useStockReport(stockFilters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
   const { data: stockSummary, isLoading: isSummaryLoading } = useStockSummary(stockFilters)
   const { data: stockByCompanyData, isLoading: isByCompanyLoading } = useStockValueByCompany(stockFilters)
-  const { data: companies } = useCompanies()
   const { data: zeroOrder, isLoading: isZeroOrderLoading } = useZeroOrderAlerts(filters)
   const { data: expiry, isLoading: isExpiryLoading } = useExpiryReport({ ...filters, withinDays: 180 })
   const { data: nonMoving, isLoading: isNonMovingLoading } = useNonMovingItems(filters)
-
-  const companyOptions = useMemo<CompanyOption[]>(() => (companies ?? []).map((c) => ({ id: c, label: c })), [companies])
-  const selectedCompany = companyOptions.find((option) => option.id === company)
 
   // KPI headline numbers — computed server-side (`useStockSummary`) since the
   // detail table is now paginated and can no longer be summed client-side.
@@ -144,44 +150,22 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-2">
-        <CustomSearchFilter
-          placeholder="Search item..."
-          value={search}
-          onChange={(value) => {
-            setSearch(value || undefined)
-            pagination.reset()
-          }}
-        />
-        <CustomSelectFilter<CompanyOption>
-          ariaLabel="Company"
-          data={companyOptions}
-          value={selectedCompany}
-          onChange={(value) => {
-            const option = Array.isArray(value) ? value[0] : value
-            setCompany(option?.id)
-            pagination.reset()
-          }}
-          displayKey="label"
-          idKey="id"
-          placeholder="All companies"
-        />
-      </div>
+      <ReportFilterPanel filters={localFilters} onFiltersChange={updateLocalFilters} show={{ search: true, company: true }} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <TremorStatCard label="Stock Value" value={formatCurrency(stockSummary?.totalValue ?? 0)} icon={PackageIcon} tone={TremorTone.primary} loading={isKpiLoading} />
-        <TremorStatCard label="Unique Items" value={formatNumber(stockSummary?.uniqueItemCount ?? 0)} icon={ListBulletsIcon} tone={TremorTone.accent} loading={isKpiLoading} />
-        <TremorStatCard label="Zero-Order Alerts" value={zeroOrder?.length ?? 0} icon={WarningIcon} tone={TremorTone.danger} loading={isKpiLoading} />
-        <TremorStatCard label="Expiring ≤30 days" value={formatCurrency(expiringSoonValue)} icon={ClockCountdownIcon} tone={TremorTone.warning} loading={isKpiLoading} />
-        <TremorStatCard label="Non-Moving Value" value={formatCurrency(nonMovingValue)} icon={ArrowsCounterClockwiseIcon} tone={TremorTone.danger} loading={isKpiLoading} />
+        <TremorStatCard label={t("stockValue")} value={formatCurrency(stockSummary?.totalValue ?? 0)} icon={PackageIcon} tone={TremorTone.primary} loading={isKpiLoading} />
+        <TremorStatCard label={t("uniqueItems")} value={formatNumber(stockSummary?.uniqueItemCount ?? 0)} icon={ListBulletsIcon} tone={TremorTone.accent} loading={isKpiLoading} />
+        <TremorStatCard label={t("zeroOrderAlerts")} value={zeroOrder?.length ?? 0} icon={WarningIcon} tone={TremorTone.danger} loading={isKpiLoading} />
+        <TremorStatCard label={t("expiringSoon")} value={formatCurrency(expiringSoonValue)} icon={ClockCountdownIcon} tone={TremorTone.warning} loading={isKpiLoading} />
+        <TremorStatCard label={t("nonMovingValue")} value={formatCurrency(nonMovingValue)} icon={ArrowsCounterClockwiseIcon} tone={TremorTone.danger} loading={isKpiLoading} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Stock Value by Company (Top 8)" icon={BuildingsIcon}>
+        <ChartCard title={t("stockValueByCompany")} icon={BuildingsIcon}>
           <TremorDonutChart data={stockByCompany} valueFormatter={(value) => formatCurrency(value)} isLoading={isByCompanyLoading} height={240} />
         </ChartCard>
 
-        <ChartCard title="Stock Health — Quantity Distribution" icon={GaugeIcon}>
+        <ChartCard title={t("stockHealth")} icon={GaugeIcon}>
           <TremorBarChart
             data={stockLevelData}
             index="label"
@@ -195,11 +179,11 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Zero-Order Alerts — Top Reorder Candidates" icon={WarningIcon}>
-          {isZeroOrderLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : <TremorBarList data={zeroOrderItems} valueFormatter={(value) => formatNumber(value)} />}
+        <ChartCard title={t("zeroOrderReorder")} icon={WarningIcon}>
+          {isZeroOrderLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={zeroOrderItems} valueFormatter={(value) => formatNumber(value)} />}
         </ChartCard>
 
-        <ChartCard title="Expiry Value at Risk (180 days)" icon={ClockCountdownIcon}>
+        <ChartCard title={t("expiryValueAtRisk")} icon={ClockCountdownIcon}>
           <TremorBarChart
             data={expiryBucketData}
             index="label"
@@ -212,28 +196,28 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
         </ChartCard>
       </div>
 
-      <ChartCard title="Non-Moving Items (by value)" icon={ArrowsCounterClockwiseIcon}>
-        {isNonMovingLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : <TremorBarList data={nonMovingItems} valueFormatter={(value) => formatCurrency(value)} />}
+      <ChartCard title={t("nonMovingByValue")} icon={ArrowsCounterClockwiseIcon}>
+        {isNonMovingLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={nonMovingItems} valueFormatter={(value) => formatCurrency(value)} />}
       </ChartCard>
 
       <TremorCard className="space-y-3">
-        <p className="text-sm font-semibold text-foreground">All Stock (detail)</p>
+        <p className="text-sm font-semibold text-foreground">{t("allStockDetail")}</p>
         <CustomTable<StockRow>
           columns={[
-            { key: "itemName", label: "Item", sortable: true },
-            { key: "currentStock", label: "Stock", sortable: true },
-            { key: "unit", label: "Unit" },
-            { key: "value", label: "Value", sortable: true },
-            { key: "expDate", label: "Expiry", sortable: true },
-            { key: "company", label: "Company" },
-            { key: "batch", label: "Batch" },
+            { key: "itemName", label: tCommon("item"), sortable: true },
+            { key: "currentStock", label: t("stockColumn"), sortable: true },
+            { key: "unit", label: tCommon("unit") },
+            { key: "value", label: t("value"), sortable: true },
+            { key: "expDate", label: t("expiry"), sortable: true },
+            { key: "company", label: tCommon("company") },
+            { key: "batch", label: t("batch") },
           ]}
           data={stock?.data ?? []}
           loading={isStockLoading}
           rowKey="id"
           itemId="id"
           totalItems={stock?.meta?.total ?? 0}
-          emptyText="No stock data — import a Stock Register file first."
+          emptyText={t("emptyText")}
           onRowsPerPageChange={pagination.setPageSize}
           cursorPagination={{
             page: pagination.page,

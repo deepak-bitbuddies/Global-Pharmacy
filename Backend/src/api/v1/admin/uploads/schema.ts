@@ -9,4 +9,9 @@ export const uploadFileTypeSchema = z.object({
 
 export const listImportBatchesQuerySchema = z.object({
   branchId: z.string().uuid().optional(),
+  fileType: z.enum([FileType.Stock, FileType.Sales, FileType.Purchase, FileType.DayWiseSale]).optional(),
+})
+
+export const cycleStatusQuerySchema = z.object({
+  branchId: z.string().uuid("A branch must be selected"),
 })

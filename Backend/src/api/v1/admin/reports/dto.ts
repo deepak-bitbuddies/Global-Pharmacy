@@ -55,6 +55,7 @@ export type PurchaseDetailRowDto = {
   amount: number
   schemePct: number | null
   company: string | null
+  date: string
 }
 
 export type StockRowDto = {
@@ -69,6 +70,7 @@ export type StockRowDto = {
   batch: string | null
   expDate: string | null
   supplier: string | null
+  asOfDate: string
 }
 
 export type ZeroOrderAlertRowDto = {
@@ -96,6 +98,18 @@ export type NonMovingRowDto = {
 export type DailyCollectionRowDto = {
   date: string
   billValue: number
+}
+
+export type DaySalesDetailRowDto = {
+  id: string
+  date: string
+  billNoRange: string | null
+  billValue: number
+  taxable: number | null
+  taxPayable: number | null
+  taxFree: number | null
+  exempted: number | null
+  roundOff: number | null
 }
 
 export type CashInHandRowDto = {

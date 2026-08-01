@@ -119,6 +119,13 @@
      placeholders/icons. Point it at the token that's actually text-shaped. */
   --field-placeholder: var(--muted-foreground);
 
+  /* HeroUI's --default (e.g. Tabs' track background) defaults to a generic
+     gray that doesn't match this app's warm palette — same class of gap as
+     --muted/--accent above. (Tabs' selected-tab "pill" itself is styled
+     directly in CustomTabs via bg-primary, not through HeroUI's --segment
+     token, so it isn't set here.) */
+  --default: var(--muted-surface);
+
   --destructive: oklch(0.63 0.22 27);
 
   --border: oklch(0.92 0.006 50);
@@ -183,6 +190,8 @@
   --accent-foreground: var(--primary-foreground);
 
   --field-placeholder: var(--muted-foreground);
+
+  --default: var(--muted-surface);
 
   --destructive: oklch(0.69 0.20 27);
 

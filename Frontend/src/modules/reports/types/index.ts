@@ -55,6 +55,7 @@ export type PurchaseDetailRow = {
   amount: number
   schemePct: number | null
   company: string | null
+  date: string
 }
 
 export type StockRow = {
@@ -69,6 +70,7 @@ export type StockRow = {
   batch: string | null
   expDate: string | null
   supplier: string | null
+  asOfDate: string
 }
 
 export type ZeroOrderAlertRow = {
@@ -95,6 +97,18 @@ export type NonMovingRow = {
 export type DailyCollectionRow = {
   date: string
   billValue: number
+}
+
+export type DaySalesDetailRow = {
+  id: string
+  date: string
+  billNoRange: string | null
+  billValue: number
+  taxable: number | null
+  taxPayable: number | null
+  taxFree: number | null
+  exempted: number | null
+  roundOff: number | null
 }
 
 export type CashInHandRow = {
@@ -141,4 +155,11 @@ export type ImportBatch = {
   rowCount: number
   status: string
   importedAt: string
+}
+
+export type UploadCycleStatus = {
+  openDate: string | null
+  stockDone: boolean
+  purchaseDone: boolean
+  salesDone: boolean
 }

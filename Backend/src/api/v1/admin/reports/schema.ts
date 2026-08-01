@@ -24,3 +24,4 @@ export const purchaseDetailQuerySchema = reportFiltersSchema.merge(cursorPaginat
   schemeTier: z.enum(["none", "lt5", "5to10", "10to20", "20to30", "30to50", "50to100", "gte100"]).optional(),
 })
 export const grossProfitQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+export const daySalesDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)

@@ -2,6 +2,7 @@
 
 import { useMemo } from "react"
 import { CreditCardIcon, HandCoinsIcon, ScalesIcon } from "@phosphor-icons/react"
+import { useTranslations } from "next-intl"
 
 import { CustomTable } from "@/components/ui"
 import { TremorBarList, TremorCard } from "@/components/ui/tremor"
@@ -11,6 +12,8 @@ import { useCashInHand, useGrossProfit, useOutstanding } from "../../hooks/use-r
 import type { GrossProfitRow, ReportFilters } from "../../types"
 
 export function FinanceTab({ filters }: { filters: ReportFilters }) {
+  const t = useTranslations("Dashboard.finance")
+  const tCommon = useTranslations("Common")
   const { data: cashInHand, isLoading: isCashLoading } = useCashInHand(filters)
   const { data: outstanding, isLoading: isOutstandingLoading } = useOutstanding(filters)
 
@@ -33,18 +36,18 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
         <TremorCard className="space-y-3">
           <div className="flex items-center gap-2">
             <HandCoinsIcon className="size-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Cash in Hand by Branch</p>
+            <p className="text-sm font-semibold text-foreground">{t("cashInHandByBranch")}</p>
           </div>
-          {isCashLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : <TremorBarList data={cashItems} valueFormatter={(value) => formatCurrency(value)} />}
+          {isCashLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={cashItems} valueFormatter={(value) => formatCurrency(value)} />}
         </TremorCard>
 
         <TremorCard className="space-y-3">
           <div className="flex items-center gap-2">
             <CreditCardIcon className="size-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Outstanding by Branch</p>
+            <p className="text-sm font-semibold text-foreground">{t("outstandingByBranch")}</p>
           </div>
           {isOutstandingLoading ? (
-            <p className="text-xs text-muted-foreground">Loading…</p>
+            <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
           ) : (
             <TremorBarList data={outstandingItems} valueFormatter={(value) => formatCurrency(value)} />
           )}
@@ -54,26 +57,26 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
       <TremorCard className="space-y-3">
         <div className="flex items-center gap-2">
           <ScalesIcon className="size-4 text-muted-foreground" />
-          <p className="text-sm font-semibold text-foreground">Top Items by Gross Profit</p>
+          <p className="text-sm font-semibold text-foreground">{t("topItemsByGp")}</p>
         </div>
         <TremorBarList data={topGp} valueFormatter={(value) => formatCurrency(value)} />
       </TremorCard>
 
       <CustomTable<GrossProfitRow>
         columns={[
-          { key: "itemName", label: "Item", sortable: true },
-          { key: "salesAmount", label: "Sales Amount", sortable: true },
-          { key: "salesQty", label: "Qty", sortable: true },
-          { key: "avgCostPrice", label: "Avg Cost" },
-          { key: "estimatedGp", label: "Est. GP", sortable: true },
-          { key: "estimatedGpPct", label: "GP %" },
+          { key: "itemName", label: tCommon("item"), sortable: true },
+          { key: "salesAmount", label: t("salesAmount"), sortable: true },
+          { key: "salesQty", label: tCommon("qty"), sortable: true },
+          { key: "avgCostPrice", label: t("avgCost") },
+          { key: "estimatedGp", label: t("estGp"), sortable: true },
+          { key: "estimatedGpPct", label: t("gpPct") },
         ]}
         data={grossProfit?.data ?? []}
         loading={isGpLoading}
         rowKey="itemName"
         itemId="itemName"
         totalItems={grossProfit?.meta?.total ?? 0}
-        emptyText="No gross profit data — import Sales and Stock files first."
+        emptyText={t("emptyText")}
         onRowsPerPageChange={pagination.setPageSize}
         cursorPagination={{
           page: pagination.page,

@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
 
 import { db, type DbOrTransaction } from "../../../../core/database/db.js"
 import { InternalServerError } from "../../../../shared/errors/index.js"
@@ -118,11 +118,37 @@ export async function resolveItemIdsByCode(rows: StockItemInput[]): Promise<Map<
   for (const item of existing) if (item.code) map.set(item.code, item.id)
 
   const missing = codes.filter((code) => !map.has(code)).map((code) => distinctByCode.get(code)!)
-  if (missing.length > 0) {
+  if (missing.length === 0) return map
+
+  // A codeless item may already exist under this name (created earlier by a Sales/Purchase
+  // import that ran before Stock ever did) — adopt that row instead of creating a duplicate,
+  // so rows already linked to it stay correctly connected instead of being orphaned.
+  const missingNormalizedNames = missing.map((row) => normalizeItemName(row.name))
+  const existingCodeless = await db
+    .select()
+    .from(items)
+    .where(and(inArray(items.normalizedName, missingNormalizedNames), isNull(items.code)))
+  const codelessByNormalizedName = new Map(existingCodeless.map((item) => [item.normalizedName, item]))
+
+  const toCreate: StockItemInput[] = []
+  for (const row of missing) {
+    const codeless = codelessByNormalizedName.get(normalizeItemName(row.name))
+    if (!codeless) {
+      toCreate.push(row)
+      continue
+    }
+    await db
+      .update(items)
+      .set({ code: row.code, unit: row.unit, company: row.company, manufacturer: row.manufacturer, updatedAt: new Date() })
+      .where(eq(items.id, codeless.id))
+    map.set(row.code, codeless.id)
+  }
+
+  if (toCreate.length > 0) {
     const created = await db
       .insert(items)
       .values(
-        missing.map((row) => ({
+        toCreate.map((row) => ({
           code: row.code,
           name: row.name,
           normalizedName: normalizeItemName(row.name),
@@ -147,12 +173,35 @@ export async function findImportBatch(branchId: string, fileType: string, fileNa
   return batch ?? null
 }
 
-/** Every batch of this type for the branch, regardless of filename — used by Stock, which is a point-in-time snapshot, not a dated period, so any re-upload should replace whatever was there before. */
-export async function findImportBatchesByBranchAndType(branchId: string, fileType: string): Promise<ImportBatchDocument[]> {
-  return db
+/** Stock/Sales/Purchase are now single-day-per-upload, so "the batch for this date" (regardless of filename) is what re-upload/replace and the sequence gate key off. */
+export async function findImportBatchByDate(branchId: string, fileType: string, date: string): Promise<ImportBatchDocument | null> {
+  const [batch] = await db
     .select()
     .from(importBatches)
+    .where(and(eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType), eq(importBatches.date, date)))
+    .limit(1)
+  return batch ?? null
+}
+
+/** The most recent dated batch of this type for the branch — e.g. the branch's latest Stock date, to find the currently-open pipeline date. */
+export async function findLatestBatchDate(branchId: string, fileType: string): Promise<string | null> {
+  const [row] = await db
+    .select({ date: importBatches.date })
+    .from(importBatches)
     .where(and(eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType)))
+    .orderBy(desc(importBatches.date))
+    .limit(1)
+  return row?.date ?? null
+}
+
+/** Whether a dated batch of this type already exists for the branch on this exact date. */
+export async function hasBatchForDate(branchId: string, fileType: string, date: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: importBatches.id })
+    .from(importBatches)
+    .where(and(eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType), eq(importBatches.date, date)))
+    .limit(1)
+  return !!row
 }
 
 export async function createImportBatch(input: NewImportBatchDocument): Promise<ImportBatchDocument> {
@@ -165,9 +214,12 @@ export async function deleteImportBatch(batchId: string): Promise<void> {
   await db.delete(importBatches).where(eq(importBatches.id, batchId))
 }
 
-export async function listImportBatches(branchId?: string): Promise<ImportBatchDocument[]> {
+export async function listImportBatches(branchId?: string, fileType?: string): Promise<ImportBatchDocument[]> {
+  const clauses = [branchId ? eq(importBatches.branchId, branchId) : undefined, fileType ? eq(importBatches.fileType, fileType) : undefined].filter(
+    (clause): clause is NonNullable<typeof clause> => clause !== undefined,
+  )
   const query = db.select().from(importBatches)
-  return (branchId ? query.where(eq(importBatches.branchId, branchId)) : query).orderBy(importBatches.importedAt)
+  return (clauses.length > 0 ? query.where(and(...clauses)) : query).orderBy(importBatches.importedAt)
 }
 
 export async function deleteStockSnapshotsByBatch(batchId: string): Promise<void> {

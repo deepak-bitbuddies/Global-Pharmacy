@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import dynamic from "next/dynamic"
+import { useTranslations } from "next-intl"
 
-import { CustomDateRangeFilter, CustomFilterBar, CustomPageHeader, CustomSelectFilter, CustomSkeleton, CustomTabs } from "@/components/ui"
-import { useBranches } from "../hooks/use-reports"
-import type { Branch, ReportFilters } from "../types"
+import { CustomPageHeader, CustomSkeleton, CustomTabs } from "@/components/ui"
+import { ReportFilterPanel } from "../components/filters"
+import type { ReportFilters } from "../types"
 
 // Dynamically imported: each tab (and the recharts-based Tremor charts it
 // pulls in) is only fetched when the user actually opens that tab, instead
@@ -18,43 +19,22 @@ const StockTab = dynamic(() => import("../components/dashboard/stock-tab").then(
 const FinanceTab = dynamic(() => import("../components/dashboard/finance-tab").then((m) => m.FinanceTab), { loading: () => tabLoading })
 
 export function ReportsDashboardPage() {
+  const t = useTranslations("Dashboard")
   const [filters, setFilters] = useState<ReportFilters>({})
-  const { data: branches } = useBranches()
-
-  const selectedBranch = branches?.find((branch) => branch.id === filters.branchId)
 
   return (
     <div className="space-y-4">
-      <CustomPageHeader title="GPRS Dashboard" description="Consolidated view across all pharmacies — sales, purchase, stock, and finance." />
+      <CustomPageHeader title={t("title")} description={t("description")} />
 
-      <CustomFilterBar>
-        <CustomSelectFilter<Branch>
-          label="Branch"
-          data={branches ?? []}
-          value={selectedBranch}
-          onChange={(value) => {
-            const branch = Array.isArray(value) ? value[0] : value
-            setFilters((prev) => ({ ...prev, branchId: branch?.id }))
-          }}
-          displayKey="name"
-          idKey="id"
-          placeholder="All branches"
-        />
-        <CustomDateRangeFilter
-          className="flex flex-col space-y-1"
-          label="Date range"
-          value={filters.dateFrom && filters.dateTo ? { start: filters.dateFrom, end: filters.dateTo } : undefined}
-          onChange={(range) => setFilters((prev) => ({ ...prev, dateFrom: range?.start, dateTo: range?.end }))}
-        />
-      </CustomFilterBar>
+      <ReportFilterPanel filters={filters} onFiltersChange={setFilters} show={{ branch: true, dateRange: true }} />
 
       <CustomTabs
         items={[
-          { key: "overview", label: "Overview", content: <OverviewTab filters={filters} /> },
-          { key: "sales", label: "Sales", content: <SalesTab filters={filters} /> },
-          { key: "purchase", label: "Purchase", content: <PurchaseTab filters={filters} /> },
-          { key: "stock", label: "Stock", content: <StockTab filters={filters} /> },
-          { key: "finance", label: "Finance", content: <FinanceTab filters={filters} /> },
+          { key: "overview", label: t("tabs.overview"), content: <OverviewTab filters={filters} /> },
+          { key: "sales", label: t("tabs.sales"), content: <SalesTab filters={filters} /> },
+          { key: "purchase", label: t("tabs.purchase"), content: <PurchaseTab filters={filters} /> },
+          { key: "stock", label: t("tabs.stock"), content: <StockTab filters={filters} /> },
+          { key: "finance", label: t("tabs.finance"), content: <FinanceTab filters={filters} /> },
         ]}
       />
     </div>

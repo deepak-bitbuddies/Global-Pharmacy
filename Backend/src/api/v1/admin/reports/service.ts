@@ -4,6 +4,7 @@ import type {
   CursorPaginationParams,
   DailyCollectionRowDto,
   DashboardSummaryDto,
+  DaySalesDetailRowDto,
   ExpiryRowDto,
   GrossProfitRowDto,
   ItemWiseSalesRowDto,
@@ -22,6 +23,7 @@ import {
   getBranchSales,
   getCashInHand,
   getDailyCollection,
+  getDaySalesDetail,
   getExpiryReport,
   getGrossProfitByItem,
   getItemWiseSales,
@@ -104,6 +106,7 @@ export async function purchaseDetail(filters: ReportFilters, pagination: CursorP
       amount: num(row.amount),
       schemePct: row.schemePct === null ? null : num(row.schemePct),
       company: row.company,
+      date: row.date,
     })),
   }
 }
@@ -124,6 +127,7 @@ export async function stockReport(filters: ReportFilters, pagination: CursorPagi
       batch: row.batch,
       expDate: row.expDate,
       supplier: row.supplier,
+      asOfDate: row.asOfDate,
     })),
   }
 }
@@ -161,6 +165,24 @@ export async function nonMovingItems(filters: ReportFilters): Promise<NonMovingR
 export async function dailyCollection(filters: ReportFilters): Promise<DailyCollectionRowDto[]> {
   const rows = await getDailyCollection(filters)
   return rows.map((row) => ({ date: row.date, billValue: num(row.billValue) }))
+}
+
+export async function daySalesDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<DaySalesDetailRowDto>> {
+  const { rows, ...page } = await getDaySalesDetail(filters, pagination)
+  return {
+    ...page,
+    rows: rows.map((row) => ({
+      id: row.id,
+      date: row.date,
+      billNoRange: row.billNoRange,
+      billValue: num(row.billValue),
+      taxable: row.taxable === null ? null : num(row.taxable),
+      taxPayable: row.taxPayable === null ? null : num(row.taxPayable),
+      taxFree: row.taxFree === null ? null : num(row.taxFree),
+      exempted: row.exempted === null ? null : num(row.exempted),
+      roundOff: row.roundOff === null ? null : num(row.roundOff),
+    })),
+  }
 }
 
 export async function cashInHand(filters: ReportFilters): Promise<CashInHandRowDto[]> {
