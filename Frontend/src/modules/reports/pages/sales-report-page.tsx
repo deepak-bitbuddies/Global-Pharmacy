@@ -26,11 +26,18 @@ export function SalesReportPage() {
     <div className="space-y-4">
       <CustomPageHeader title={t("title")} description={t("description")} />
 
-      <ReportFilterPanel filters={filters} onFiltersChange={updateFilters} show={{ search: true, branch: true, dateRange: true }} />
+      <ReportFilterPanel
+        filters={filters}
+        onFiltersChange={updateFilters}
+        show={{ search: true, branch: true, company: true, dateRange: true }}
+        className="sm:grid-cols-1! md:grid-cols-3!"
+      />
 
       <CustomTable<ItemWiseSalesRow>
         columns={[
           { key: "itemNameRaw", label: tCommon("item"), sortable: true },
+          { key: "branchName", label: tCommon("branch") },
+          { key: "company", label: tCommon("company") },
           { key: "totalQty", label: t("qtySold"), sortable: true },
           { key: "totalAmount", label: tCommon("amount"), sortable: true },
           { key: "returnQty", label: t("returnQty") },
@@ -54,6 +61,7 @@ export function SalesReportPage() {
         renderCustomCell={(row, key) => {
           if (key === "totalAmount" || key === "returnAmount") return formatCurrency(row[key])
           if (key === "totalQty" || key === "returnQty") return formatNumber(row[key])
+          if (key === "company") return row.company ?? "-"
           return row[key]
         }}
       />

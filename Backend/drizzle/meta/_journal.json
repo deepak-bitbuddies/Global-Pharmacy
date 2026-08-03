@@ -43,6 +43,13 @@
       "when": 1785562980669,
       "tag": "0005_add_import_batches_date",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785772754209,
+      "tag": "0006_add_stock_scheme_and_rec_date",
+      "breakpoints": true
     }
   ]
 }

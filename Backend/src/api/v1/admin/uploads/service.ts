@@ -140,6 +140,11 @@ async function importStock(branchId: string, fileName: string, buffer: Buffer): 
       invNo: row.invNo,
       invDate: row.invDate,
       rackNo: row.rackNo,
+      salesSchemeDeal: row.salesSchemeDeal,
+      salesSchemeFree: row.salesSchemeFree,
+      purcSchemeDeal: row.purcSchemeDeal,
+      purcSchemeFree: row.purcSchemeFree,
+      recDate: row.recDate,
     })),
   )
 

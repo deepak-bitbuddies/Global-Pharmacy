@@ -109,6 +109,14 @@ export const stockSnapshots = pgTable(
     invNo: text("inv_no"),
     invDate: date("inv_date"),
     rackNo: text("rack_no"),
+    // Previously unparsed columns from the Stock export's "Sales Scheme"/"Purc.Scheme" (each
+    // split into Deal/Free sub-columns) and "Rec.Date" (physical receipt date, distinct from
+    // Inv.Date/the invoice date).
+    salesSchemeDeal: numeric("sales_scheme_deal", { precision: 14, scale: 2, mode: "number" }),
+    salesSchemeFree: numeric("sales_scheme_free", { precision: 14, scale: 2, mode: "number" }),
+    purcSchemeDeal: numeric("purc_scheme_deal", { precision: 14, scale: 2, mode: "number" }),
+    purcSchemeFree: numeric("purc_scheme_free", { precision: 14, scale: 2, mode: "number" }),
+    recDate: date("rec_date"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

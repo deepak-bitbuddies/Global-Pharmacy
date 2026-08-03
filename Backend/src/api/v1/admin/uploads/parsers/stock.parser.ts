@@ -26,6 +26,11 @@ export type ParsedStockRow = {
   invNo: string | null
   invDate: string | null
   rackNo: string | null
+  salesSchemeDeal: number | null
+  salesSchemeFree: number | null
+  purcSchemeDeal: number | null
+  purcSchemeFree: number | null
+  recDate: string | null
 }
 
 export type ParsedStockFile = {
@@ -41,6 +46,10 @@ const COL = {
   productName: 1,
   unit: 2,
   currentStock: 3,
+  salesSchemeDeal: 4,
+  salesSchemeFree: 5,
+  purcSchemeDeal: 6,
+  purcSchemeFree: 7,
   costPrice: 8,
   value: 9,
   mrp: 10,
@@ -48,6 +57,7 @@ const COL = {
   salesPrice: 12,
   company: 13,
   manufacturer: 14,
+  recDate: 15,
   batch: 16,
   mfg: 17,
   exp: 18,
@@ -95,6 +105,11 @@ export function parseStockFile(buffer: Buffer): ParsedStockFile {
       invNo: nullIfBlank(row[COL.invNo]),
       invDate: parseMargDateShortYear(row[COL.invDate] ?? ""),
       rackNo: nullIfBlank(row[COL.rackNo]),
+      salesSchemeDeal: parseMargNumber(row[COL.salesSchemeDeal] ?? ""),
+      salesSchemeFree: parseMargNumber(row[COL.salesSchemeFree] ?? ""),
+      purcSchemeDeal: parseMargNumber(row[COL.purcSchemeDeal] ?? ""),
+      purcSchemeFree: parseMargNumber(row[COL.purcSchemeFree] ?? ""),
+      recDate: parseMargDateShortYear(row[COL.recDate] ?? ""),
     })
   }
 

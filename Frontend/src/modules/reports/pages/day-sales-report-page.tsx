@@ -12,6 +12,7 @@ import type { DaySalesDetailRow, ReportFilters } from "../types"
 
 export function DaySalesReportPage() {
   const t = useTranslations("Reports.daySales")
+  const tCommon = useTranslations("Common")
   const [filters, setFilters] = useState<ReportFilters>({})
   const pagination = useCursorPagination()
   const { data, isLoading } = useDaySalesDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
@@ -30,6 +31,7 @@ export function DaySalesReportPage() {
       <CustomTable<DaySalesDetailRow>
         columns={[
           { key: "date", label: t("date"), sortable: true },
+          { key: "branchName", label: tCommon("branch") },
           { key: "billNoRange", label: t("billNoRange") },
           { key: "billValue", label: t("billValue"), sortable: true },
           { key: "taxable", label: t("taxable") },

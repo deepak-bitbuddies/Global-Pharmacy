@@ -34,8 +34,12 @@ export function StockReportPage() {
       />
 
       <CustomTable<StockRow>
+        // enableColumnVisibility
+        noWrap
         columns={[
           { key: "asOfDate", label: tCommon("date"), sortable: true },
+          { key: "branchName", label: tCommon("branch") },
+          { key: "itemCode", label: t("itemCode") },
           { key: "itemName", label: tCommon("item"), sortable: true },
           { key: "currentStock", label: t("stockColumn"), sortable: true },
           { key: "unit", label: tCommon("unit") },
@@ -43,6 +47,21 @@ export function StockReportPage() {
           { key: "expDate", label: t("expiry"), sortable: true },
           { key: "company", label: tCommon("company") },
           { key: "batch", label: t("batch") },
+          { key: "costPrice", label: t("costPrice") },
+          { key: "mrp", label: t("mrp") },
+          { key: "purchasePrice", label: t("purchasePrice") },
+          { key: "salesPrice", label: t("salesPrice") },
+          { key: "manufacturer", label: t("manufacturer") },
+          { key: "mfgDateRaw", label: t("mfgDate") },
+          { key: "supplier", label: t("supplier") },
+          { key: "invNo", label: t("invNo") },
+          { key: "invDate", label: t("invDate") },
+          { key: "rackNo", label: t("rackNo") },
+          { key: "salesSchemeDeal", label: t("salesSchemeDeal") },
+          { key: "salesSchemeFree", label: t("salesSchemeFree") },
+          { key: "purcSchemeDeal", label: t("purcSchemeDeal") },
+          { key: "purcSchemeFree", label: t("purcSchemeFree") },
+          { key: "recDate", label: t("recDate") },
         ]}
         data={data?.data ?? []}
         loading={isLoading}
@@ -60,8 +79,17 @@ export function StockReportPage() {
           onPrevious: pagination.goPrevious,
         }}
         renderCustomCell={(row, key) => {
-          if (key === "value") return row.value === null ? "-" : formatCurrency(row.value)
           if (key === "currentStock") return formatNumber(row.currentStock)
+          const moneyKeys: (keyof StockRow)[] = ["value", "costPrice", "mrp", "purchasePrice", "salesPrice"]
+          const qtyKeys: (keyof StockRow)[] = ["salesSchemeDeal", "salesSchemeFree", "purcSchemeDeal", "purcSchemeFree"]
+          if (moneyKeys.includes(key)) {
+            const value = row[key] as number | null
+            return value === null ? "-" : formatCurrency(value)
+          }
+          if (qtyKeys.includes(key)) {
+            const value = row[key] as number | null
+            return value === null ? "-" : formatNumber(value)
+          }
           return row[key] ?? "-"
         }}
       />

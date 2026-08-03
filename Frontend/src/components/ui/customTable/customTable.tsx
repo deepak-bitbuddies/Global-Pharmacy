@@ -1,17 +1,21 @@
 "use client";
 
+import { CustomSize } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { Selection, SortDescriptor } from "@heroui/react";
 import { Checkbox, Label, Table } from "@heroui/react";
-import { ArrowDownIcon, ClipboardTextIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ClipboardTextIcon, ColumnsIcon } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { ReactNode, useCallback, useMemo, useState } from "react";
 import { CustomAppIcon } from "../customAppIcon/customAppIcon";
 import { BulkAction, CustomBulkActionsToolbar } from "../customActions/customBulkActionsToolbar";
+import { ButtonVariant, CustomButton } from "../customButton/customButton";
+import { CheckboxOrientation, CustomCheckboxGroup } from "../customCheckboxGroup/customCheckboxGroup";
 import { CustomEmptyState } from "../customEmptyState/customEmptyState";
 import { CustomSearchFilter } from "../customFilters/customSearchFilter";
 import CustomCursorPagination from "../customPagination/customCursorPagination";
 import CustomPagination from "../customPagination/customPagination";
+import { CustomPopover } from "../customPopover/customPopover";
 import { CustomSelect } from "../customSelect/customSelect";
 import { CustomSkeleton } from "../customSkeleton/customSkeleton";
 
@@ -183,6 +187,19 @@ type CustomTableProps<T extends object> = {
     onNext: () => void;
     onPrevious: () => void;
   };
+  /**
+   * Shows a "Columns" toggle button (in the top toolbar row) that lets the
+   * user show/hide individual columns. Hidden columns are omitted from both
+   * the header and body cells but stay listed (and re-toggleable) in the
+   * popover. Defaults to false.
+   */
+  enableColumnVisibility?: boolean;
+  /**
+   * Prevents header labels and cell content from wrapping (keeps every
+   * column to a single line, relying on the table's horizontal scroll for
+   * overflow). Defaults to false.
+   */
+  noWrap?: boolean;
 };
 
 /**
@@ -237,6 +254,19 @@ export const CustomTable = <T extends object>({
 
   // Track the last clicked sortable column header to map aria IDs to column keys
   const [lastSortedColumnKey, setLastSortedColumnKey] = useState<string>();
+
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() =>
+    props.columns.map((column) => String(column.key)),
+  );
+  const [isColumnPopoverOpen, setIsColumnPopoverOpen] = useState(false);
+
+  const visibleColumns = useMemo(
+    () =>
+      props.enableColumnVisibility
+        ? props.columns.filter((column) => visibleColumnKeys.includes(String(column.key)))
+        : props.columns,
+    [props.columns, props.enableColumnVisibility, visibleColumnKeys],
+  );
 
   const handleSortChange = useCallback(
     (descriptor: SortDescriptor) => {
@@ -443,23 +473,64 @@ export const CustomTable = <T extends object>({
     <Table
       className="w-full max-w-[calc(100vw-32px)] lg:max-w-[calc(100vw-128px)]"
     >
-      {(props.onGlobalFilterChange || props.bulkActions) && (
-        <div className="pb-3">
-          {props.bulkActions && selectedCount > 0 ? (
-            <CustomBulkActionsToolbar
-              selectedCount={selectedCount}
-              actions={props.bulkActions}
-              onClearSelection={() => props.onSelectionChange?.([])}
-            />
-          ) : (
-            props.onGlobalFilterChange && (
-              <CustomSearchFilter
-                value={props.globalFilter}
-                onChange={props.onGlobalFilterChange}
-                placeholder={props.searchPlaceholder ?? t("Search")}
-                className="max-w-xs"
+      {(props.onGlobalFilterChange || props.bulkActions || props.enableColumnVisibility) && (
+        <div className="flex items-center justify-between gap-2 pb-3">
+          <div>
+            {props.bulkActions && selectedCount > 0 ? (
+              <CustomBulkActionsToolbar
+                selectedCount={selectedCount}
+                actions={props.bulkActions}
+                onClearSelection={() => props.onSelectionChange?.([])}
               />
-            )
+            ) : (
+              props.onGlobalFilterChange && (
+                <CustomSearchFilter
+                  value={props.globalFilter}
+                  onChange={props.onGlobalFilterChange}
+                  placeholder={props.searchPlaceholder ?? t("Search")}
+                  className="max-w-xs"
+                />
+              )
+            )}
+          </div>
+          {props.enableColumnVisibility && (
+            <CustomPopover
+              isOpen={isColumnPopoverOpen}
+              setIsOpen={setIsColumnPopoverOpen}
+              ariaLabel={t("Columns")}
+              trigger={
+                <CustomButton
+                  variant={ButtonVariant.outline}
+                  startContent={<CustomAppIcon Icon={ColumnsIcon} size={16} />}
+                >
+                  {t("Columns")} ({visibleColumnKeys.length}/{props.columns.length})
+                </CustomButton>
+              }
+            >
+              <div className="w-[min(90vw,32rem)] overflow-hidden rounded-app border border-default bg-surface shadow-lg">
+                <div className="flex items-center justify-between gap-3 border-b border-default px-4 py-2.5">
+                  <span className="text-sm font-semibold text-foreground">{t("Columns")}</span>
+                  <CustomButton
+                    variant={ButtonVariant.ghost}
+                    size={CustomSize.sm}
+                    className="h-7 px-2 text-xs"
+                    isDisabled={visibleColumnKeys.length === props.columns.length}
+                    onClick={() => setVisibleColumnKeys(props.columns.map((column) => String(column.key)))}
+                  >
+                    {t("ShowAll")}
+                  </CustomButton>
+                </div>
+                <CustomCheckboxGroup
+                  data={props.columns}
+                  valueKey="key"
+                  labelKey="label"
+                  value={visibleColumnKeys}
+                  onChange={setVisibleColumnKeys}
+                  orientation={CheckboxOrientation.Horizontal}
+                  className="max-h-72 overflow-y-auto p-3"
+                />
+              </div>
+            </CustomPopover>
           )}
         </div>
       )}
@@ -473,7 +544,10 @@ export const CustomTable = <T extends object>({
           onSelectionChange={handleSelectionChange}
           sortDescriptor={sortDescriptor}
           onSortChange={handleSortChange}
-          className={cn(props.isCompact && "[&_td]:py-1.5 [&_th]:py-1.5")}
+          className={cn(
+            props.isCompact && "[&_td]:py-1.5 [&_th]:py-1.5",
+            props.noWrap && "[&_td]:text-nowrap [&_th]:text-nowrap",
+          )}
         >
           <Table.Header
             className={cn(props.isHeaderSticky && "sticky top-0 z-10 bg-background")}
@@ -487,7 +561,7 @@ export const CustomTable = <T extends object>({
                 </Checkbox>
               </Table.Column>
             )}
-            {props.columns.map((column) => (
+            {visibleColumns.map((column) => (
               <Table.Column
                 key={String(column.key)}
                 allowsSorting={column.sortable}
@@ -535,7 +609,7 @@ export const CustomTable = <T extends object>({
                         </Checkbox>
                       </Table.Cell>
                     )}
-                    <Table.Collection items={props.columns}>
+                    <Table.Collection items={visibleColumns}>
                       {(column) => (
                         <Table.Cell key={String(column.key)} className="p-4">
                           <CustomSkeleton className={`rounded-app h-3 w-25`} />
@@ -585,7 +659,7 @@ export const CustomTable = <T extends object>({
                         </Checkbox>
                       </Table.Cell>
                     )}
-                    <Table.Collection items={props.columns}>
+                    <Table.Collection items={visibleColumns}>
                       {(column) => (
                         <Table.Cell key={String(column.key)}>
                           {props.renderCustomCell(item, column.key as keyof T)}

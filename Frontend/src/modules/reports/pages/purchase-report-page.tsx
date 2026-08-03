@@ -36,6 +36,7 @@ export function PurchaseReportPage() {
       <CustomTable<PurchaseDetailRow>
         columns={[
           { key: "date", label: tCommon("date"), sortable: true },
+          { key: "branchName", label: tCommon("branch") },
           { key: "itemNameRaw", label: tCommon("item"), sortable: true },
           { key: "supplierGroup", label: t("supplier"), sortable: true },
           { key: "company", label: tCommon("company") },

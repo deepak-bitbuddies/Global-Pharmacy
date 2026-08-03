@@ -15,6 +15,9 @@ export type { CursorPaginationParams, PaginatedResult } from "../../../../shared
 
 export type ItemWiseSalesRowDto = {
   itemNameRaw: string
+  company: string | null
+  branchId: string
+  branchName: string
   totalQty: number
   totalAmount: number
   returnQty: number
@@ -55,6 +58,8 @@ export type PurchaseDetailRowDto = {
   amount: number
   schemePct: number | null
   company: string | null
+  branchId: string
+  branchName: string
   date: string
 }
 
@@ -66,11 +71,26 @@ export type StockRowDto = {
   currentStock: number
   costPrice: number | null
   value: number | null
+  mrp: number | null
+  purchasePrice: number | null
+  salesPrice: number | null
   company: string | null
+  manufacturer: string | null
   batch: string | null
+  mfgDateRaw: string | null
   expDate: string | null
   supplier: string | null
+  invNo: string | null
+  invDate: string | null
+  rackNo: string | null
+  salesSchemeDeal: number | null
+  salesSchemeFree: number | null
+  purcSchemeDeal: number | null
+  purcSchemeFree: number | null
+  recDate: string | null
   asOfDate: string
+  branchId: string
+  branchName: string
 }
 
 export type ZeroOrderAlertRowDto = {
@@ -110,6 +130,8 @@ export type DaySalesDetailRowDto = {
   taxFree: number | null
   exempted: number | null
   roundOff: number | null
+  branchId: string
+  branchName: string
 }
 
 export type CashInHandRowDto = {

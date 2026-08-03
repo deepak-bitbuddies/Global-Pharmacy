@@ -38,6 +38,9 @@ export function ReportFilterPanel({ filters, onFiltersChange, show, className }:
   const hasFilterBarContent = show.branch || show.company || show.schemeTier || show.dateRange
   if (!show.search && !hasFilterBarContent) return null
 
+  const hasActiveFilters = Boolean(filters.branchId || filters.dateFrom || filters.dateTo || filters.company || filters.item || filters.schemeTier)
+  const clearFilters = () => onFiltersChange(() => ({}))
+
   return (
     <div className="space-y-4">
       {show.search && (
@@ -48,7 +51,7 @@ export function ReportFilterPanel({ filters, onFiltersChange, show, className }:
         />
       )}
       {hasFilterBarContent && (
-        <CustomFilterBar className={className}>
+        <CustomFilterBar className={className} onReset={hasActiveFilters ? clearFilters : undefined}>
           {show.branch && <BranchFilter value={filters.branchId} onChange={(branchId) => onFiltersChange((prev) => ({ ...prev, branchId }))} />}
           {show.company && <CompanyFilter value={filters.company} onChange={(company) => onFiltersChange((prev) => ({ ...prev, company }))} />}
           {show.schemeTier && (

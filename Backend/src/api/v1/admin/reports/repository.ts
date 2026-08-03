@@ -55,23 +55,36 @@ function schemeTierFilter(filters: ReportFilters): SQL | undefined {
 type ItemWiseSalesCursor = { totalAmount: number; itemNameRaw: string }
 
 export async function getItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams) {
+  // Sales register rows carry no company field of their own — same as Purchase, only reachable
+  // via the (name-matched, best-effort) item link, so it's null wherever that item hasn't also
+  // matched a Stock import. Left join so rows without a match still come back, just with
+  // company: null. Grouping by it alongside itemNameRaw doesn't fragment rows: a given raw item
+  // name always resolves to the same item (and therefore the same company).
+  // Branch is now also part of the grouping key — without a branch filter, the same item sold
+  // from multiple branches now returns one row per branch instead of a cross-branch total.
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
   const grouped = db
     .select({
       itemNameRaw: salesLines.itemNameRaw,
+      company: items.company,
+      branchId: salesLines.branchId,
+      branchName: branches.name,
       totalQty: sql<string>`coalesce(sum(${salesLines.qty}) filter (where ${salesLines.qty} > 0), 0)`.as("total_qty"),
       totalAmount: sql<string>`coalesce(sum(${salesLines.amount}) filter (where ${salesLines.amount} > 0), 0)`.as("total_amount"),
       returnQty: sql<string>`coalesce(abs(sum(${salesLines.qty}) filter (where ${salesLines.qty} < 0)), 0)`.as("return_qty"),
       returnAmount: sql<string>`coalesce(abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0)), 0)`.as("return_amount"),
     })
     .from(salesLines)
+    .leftJoin(items, eq(items.id, salesLines.itemId))
+    .innerJoin(branches, eq(branches.id, salesLines.branchId))
     .where(filterWhere)
-    .groupBy(salesLines.itemNameRaw)
+    .groupBy(salesLines.itemNameRaw, items.company, salesLines.branchId, branches.name)
     .as("grouped")
 
   const cursor = decodeCursor<ItemWiseSalesCursor>(pagination.cursor)
@@ -219,10 +232,13 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
         amount: purchaseLines.amount,
         schemePct: purchaseLines.schemePct,
         company: items.company,
+        branchId: purchaseLines.branchId,
+        branchName: branches.name,
         date: purchaseLines.reportDateFrom,
       })
       .from(purchaseLines)
       .leftJoin(items, eq(items.id, purchaseLines.itemId))
+      .innerJoin(branches, eq(branches.id, purchaseLines.branchId))
       .where(dataWhere)
       // `id` is a tiebreaker — many lines share an item name across suppliers/batches,
       // and keyset pagination needs a fully-deterministic sort to seek on.
@@ -260,13 +276,29 @@ export async function getStockReport(filters: ReportFilters, pagination: CursorP
         currentStock: stockSnapshots.currentStock,
         costPrice: stockSnapshots.costPrice,
         value: stockSnapshots.value,
+        mrp: stockSnapshots.mrp,
+        purchasePrice: stockSnapshots.purchasePrice,
+        salesPrice: stockSnapshots.salesPrice,
         company: stockSnapshots.company,
+        manufacturer: stockSnapshots.manufacturer,
         batch: stockSnapshots.batch,
+        mfgDateRaw: stockSnapshots.mfgDateRaw,
         expDate: stockSnapshots.expDate,
         supplier: stockSnapshots.supplier,
+        invNo: stockSnapshots.invNo,
+        invDate: stockSnapshots.invDate,
+        rackNo: stockSnapshots.rackNo,
+        salesSchemeDeal: stockSnapshots.salesSchemeDeal,
+        salesSchemeFree: stockSnapshots.salesSchemeFree,
+        purcSchemeDeal: stockSnapshots.purcSchemeDeal,
+        purcSchemeFree: stockSnapshots.purcSchemeFree,
+        recDate: stockSnapshots.recDate,
         asOfDate: stockSnapshots.asOfDate,
+        branchId: stockSnapshots.branchId,
+        branchName: branches.name,
       })
       .from(stockSnapshots)
+      .innerJoin(branches, eq(branches.id, stockSnapshots.branchId))
       .where(dataWhere)
       // `id` is a tiebreaker — many rows share an item name across batches,
       // and keyset pagination needs a fully-deterministic sort to seek on.
@@ -401,8 +433,11 @@ export async function getDaySalesDetail(filters: ReportFilters, pagination: Curs
         taxFree: dailySalesSummary.taxFree,
         exempted: dailySalesSummary.exempted,
         roundOff: dailySalesSummary.roundOff,
+        branchId: dailySalesSummary.branchId,
+        branchName: branches.name,
       })
       .from(dailySalesSummary)
+      .innerJoin(branches, eq(branches.id, dailySalesSummary.branchId))
       .where(dataWhere)
       // `id` is a tiebreaker — multiple rows can share a date, and keyset pagination
       // needs a fully-deterministic sort to seek on.
