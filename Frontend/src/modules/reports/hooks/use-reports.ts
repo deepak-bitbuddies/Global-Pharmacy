@@ -20,6 +20,7 @@ import {
   getOutstanding,
   getPurchaseDetail,
   getPurchaseSummary,
+  getSalesDetail,
   getStockReport,
   getStockSummary,
   getStockValueByCompany,
@@ -45,6 +46,10 @@ export function useDashboardSummary(filters: ReportFilters) {
 
 export function useItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams) {
   return useQuery({ queryKey: reportsQueryKeys.itemWiseSales(filters, pagination), queryFn: () => getItemWiseSales(filters, pagination), placeholderData: keepPreviousData })
+}
+
+export function useSalesDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({ queryKey: reportsQueryKeys.salesDetail(filters, pagination), queryFn: () => getSalesDetail(filters, pagination), placeholderData: keepPreviousData })
 }
 
 export function useBranchSales(filters: ReportFilters) {

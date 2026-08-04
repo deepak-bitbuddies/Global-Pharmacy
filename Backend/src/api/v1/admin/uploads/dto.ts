@@ -1,3 +1,4 @@
+import type { SystemRoleCode } from "../../../../shared/enums/index.js"
 import type { FileTypeValue } from "./enums.js"
 
 export type UploadFileDto = {
@@ -5,6 +6,7 @@ export type UploadFileDto = {
   branchId: string
   fileName: string
   buffer: Buffer
+  actorRole: SystemRoleCode
 }
 
 export type UploadResultDto = {
@@ -25,6 +27,7 @@ export type ImportBatchListItemDto = {
   fileName: string
   rowCount: number
   status: string
+  errorMessage: string | null
   importedAt: Date
 }
 
@@ -34,4 +37,27 @@ export type UploadCycleStatusDto = {
   stockDone: boolean
   purchaseDone: boolean
   salesDone: boolean
+}
+
+export type BulkUploadFileInputDto = {
+  fileName: string
+  buffer: Buffer
+}
+
+export type BulkUploadAcceptedDto = {
+  fileName: string
+  batchId: string
+  fileType: FileTypeValue
+  /** Null for Day-Wise Sale, which has no single date (see `import_batches.date`). */
+  date: string | null
+}
+
+export type BulkUploadRejectedDto = {
+  fileName: string
+  reason: string
+}
+
+export type BulkUploadResultDto = {
+  accepted: BulkUploadAcceptedDto[]
+  rejected: BulkUploadRejectedDto[]
 }

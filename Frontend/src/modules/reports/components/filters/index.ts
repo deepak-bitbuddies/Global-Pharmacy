@@ -1,5 +1,6 @@
 export { BranchFilter } from "./branch-filter"
 export { CompanyFilter } from "./company-filter"
+export { ExpiryTierFilter } from "./expiry-tier-filter"
 export { SchemeTierFilter } from "./scheme-tier-filter"
 export { ReportDateRangeFilter } from "./date-range-filter"
 export { ReportFilterPanel, type ReportFilterFlags } from "./report-filter-panel"

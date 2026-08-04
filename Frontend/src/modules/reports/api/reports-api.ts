@@ -14,6 +14,7 @@ import type {
   PurchaseDetailRow,
   PurchaseSummaryRow,
   ReportFilters,
+  SalesDetailRow,
   StockRow,
   ZeroOrderAlertRow,
 } from "../types"
@@ -37,6 +38,11 @@ export async function getDashboardSummary(filters: ReportFilters): Promise<Dashb
 
 export async function getItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<ItemWiseSalesRow>> {
   const { data } = await api.get<PaginatedResponse<ItemWiseSalesRow>>(`${BASE}/sales/item-wise`, { params: { ...filters, ...pagination } })
+  return data
+}
+
+export async function getSalesDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<SalesDetailRow>> {
+  const { data } = await api.get<PaginatedResponse<SalesDetailRow>>(`${BASE}/sales/detail`, { params: { ...filters, ...pagination } })
   return data
 }
 

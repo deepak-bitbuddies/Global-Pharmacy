@@ -2,6 +2,9 @@
 // ReportFilters type regardless, same precedent as `company` above (Sales/Stock just ignore it).
 export type SchemeTier = "none" | "lt5" | "5to10" | "10to20" | "20to30" | "30to50" | "50to100" | "gte100"
 
+// Stock-only filter (expDate only exists on stock_snapshots) — same precedent as `schemeTier` above.
+export type ExpiryTier = "expired" | "lte30" | "31to60" | "61to90" | "gt90" | "none"
+
 export type ReportFilters = {
   branchId?: string
   dateFrom?: string
@@ -9,6 +12,7 @@ export type ReportFilters = {
   company?: string
   item?: string
   schemeTier?: SchemeTier
+  expiryTier?: ExpiryTier
 }
 
 export type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"
@@ -45,6 +49,21 @@ export type PurchaseSummaryRowDto = {
   totalAmount: number
   totalQty: number
   totalFreeQty: number
+}
+
+export type SalesDetailRowDto = {
+  id: string
+  partyGroup: string
+  itemNameRaw: string
+  packSizeRaw: string | null
+  qty: number | null
+  unit: string | null
+  rate: number | null
+  amount: number
+  company: string | null
+  branchId: string
+  branchName: string
+  date: string
 }
 
 export type PurchaseDetailRowDto = {
@@ -89,6 +108,7 @@ export type StockRowDto = {
   purcSchemeFree: number | null
   recDate: string | null
   asOfDate: string
+  daysToExpiry: number | null
   branchId: string
   branchName: string
 }

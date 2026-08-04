@@ -132,11 +132,9 @@
   },
   "Reports": {
     "sales": {
-      "title": "Item-wise Sales",
-      "description": "Sales by item for the imported period. The Sale Register is period-aggregated by Marg, not per-day — use the dashboard's Daily Collection chart for the day-by-day trend.",
-      "qtySold": "Qty Sold",
-      "returnQty": "Return Qty",
-      "returnAmount": "Return Amount",
+      "title": "Sales Report",
+      "description": "Party/item-wise sales detail, one row per line item — same shape as Purchase and Stock, not aggregated.",
+      "party": "Party",
       "emptyText": "No sales data — import a Sales Register file first."
     },
     "stock": {
@@ -162,6 +160,15 @@
       "purcSchemeDeal": "Purc. Scheme Deal",
       "purcSchemeFree": "Purc. Scheme Free",
       "recDate": "Rec. Date",
+      "daysToExpiry": "Expires In",
+      "expired": "Expired",
+      "expiryTierExpired": "Already expired",
+      "expiryTierLte30": "Within 30 days",
+      "expiryTier31to60": "31 – 60 days",
+      "expiryTier61to90": "61 – 90 days",
+      "expiryTierGt90": "90+ days",
+      "expiryTierNone": "No expiry set",
+      "expiryTierPlaceholder": "All expiry",
       "emptyText": "No stock data — import a Stock Register file first."
     },
     "purchase": {
@@ -233,7 +240,21 @@
     },
     "importSuccess": "Imported {rowCount} rows from {fileName}",
     "importSuccessReplaced": "Imported {rowCount} rows from {fileName} (replaced previous import)",
-    "importFailed": "Import failed"
+    "importFailed": "Import failed",
+    "statusProcessing": "Processing",
+    "statusCompleted": "Completed",
+    "statusFailed": "Failed",
+    "bulkUpload": "Bulk Upload",
+    "bulkUploadTitle": "Bulk Upload",
+    "bulkUploadSubtitle": "Select several Stock/Purchase/Sales/Day-Wise Sale files at once — each file's type is detected automatically. Every file must still be for a single day.",
+    "bulkUploadDropzoneTitle": "Drag files here, or click to browse",
+    "bulkUploadDropzoneHint": ".xls or .xlsx — any mix of Stock, Purchase, Sales, Day-Wise Sale",
+    "bulkUploadSubmit": "Upload",
+    "bulkUploadFilesSelected": "{count} file(s) selected",
+    "bulkUploadAllAccepted": "All {count} file(s) accepted — processing in the background",
+    "bulkUploadSomeRejected": "{accepted} file(s) accepted, {rejected} rejected — see details below",
+    "bulkUploadAcceptedHeading": "Accepted ({count}) — processing",
+    "bulkUploadRejectedHeading": "Rejected ({count})"
   },
   "Branches": {
     "title": "Branches",

@@ -214,6 +214,13 @@ export async function deleteImportBatch(batchId: string): Promise<void> {
   await db.delete(importBatches).where(eq(importBatches.id, batchId))
 }
 
+export type ImportBatchStatusUpdate = { status: "completed" | "failed"; rowCount?: number; errorMessage?: string | null }
+
+/** Flips a bulk-uploaded batch's placeholder "processing" row to its final outcome once the background committer finishes with it. */
+export async function updateImportBatchStatus(batchId: string, update: ImportBatchStatusUpdate): Promise<void> {
+  await db.update(importBatches).set(update).where(eq(importBatches.id, batchId))
+}
+
 export async function listImportBatches(branchId?: string, fileType?: string): Promise<ImportBatchDocument[]> {
   const clauses = [branchId ? eq(importBatches.branchId, branchId) : undefined, fileType ? eq(importBatches.fileType, fileType) : undefined].filter(
     (clause): clause is NonNullable<typeof clause> => clause !== undefined,

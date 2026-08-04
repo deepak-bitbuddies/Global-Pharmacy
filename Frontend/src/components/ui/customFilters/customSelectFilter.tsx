@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { CustomAutoComplete } from "../customAutoComplete/customAutoComplete";
 import { SelectionModeEnum } from "../customDropdown/customDropdown";
+import { FILTER_TRIGGER_CLASSNAME } from "./customFilterBar";
 
 const ALL_OPTION_ID = "__all__";
 
@@ -51,7 +52,7 @@ export const CustomSelectFilter = <T,>(props: CustomSelectFilterProps<T>) => {
       placeholder={props.placeholder}
       selectionMode={SelectionModeEnum.single}
       showClearButton={false}
-      fullWidth
+      triggerClassName={FILTER_TRIGGER_CLASSNAME}
       className={props.className}
     />
   );

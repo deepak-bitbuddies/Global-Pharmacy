@@ -82,6 +82,8 @@ export type CustomInputProps = {
   isInvalid?: boolean;
   /** Additional CSS classes for the input wrapper */
   className?: string;
+  /** Overrides the outer field-group's className entirely (border/rounding) — e.g. a crisper, thinner-bordered look for toolbar filters. Defaults to the standard form-field style. */
+  wrapperClassName?: string;
   /** Helper text to display below the input */
   description?: string;
   /** Keyboard event handler for the input */
@@ -117,7 +119,9 @@ export const CustomInput = ({ ...props }: CustomInputProps) => {
       {props.label && <Label>{props.label}</Label>}
 
       <InputGroup
-        className={`${props.isDisabled || props.isReadOnly ? "border-border" : "border-default"} rounded-app border-2`}
+        className={
+          props.wrapperClassName ?? `${props.isDisabled || props.isReadOnly ? "border-border" : "border-default"} rounded-app border-2`
+        }
         fullWidth={props.fullWidth}
       >
         {props.startContent && (

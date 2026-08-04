@@ -2,6 +2,9 @@
 // ReportFilters type regardless, same precedent as `company` above.
 export type SchemeTier = "none" | "lt5" | "5to10" | "10to20" | "20to30" | "30to50" | "50to100" | "gte100"
 
+// Stock-only filter (expiry only exists on stock rows) — same precedent as `schemeTier` above.
+export type ExpiryTier = "expired" | "lte30" | "31to60" | "61to90" | "gt90" | "none"
+
 export type ReportFilters = {
   branchId?: string
   dateFrom?: string
@@ -9,6 +12,7 @@ export type ReportFilters = {
   company?: string
   item?: string
   schemeTier?: SchemeTier
+  expiryTier?: ExpiryTier
 }
 
 export type { Branch } from "@/modules/branches"
@@ -89,8 +93,24 @@ export type StockRow = {
   purcSchemeFree: number | null
   recDate: string | null
   asOfDate: string
+  daysToExpiry: number | null
   branchId: string
   branchName: string
+}
+
+export type SalesDetailRow = {
+  id: string
+  partyGroup: string
+  itemNameRaw: string
+  packSizeRaw: string | null
+  qty: number | null
+  unit: string | null
+  rate: number | null
+  amount: number
+  company: string | null
+  branchId: string
+  branchName: string
+  date: string
 }
 
 export type ZeroOrderAlertRow = {
@@ -176,6 +196,7 @@ export type ImportBatch = {
   fileName: string
   rowCount: number
   status: string
+  errorMessage: string | null
   importedAt: string
 }
 
@@ -184,4 +205,21 @@ export type UploadCycleStatus = {
   stockDone: boolean
   purchaseDone: boolean
   salesDone: boolean
+}
+
+export type BulkUploadAccepted = {
+  fileName: string
+  batchId: string
+  fileType: ImportFileType
+  date: string | null
+}
+
+export type BulkUploadRejected = {
+  fileName: string
+  reason: string
+}
+
+export type BulkUploadResult = {
+  accepted: BulkUploadAccepted[]
+  rejected: BulkUploadRejected[]
 }

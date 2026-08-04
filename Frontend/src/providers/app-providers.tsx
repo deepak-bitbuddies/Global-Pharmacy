@@ -16,7 +16,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <QueryProvider>
         <CustomConfirmDialogProvider>
           {children}
-          <CustomToastProvider placement="bottom end" />
+          <CustomToastProvider placement="top end" />
         </CustomConfirmDialogProvider>
       </QueryProvider>
     </ThemeProvider>

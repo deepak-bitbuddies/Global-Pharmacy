@@ -67,7 +67,10 @@ export const importBatches = pgTable(
     // replace lookup and the Stock -> Purchase -> Sales sequence gate.
     date: date("date"),
     rowCount: integer("row_count").notNull().default(0),
-    status: text("status").notNull().default("completed"), // "completed" | "failed"
+    // "processing" (bulk upload only — set on creation, flipped by the background committer),
+    // "completed", or "failed" (single-file uploads go straight to "completed"/throw before a row
+    // ever gets created, since that path stays fully synchronous).
+    status: text("status").notNull().default("completed"),
     errorMessage: text("error_message"),
     importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
   },

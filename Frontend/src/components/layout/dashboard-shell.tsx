@@ -8,6 +8,7 @@ import {
   SIDEBAR_COLLAPSED_COOKIE,
   SIDEBAR_COLLAPSED_COOKIE_MAX_AGE,
 } from "@/components/layout/sidebar-constants"
+import { useImportSocket } from "@/modules/reports/hooks/use-import-socket"
 
 export function DashboardShell({
   children,
@@ -18,6 +19,9 @@ export function DashboardShell({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  // Wraps every authenticated dashboard route already — mounting the socket listener here (rather
+  // than per-page) means bulk-import status refreshes land regardless of which screen is open.
+  useImportSocket()
 
   const toggleCollapsed = () => {
     const next = !collapsed
@@ -26,7 +30,7 @@ export function DashboardShell({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Spacer: reserves sidebar width in flow so content gets the correct remaining width */}
       <div
         className={
@@ -43,11 +47,14 @@ export function DashboardShell({
         onToggleCollapsed={toggleCollapsed}
       />
 
-      <div className="relative flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        <main>
-          <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+        {/* The one scroll container for all dashboard page content — lets any page pin part of
+            itself (e.g. `CustomStickyBar`) via plain `sticky top-0`, since there's a single,
+            well-defined scrolling ancestor instead of the whole document scrolling. */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-screen-2xl px-4">
             {children}
           </div>
         </main>

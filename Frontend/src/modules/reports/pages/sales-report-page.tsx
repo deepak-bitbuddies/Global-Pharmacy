@@ -3,19 +3,19 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 
-import { CustomPageHeader, CustomTable } from "@/components/ui"
+import { CustomPageHeader, CustomStickyBar, CustomTable } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { ReportFilterPanel } from "../components/filters"
-import { useItemWiseSales } from "../hooks/use-reports"
-import type { ItemWiseSalesRow, ReportFilters } from "../types"
+import { useSalesDetail } from "../hooks/use-reports"
+import type { ReportFilters, SalesDetailRow } from "../types"
 
 export function SalesReportPage() {
   const t = useTranslations("Reports.sales")
   const tCommon = useTranslations("Common")
   const [filters, setFilters] = useState<ReportFilters>({})
   const pagination = useCursorPagination()
-  const { data, isLoading } = useItemWiseSales(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
+  const { data, isLoading } = useSalesDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
 
   const updateFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
     setFilters(updater)
@@ -24,29 +24,31 @@ export function SalesReportPage() {
 
   return (
     <div className="space-y-4">
-      <CustomPageHeader title={t("title")} description={t("description")} />
+      <CustomStickyBar>
+        <CustomPageHeader title={t("title")} description={t("description")} />
+        <ReportFilterPanel
+          filters={filters}
+          onFiltersChange={updateFilters}
+          show={{ search: true, branch: true, company: true, dateRange: true }}
+        />
+      </CustomStickyBar>
 
-      <ReportFilterPanel
-        filters={filters}
-        onFiltersChange={updateFilters}
-        show={{ search: true, branch: true, company: true, dateRange: true }}
-        className="sm:grid-cols-1! md:grid-cols-3!"
-      />
-
-      <CustomTable<ItemWiseSalesRow>
+      <CustomTable<SalesDetailRow>
         columns={[
-          { key: "itemNameRaw", label: tCommon("item"), sortable: true },
+          { key: "date", label: tCommon("date"), sortable: true },
           { key: "branchName", label: tCommon("branch") },
+          { key: "itemNameRaw", label: tCommon("item"), sortable: true },
+          { key: "partyGroup", label: t("party"), sortable: true },
           { key: "company", label: tCommon("company") },
-          { key: "totalQty", label: t("qtySold"), sortable: true },
-          { key: "totalAmount", label: tCommon("amount"), sortable: true },
-          { key: "returnQty", label: t("returnQty") },
-          { key: "returnAmount", label: t("returnAmount") },
+          { key: "qty", label: tCommon("qty") },
+          { key: "unit", label: tCommon("unit") },
+          { key: "rate", label: tCommon("rate") },
+          { key: "amount", label: tCommon("amount"), sortable: true },
         ]}
         data={data?.data ?? []}
         loading={isLoading}
-        rowKey="itemNameRaw"
-        itemId="itemNameRaw"
+        rowKey="id"
+        itemId="id"
         totalItems={data?.meta?.total ?? 0}
         emptyText={t("emptyText")}
         onRowsPerPageChange={pagination.setPageSize}
@@ -59,10 +61,10 @@ export function SalesReportPage() {
           onPrevious: pagination.goPrevious,
         }}
         renderCustomCell={(row, key) => {
-          if (key === "totalAmount" || key === "returnAmount") return formatCurrency(row[key])
-          if (key === "totalQty" || key === "returnQty") return formatNumber(row[key])
+          if (key === "rate" || key === "amount") return row[key] === null ? "-" : formatCurrency(row[key] as number)
+          if (key === "qty") return row.qty === null ? "-" : formatNumber(row.qty)
           if (key === "company") return row.company ?? "-"
-          return row[key]
+          return row[key] ?? "-"
         }}
       />
     </div>

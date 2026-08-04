@@ -51,6 +51,27 @@ function schemeTierFilter(filters: ReportFilters): SQL | undefined {
   }
 }
 
+// Bucket boundaries must match the tier labels the frontend's EXPIRY_TIER_OPTIONS shows, and the
+// "Expiring ≤30 days" dashboard KPI's own 30-day threshold (`getExpiryReport`'s default `withinDays`).
+function expiryTierFilter(filters: ReportFilters): SQL | undefined {
+  switch (filters.expiryTier) {
+    case "none":
+      return sql`${stockSnapshots.expDate} is null`
+    case "expired":
+      return sql`${stockSnapshots.expDate} is not null and ${stockSnapshots.expDate} < current_date`
+    case "lte30":
+      return sql`${stockSnapshots.expDate} is not null and ${stockSnapshots.expDate} >= current_date and ${stockSnapshots.expDate} < current_date + 30`
+    case "31to60":
+      return sql`${stockSnapshots.expDate} is not null and ${stockSnapshots.expDate} >= current_date + 30 and ${stockSnapshots.expDate} < current_date + 60`
+    case "61to90":
+      return sql`${stockSnapshots.expDate} is not null and ${stockSnapshots.expDate} >= current_date + 60 and ${stockSnapshots.expDate} < current_date + 90`
+    case "gt90":
+      return sql`${stockSnapshots.expDate} is not null and ${stockSnapshots.expDate} >= current_date + 90`
+    default:
+      return undefined
+  }
+}
+
 
 type ItemWiseSalesCursor = { totalAmount: number; itemNameRaw: string }
 
@@ -200,6 +221,58 @@ export async function getPurchaseSummary(filters: ReportFilters, pagination: Cur
   return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
 }
 
+type SalesDetailCursor = { itemNameRaw: string; id: string }
+
+/** Flat, unaggregated sales lines — same shape/pagination pattern as `getPurchaseDetail`, one row per line item instead of `getItemWiseSales`'s period-aggregated totals. */
+export async function getSalesDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  const filterWhere = and(
+    branchFilter(salesLines.branchId, filters),
+    itemFilter(salesLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
+    ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
+  )
+
+  const cursor = decodeCursor<SalesDetailCursor>(pagination.cursor)
+  const dataWhere = cursor
+    ? and(filterWhere, sql`(${salesLines.itemNameRaw}, ${salesLines.id}) > (${cursor.itemNameRaw}, ${cursor.id})`)
+    : filterWhere
+
+  const [rows, countRows] = await Promise.all([
+    db
+      .select({
+        id: salesLines.id,
+        partyGroup: salesLines.partyGroup,
+        itemNameRaw: salesLines.itemNameRaw,
+        packSizeRaw: salesLines.packSizeRaw,
+        qty: salesLines.qty,
+        unit: salesLines.unit,
+        rate: salesLines.rate,
+        amount: salesLines.amount,
+        company: items.company,
+        branchId: salesLines.branchId,
+        branchName: branches.name,
+        date: salesLines.reportDateFrom,
+      })
+      .from(salesLines)
+      .leftJoin(items, eq(items.id, salesLines.itemId))
+      .innerJoin(branches, eq(branches.id, salesLines.branchId))
+      .where(dataWhere)
+      // `id` is a tiebreaker — many lines share an item name across parties/bills,
+      // and keyset pagination needs a fully-deterministic sort to seek on.
+      .orderBy(salesLines.itemNameRaw, salesLines.id)
+      .limit(pagination.pageSize + 1),
+    db
+      .select({ count: sql<string>`count(*)` })
+      .from(salesLines)
+      .leftJoin(items, eq(items.id, salesLines.itemId))
+      .where(filterWhere),
+  ])
+
+  const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ itemNameRaw: r.itemNameRaw, id: r.id }))
+
+  return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
+}
+
 type PurchaseDetailCursor = { itemNameRaw: string; id: string }
 
 export async function getPurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
@@ -294,6 +367,7 @@ export async function getStockReport(filters: ReportFilters, pagination: CursorP
         purcSchemeFree: stockSnapshots.purcSchemeFree,
         recDate: stockSnapshots.recDate,
         asOfDate: stockSnapshots.asOfDate,
+        daysToExpiry: sql<number | null>`case when ${stockSnapshots.expDate} is null then null else (${stockSnapshots.expDate} - current_date)::int end`,
         branchId: stockSnapshots.branchId,
         branchName: branches.name,
       })
@@ -504,7 +578,9 @@ export async function getTotalStockValue(filters: ReportFilters): Promise<number
  * single-day column (not a from/to range like Sales/Purchase), so this is a plain range check.
  */
 function stockFilterClauses(filters: ReportFilters): SQL[] {
-  const clauses = [branchFilter(stockSnapshots.branchId, filters), itemFilter(stockSnapshots.itemName, filters)].filter((c): c is SQL => c !== undefined)
+  const clauses = [branchFilter(stockSnapshots.branchId, filters), itemFilter(stockSnapshots.itemName, filters), expiryTierFilter(filters)].filter(
+    (c): c is SQL => c !== undefined,
+  )
   if (filters.company) clauses.push(eq(stockSnapshots.company, filters.company))
   if (filters.dateFrom) clauses.push(gte(stockSnapshots.asOfDate, filters.dateFrom))
   if (filters.dateTo) clauses.push(lte(stockSnapshots.asOfDate, filters.dateTo))

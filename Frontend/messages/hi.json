@@ -132,11 +132,9 @@
   },
   "Reports": {
     "sales": {
-      "title": "आइटम-वार बिक्री",
-      "description": "आयातित अवधि के लिए आइटम के अनुसार बिक्री। सेल रजिस्टर मार्ग द्वारा प्रति-दिन नहीं, बल्कि अवधि-समुच्चित है — दिन-प्रतिदिन रुझान के लिए डैशबोर्ड का दैनिक कलेक्शन चार्ट उपयोग करें।",
-      "qtySold": "बिकी मात्रा",
-      "returnQty": "वापसी मात्रा",
-      "returnAmount": "वापसी राशि",
+      "title": "बिक्री रिपोर्ट",
+      "description": "पार्टी/आइटम-वार बिक्री विवरण, प्रति पंक्ति एक आइटम — खरीद और स्टॉक जैसा ही, समुच्चित नहीं।",
+      "party": "पार्टी",
       "emptyText": "कोई बिक्री डेटा नहीं — पहले एक सेल रजिस्टर फ़ाइल आयात करें।"
     },
     "stock": {
@@ -162,6 +160,15 @@
       "purcSchemeDeal": "पर्च. स्कीम डील",
       "purcSchemeFree": "पर्च. स्कीम फ्री",
       "recDate": "प्राप्ति तिथि",
+      "daysToExpiry": "समाप्ति में",
+      "expired": "समाप्त",
+      "expiryTierExpired": "समाप्त हो चुका",
+      "expiryTierLte30": "30 दिनों के भीतर",
+      "expiryTier31to60": "31 – 60 दिन",
+      "expiryTier61to90": "61 – 90 दिन",
+      "expiryTierGt90": "90+ दिन",
+      "expiryTierNone": "समाप्ति तिथि नहीं",
+      "expiryTierPlaceholder": "सभी समाप्ति",
       "emptyText": "कोई स्टॉक डेटा नहीं — पहले एक स्टॉक रजिस्टर फ़ाइल आयात करें।"
     },
     "purchase": {
@@ -233,7 +240,21 @@
     },
     "importSuccess": "{fileName} से {rowCount} पंक्तियाँ आयात हुईं",
     "importSuccessReplaced": "{fileName} से {rowCount} पंक्तियाँ आयात हुईं (पिछला आयात बदला गया)",
-    "importFailed": "आयात विफल"
+    "importFailed": "आयात विफल",
+    "statusProcessing": "प्रोसेसिंग",
+    "statusCompleted": "पूर्ण",
+    "statusFailed": "विफल",
+    "bulkUpload": "बल्क अपलोड",
+    "bulkUploadTitle": "बल्क अपलोड",
+    "bulkUploadSubtitle": "एक साथ कई Stock/Purchase/Sales/Day-Wise Sale फ़ाइलें चुनें — हर फ़ाइल का प्रकार स्वतः पहचाना जाएगा। हर फ़ाइल फिर भी एक ही दिन की होनी चाहिए।",
+    "bulkUploadDropzoneTitle": "फ़ाइलें यहाँ खींचें, या ब्राउज़ करने के लिए क्लिक करें",
+    "bulkUploadDropzoneHint": ".xls या .xlsx — Stock, Purchase, Sales, Day-Wise Sale का कोई भी मिश्रण",
+    "bulkUploadSubmit": "अपलोड करें",
+    "bulkUploadFilesSelected": "{count} फ़ाइल चुनी गईं",
+    "bulkUploadAllAccepted": "सभी {count} फ़ाइलें स्वीकृत — बैकग्राउंड में प्रोसेस हो रही हैं",
+    "bulkUploadSomeRejected": "{accepted} फ़ाइलें स्वीकृत, {rejected} अस्वीकृत — नीचे विवरण देखें",
+    "bulkUploadAcceptedHeading": "स्वीकृत ({count}) — प्रोसेसिंग",
+    "bulkUploadRejectedHeading": "अस्वीकृत ({count})"
   },
   "Branches": {
     "title": "शाखाएं",

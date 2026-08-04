@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 
-import { CustomPageHeader, CustomTable } from "@/components/ui"
+import { CustomPageHeader, CustomStickyBar, CustomTable } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency } from "@/utils/formatting"
 import { ReportFilterPanel } from "../components/filters"
@@ -24,9 +24,10 @@ export function DaySalesReportPage() {
 
   return (
     <div className="space-y-4">
-      <CustomPageHeader title={t("title")} description={t("description")} />
-
-      <ReportFilterPanel filters={filters} onFiltersChange={updateFilters} show={{ branch: true, dateRange: true }} />
+      <CustomStickyBar>
+        <CustomPageHeader title={t("title")} description={t("description")} />
+        <ReportFilterPanel filters={filters} onFiltersChange={updateFilters} show={{ branch: true, dateRange: true }} />
+      </CustomStickyBar>
 
       <CustomTable<DaySalesDetailRow>
         columns={[

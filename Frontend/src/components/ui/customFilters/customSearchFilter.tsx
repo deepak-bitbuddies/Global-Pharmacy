@@ -12,6 +12,10 @@ type CustomSearchFilterProps = {
   ariaLabel?: string;
   debounceMs?: number;
   className?: string;
+  /** Overrides the outer field-group's className entirely — see `CustomInput`'s `wrapperClassName`. */
+  wrapperClassName?: string;
+  /** Default: true. Set false when this needs to size to its own content instead (e.g. a compact chip inside a flex filter row). */
+  fullWidth?: boolean;
 };
 
 export const CustomSearchFilter = ({
@@ -21,6 +25,8 @@ export const CustomSearchFilter = ({
   ariaLabel,
   debounceMs = 300,
   className,
+  wrapperClassName,
+  fullWidth = true,
 }: CustomSearchFilterProps) => {
   const [inputValue, setInputValue] = useState(value);
   const debounced = useDebounce(inputValue, debounceMs);
@@ -40,7 +46,8 @@ export const CustomSearchFilter = ({
       ariaLabel={ariaLabel ?? placeholder}
       startContent={<MagnifyingGlassIcon className="size-4" />}
       className={className}
-      fullWidth
+      wrapperClassName={wrapperClassName}
+      fullWidth={fullWidth}
     />
   );
 };

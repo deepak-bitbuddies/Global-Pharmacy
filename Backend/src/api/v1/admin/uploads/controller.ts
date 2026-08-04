@@ -1,14 +1,15 @@
 import type { FastifyReply, FastifyRequest } from "fastify"
+import type { MultipartFile } from "@fastify/multipart"
 
 import { sendSuccess } from "../../../../shared/helpers/http-response.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
 import { ForbiddenError } from "../../../../shared/errors/index.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
-import { cycleStatusQuerySchema, listImportBatchesQuerySchema, uploadFileTypeSchema } from "./schema.js"
+import { bulkUploadBranchSchema, cycleStatusQuerySchema, listImportBatchesQuerySchema, uploadFileTypeSchema } from "./schema.js"
 import { MissingFileError } from "./errors.js"
-import { getImportBatches, getUploadCycleStatus, importFile } from "./service.js"
+import { bulkImportFiles, getImportBatches, getUploadCycleStatus, importFile } from "./service.js"
 
-function readMultipartField(file: NonNullable<Awaited<ReturnType<FastifyRequest["file"]>>>, name: string): string | undefined {
+function readMultipartField(file: MultipartFile, name: string): string | undefined {
   const field = file.fields[name]
   return !Array.isArray(field) && field?.type === "field" ? String(field.value) : undefined
 }
@@ -32,9 +33,26 @@ export async function uploadFileHandler(request: FastifyRequest, reply: FastifyR
   const branchId = resolveBranchScope(request, requestedBranchId)
 
   const buffer = await file.toBuffer()
-  const result = await importFile({ fileType, branchId: branchId!, fileName: file.filename, buffer })
+  const result = await importFile({ fileType, branchId: branchId!, fileName: file.filename, buffer, actorRole: request.user.role as SystemRoleCode })
 
   sendSuccess(reply, result, result.replaced ? "File re-imported (previous data replaced)" : "File imported successfully")
+}
+
+/** Multi-file bulk import — `super_admin` only (enforced in `routes.ts`), so there's no per-file role check to make here; each file's type is auto-detected from its own content instead of a client-supplied `fileType`. */
+export async function bulkUploadFileHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const files: { fileName: string; buffer: Buffer }[] = []
+  let branchId: string | undefined
+
+  for await (const file of request.files()) {
+    branchId = readMultipartField(file, "branchId") ?? branchId
+    files.push({ fileName: file.filename, buffer: await file.toBuffer() })
+  }
+
+  if (files.length === 0) throw new MissingFileError()
+  const { branchId: validBranchId } = validateSchema(bulkUploadBranchSchema, { branchId })
+
+  const result = await bulkImportFiles(validBranchId, files)
+  sendSuccess(reply, result, `${result.accepted.length} file(s) accepted for processing, ${result.rejected.length} rejected`, 202)
 }
 
 export async function listImportBatchesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {

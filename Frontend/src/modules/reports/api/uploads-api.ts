@@ -1,5 +1,5 @@
 import { api } from "@/lib/axios"
-import type { ImportBatch, ImportFileType, UploadCycleStatus, UploadResult } from "../types"
+import type { BulkUploadResult, ImportBatch, ImportFileType, UploadCycleStatus, UploadResult } from "../types"
 
 export async function uploadFile(fileType: ImportFileType, branchId: string, file: File): Promise<UploadResult> {
   const formData = new FormData()
@@ -8,6 +8,18 @@ export async function uploadFile(fileType: ImportFileType, branchId: string, fil
   formData.append("file", file)
 
   const { data } = await api.post<{ data: UploadResult }>("/admin/uploads", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  })
+  return data.data
+}
+
+/** Multi-file bulk import (super_admin only) — each file's type is auto-detected server-side, no per-file `fileType` field. */
+export async function bulkUploadFiles(branchId: string, files: File[]): Promise<BulkUploadResult> {
+  const formData = new FormData()
+  formData.append("branchId", branchId)
+  for (const file of files) formData.append("files", file)
+
+  const { data } = await api.post<{ data: BulkUploadResult }>("/admin/uploads/bulk", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   })
   return data.data

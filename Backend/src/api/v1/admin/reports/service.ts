@@ -14,6 +14,7 @@ import type {
   PurchaseDetailRowDto,
   PurchaseSummaryRowDto,
   ReportFilters,
+  SalesDetailRowDto,
   StockByCompanyRowDto,
   StockRowDto,
   StockSummaryDto,
@@ -31,6 +32,7 @@ import {
   getOutstanding,
   getPurchaseDetail,
   getPurchaseSummary,
+  getSalesDetail,
   getStockReport,
   getStockSummary,
   getStockValueByCompany,
@@ -55,6 +57,27 @@ export async function itemWiseSales(filters: ReportFilters, pagination: CursorPa
       totalAmount: num(row.totalAmount),
       returnQty: num(row.returnQty),
       returnAmount: num(row.returnAmount),
+    })),
+  }
+}
+
+export async function salesDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<SalesDetailRowDto>> {
+  const { rows, ...page } = await getSalesDetail(filters, pagination)
+  return {
+    ...page,
+    rows: rows.map((row) => ({
+      id: row.id,
+      partyGroup: row.partyGroup,
+      itemNameRaw: row.itemNameRaw,
+      packSizeRaw: row.packSizeRaw,
+      qty: row.qty === null ? null : num(row.qty),
+      unit: row.unit,
+      rate: row.rate === null ? null : num(row.rate),
+      amount: num(row.amount),
+      company: row.company,
+      branchId: row.branchId,
+      branchName: row.branchName,
+      date: row.date,
     })),
   }
 }
@@ -146,6 +169,7 @@ export async function stockReport(filters: ReportFilters, pagination: CursorPagi
       purcSchemeFree: row.purcSchemeFree === null ? null : num(row.purcSchemeFree),
       recDate: row.recDate,
       asOfDate: row.asOfDate,
+      daysToExpiry: row.daysToExpiry,
       branchId: row.branchId,
       branchName: row.branchName,
     })),

@@ -13,6 +13,7 @@ import {
   purchaseDetailQuerySchema,
   purchaseSummaryQuerySchema,
   reportFiltersSchema,
+  salesDetailQuerySchema,
   stockReportQuerySchema,
 } from "./schema.js"
 import {
@@ -29,6 +30,7 @@ import {
   outstanding,
   purchaseDetail,
   purchaseSummary,
+  salesDetail,
   stockReport,
   stockSummary,
   stockValueByCompany,
@@ -64,6 +66,13 @@ export async function itemWiseSalesHandler(request: FastifyRequest, reply: Fasti
   const { cursor, pageSize, ...rest } = validateSchema(itemWiseSalesQuerySchema, request.query)
   const filters = scopeToUserBranch(request, rest)
   const { rows, ...page } = await itemWiseSales(filters, { cursor, pageSize })
+  sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
+}
+
+export async function salesDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { cursor, pageSize, ...rest } = validateSchema(salesDetailQuerySchema, request.query)
+  const filters = scopeToUserBranch(request, rest)
+  const { rows, ...page } = await salesDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 

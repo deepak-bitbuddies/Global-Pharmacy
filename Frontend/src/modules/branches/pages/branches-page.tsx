@@ -13,6 +13,7 @@ import {
   CustomButton,
   CustomModal,
   CustomPageHeader,
+  CustomStickyBar,
   CustomTable,
   customToast,
   FormInput,
@@ -138,16 +139,18 @@ export function BranchesPage() {
 
   return (
     <div className="space-y-4">
-      <CustomPageHeader
-        title={t("title")}
-        description={t("description")}
-        actions={
-          <CustomButton onClick={openCreateForm}>
-            <PlusIcon className="size-4" />
-            {t("addBranch")}
-          </CustomButton>
-        }
-      />
+      <CustomStickyBar>
+        <CustomPageHeader
+          title={t("title")}
+          description={t("description")}
+          actions={
+            <CustomButton onClick={openCreateForm}>
+              <PlusIcon className="size-4" />
+              {t("addBranch")}
+            </CustomButton>
+          }
+        />
+      </CustomStickyBar>
 
       <CustomTable<Branch>
         columns={[

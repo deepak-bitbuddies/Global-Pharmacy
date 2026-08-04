@@ -2,11 +2,12 @@
 
 import { useTranslations } from "next-intl"
 
-import { CustomFilterBar, CustomSearchFilter } from "@/components/ui"
+import { CustomFilterBar, CustomSearchFilter, FILTER_TRIGGER_CLASSNAME } from "@/components/ui"
 import type { ReportFilters } from "../../types"
 import { BranchFilter } from "./branch-filter"
 import { CompanyFilter } from "./company-filter"
 import { ReportDateRangeFilter } from "./date-range-filter"
+import { ExpiryTierFilter } from "./expiry-tier-filter"
 import { SchemeTierFilter } from "./scheme-tier-filter"
 
 export type ReportFilterFlags = {
@@ -14,6 +15,7 @@ export type ReportFilterFlags = {
   branch?: boolean
   company?: boolean
   schemeTier?: boolean
+  expiryTier?: boolean
   dateRange?: boolean
 }
 
@@ -35,19 +37,22 @@ type ReportFilterPanelProps = {
 export function ReportFilterPanel({ filters, onFiltersChange, show, className }: ReportFilterPanelProps) {
   const tCommon = useTranslations("Common")
 
-  const hasFilterBarContent = show.branch || show.company || show.schemeTier || show.dateRange
+  const hasFilterBarContent = show.branch || show.company || show.schemeTier || show.expiryTier || show.dateRange
   if (!show.search && !hasFilterBarContent) return null
 
-  const hasActiveFilters = Boolean(filters.branchId || filters.dateFrom || filters.dateTo || filters.company || filters.item || filters.schemeTier)
+  const hasActiveFilters = Boolean(
+    filters.branchId || filters.dateFrom || filters.dateTo || filters.company || filters.item || filters.schemeTier || filters.expiryTier,
+  )
   const clearFilters = () => onFiltersChange(() => ({}))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {show.search && (
         <CustomSearchFilter
           placeholder={tCommon("searchItem")}
           value={filters.item}
           onChange={(value) => onFiltersChange((prev) => ({ ...prev, item: value || undefined }))}
+          wrapperClassName={FILTER_TRIGGER_CLASSNAME}
         />
       )}
       {hasFilterBarContent && (
@@ -56,6 +61,9 @@ export function ReportFilterPanel({ filters, onFiltersChange, show, className }:
           {show.company && <CompanyFilter value={filters.company} onChange={(company) => onFiltersChange((prev) => ({ ...prev, company }))} />}
           {show.schemeTier && (
             <SchemeTierFilter value={filters.schemeTier} onChange={(schemeTier) => onFiltersChange((prev) => ({ ...prev, schemeTier }))} />
+          )}
+          {show.expiryTier && (
+            <ExpiryTierFilter value={filters.expiryTier} onChange={(expiryTier) => onFiltersChange((prev) => ({ ...prev, expiryTier }))} />
           )}
           {show.dateRange && (
             <ReportDateRangeFilter

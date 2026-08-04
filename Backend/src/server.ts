@@ -3,17 +3,18 @@ import { connectDatabase, disconnectDatabase } from "./core/database/db.js"
 // import { redis } from "./core/cache/redis.js" // disabled until Redis is set up locally
 import { buildApp } from "./app.js"
 import { logger } from "./core/logger/logger.js"
+import { attachSocketServer } from "./core/realtime/socket.js"
 
-// Socket.io (real-time rider tracking) and BullMQ queues (notifications,
-// invoices, audit logs) are deferred along with the order/rider domains
-// they serve — reintroduce attachSocketServer() and the queue workers here
-// once those come back.
+// BullMQ queues (notifications, invoices, audit logs) are deferred along with the order/rider
+// domains they serve. Socket.io itself is back — see `core/realtime/socket.ts` — scoped for now
+// to bulk-import status pushes; broaden it if/when rider tracking returns.
 
 async function main(): Promise<void> {
   await connectDatabase()
 
   const fastify = await buildApp()
   await fastify.ready()
+  attachSocketServer(fastify)
 
   await fastify.listen({ host: env.HOST, port: env.PORT })
   logger.info(`Server listening on http://${env.HOST}:${env.PORT}`)

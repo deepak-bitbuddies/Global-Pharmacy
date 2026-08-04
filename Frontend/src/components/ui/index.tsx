@@ -49,6 +49,7 @@ export * from "./customSpinner/customSpinner";
 export * from "./customStatsCard/customStatsCard";
 export * from "./customStatsCard/customStatsGrid";
 export * from "./customStepper/customStepper";
+export * from "./customStickyBar/customStickyBar";
 export * from "./customSwitch/customSwitch";
 export * from "./customTable/customTable";
 export * from "./customTable/tableCellHelpers";

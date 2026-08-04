@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 
-import { CustomPageHeader, CustomTable } from "@/components/ui"
+import { CustomPageHeader, CustomStickyBar, CustomTable } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { ReportFilterPanel } from "../components/filters"
@@ -24,14 +24,14 @@ export function StockReportPage() {
 
   return (
     <div className="space-y-4">
-      <CustomPageHeader title={t("title")} description={t("description")} />
-
-      <ReportFilterPanel
-        filters={filters}
-        onFiltersChange={updateFilters}
-        show={{ search: true, branch: true, company: true, dateRange: true }}
-        className="sm:grid-cols-1! md:grid-cols-3!"
-      />
+      <CustomStickyBar>
+        <CustomPageHeader title={t("title")} description={t("description")} />
+        <ReportFilterPanel
+          filters={filters}
+          onFiltersChange={updateFilters}
+          show={{ search: true, branch: true, company: true, expiryTier: true, dateRange: true }}
+        />
+      </CustomStickyBar>
 
       <CustomTable<StockRow>
         // enableColumnVisibility
@@ -45,6 +45,7 @@ export function StockReportPage() {
           { key: "unit", label: tCommon("unit") },
           { key: "value", label: t("value"), sortable: true },
           { key: "expDate", label: t("expiry"), sortable: true },
+          { key: "daysToExpiry", label: t("daysToExpiry"), sortable: true },
           { key: "company", label: tCommon("company") },
           { key: "batch", label: t("batch") },
           { key: "costPrice", label: t("costPrice") },
@@ -80,6 +81,7 @@ export function StockReportPage() {
         }}
         renderCustomCell={(row, key) => {
           if (key === "currentStock") return formatNumber(row.currentStock)
+          if (key === "daysToExpiry") return row.daysToExpiry === null ? "-" : row.daysToExpiry < 0 ? t("expired") : `${row.daysToExpiry}d`
           const moneyKeys: (keyof StockRow)[] = ["value", "costPrice", "mrp", "purchasePrice", "salesPrice"]
           const qtyKeys: (keyof StockRow)[] = ["salesSchemeDeal", "salesSchemeFree", "purcSchemeDeal", "purcSchemeFree"]
           if (moneyKeys.includes(key)) {

@@ -6,6 +6,7 @@ export const reportsQueryKeys = {
   companies: ["reports", "companies"] as const,
   dashboardSummary: (filters: ReportFilters) => ["reports", "dashboard-summary", filters] as const,
   itemWiseSales: (filters: ReportFilters, pagination: CursorPaginationParams) => ["reports", "item-wise-sales", filters, pagination] as const,
+  salesDetail: (filters: ReportFilters, pagination: CursorPaginationParams) => ["reports", "sales-detail", filters, pagination] as const,
   branchSales: (filters: ReportFilters) => ["reports", "branch-sales", filters] as const,
   grossProfit: (filters: ReportFilters, pagination: CursorPaginationParams) => ["reports", "gross-profit", filters, pagination] as const,
   purchaseSummary: (filters: ReportFilters, pagination: CursorPaginationParams) => ["reports", "purchase-summary", filters, pagination] as const,

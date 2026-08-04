@@ -1,4 +1,5 @@
 import { ValidationError } from "../../../../shared/errors/index.js"
+import { REPORT_KIND_LABEL, type ReportKind } from "./parsers/parse-utils.js"
 
 export class MissingFileError extends ValidationError {
   constructor() {
@@ -28,5 +29,12 @@ export class MultiDayFileError extends ValidationError {
 export class OutOfSequenceError extends ValidationError {
   constructor(message: string) {
     super(message)
+  }
+}
+
+/** Thrown when a file's own title row identifies it as a different report than the section it was uploaded under (e.g. a Purchase Register uploaded as Sales). */
+export class WrongFileTypeError extends ValidationError {
+  constructor(expectedKind: ReportKind, detectedKind: ReportKind) {
+    super(`This file looks like a ${REPORT_KIND_LABEL[detectedKind]}, not a ${REPORT_KIND_LABEL[expectedKind]} — please upload it under the correct section.`)
   }
 }

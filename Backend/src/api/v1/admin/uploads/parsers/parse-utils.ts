@@ -1,3 +1,5 @@
+import * as XLSX from "xlsx"
+
 export type SheetRow = string[]
 
 const MONTHS: Record<string, string> = {
@@ -80,6 +82,43 @@ export function extractLetterhead(rows: SheetRow[]): BranchHeader {
 /** Stock export only has one letterhead line: "<name>   <address>" (row 0). */
 export function extractStockBranchHeader(rows: SheetRow[]): Pick<BranchHeader, "name" | "address"> {
   return splitNameAndAddress(collapseWhitespace(rows[0]?.[0] ?? ""))
+}
+
+export type ReportKind = "stock" | "sales" | "purchase" | "day_wise_sale"
+
+export const REPORT_KIND_LABEL: Record<ReportKind, string> = {
+  stock: "Stock Register",
+  sales: "Sales Register",
+  purchase: "Purchase Register",
+  day_wise_sale: "Day-Wise Sale",
+}
+
+/**
+ * Sniffs which Marg export a file is, from its title rows — Stock's "STOCK REPORT AS ON DATE"
+ * (row 1), Day-Wise Sale's "SALES BOOK" (row 6), and Sale/Purchase's "PARTY / ITEM WISE ...
+ * SUMMARY" (row 6, "SALES SUMMARY" vs "PURCHASE SUMMARY"). Lets an upload be blocked from
+ * landing under the wrong section (e.g. a Purchase Register uploaded as Sales) instead of
+ * silently importing under the wrong file type. Returns null for anything that doesn't match one
+ * of the four known titles — callers should let parsing continue as normal in that case rather
+ * than block a format this sniff doesn't recognize.
+ */
+export function detectReportKind(rows: SheetRow[]): ReportKind | null {
+  if (/STOCK REPORT/i.test(rows[1]?.[0] ?? "")) return "stock"
+
+  const titleLine = rows[6]?.[0] ?? ""
+  if (/SALES BOOK/i.test(titleLine)) return "day_wise_sale"
+  if (/PURCHASE SUMMARY/i.test(titleLine)) return "purchase"
+  if (/SALES SUMMARY/i.test(titleLine)) return "sales"
+
+  return null
+}
+
+/** Same as `detectReportKind`, but reads the workbook itself — for callers (the upload service) that only have the raw buffer, not already-parsed rows. */
+export function sniffReportKind(buffer: Buffer): ReportKind | null {
+  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false })
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  const rows: SheetRow[] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" })
+  return detectReportKind(rows)
 }
 
 function splitNameAndAddress(line: string): { name: string; address: string | null } {

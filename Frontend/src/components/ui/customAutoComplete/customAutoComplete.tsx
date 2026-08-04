@@ -85,6 +85,8 @@ export type CustomAutoCompleteProps<T> = {
   /** Custom render function for selected value(s) in the input. For multi-select, receives the selected item. */
   renderValue?: (item: T) => ReactNode;
   showClearButton?: boolean;
+  /** Overrides the trigger box's className entirely (border/background/rounding) — e.g. a crisper, thinner-bordered look for toolbar filters. Defaults to the standard form-field trigger style. */
+  triggerClassName?: string;
 };
 
 /**
@@ -317,7 +319,7 @@ export function CustomAutoComplete<T>({
       }}
     >
       {props.label && <Label>{props.label}</Label>}
-      <Autocomplete.Trigger className={`border-default rounded-app border-2`}>
+      <Autocomplete.Trigger className={props.triggerClassName ?? "border-default rounded-app border-2"}>
         {props.isLoading && (
           <CustomSpinner size={CustomSize.sm} className="mx-1 self-center" />
         )}

@@ -5,7 +5,9 @@ import { useTranslations } from "next-intl"
 
 import { BuildingsIcon, CheckCircleIcon, InfoIcon } from "@phosphor-icons/react"
 
-import { CustomCard, CustomEmptyState, CustomPageHeader, CustomSelect, CustomSpinner, CustomTabs } from "@/components/ui"
+import { CustomCard, CustomEmptyState, CustomPageHeader, CustomSelect, CustomSpinner, CustomStickyBar, CustomTabs } from "@/components/ui"
+import { useAuthStore } from "@/providers"
+import { BulkUploadModal } from "../components/bulk-upload-modal"
 import { UploadTypePanel } from "../components/upload-type-panel"
 import { useBranches } from "../hooks/use-reports"
 import { useUploadCycleStatus } from "../hooks/use-uploads"
@@ -23,6 +25,7 @@ function cycleMessage(status: UploadCycleStatus, t: (key: string, values?: Recor
 export function ImportPage() {
   const t = useTranslations("Import")
   const tCommon = useTranslations("Common")
+  const role = useAuthStore((state) => state.user?.role)
   const { data: branches, isLoading: isBranchesLoading } = useBranches()
   const [manualBranchId, setManualBranchId] = useState<string | undefined>(undefined)
 
@@ -42,7 +45,12 @@ export function ImportPage() {
 
   return (
     <div className="space-y-4">
-      <CustomPageHeader title={t("title")} description={t("description")} />
+      <CustomStickyBar>
+        <div className="flex items-start justify-between gap-4">
+          <CustomPageHeader title={t("title")} description={t("description")} />
+          {role === "super_admin" && branchId && <BulkUploadModal branchId={branchId} />}
+        </div>
+      </CustomStickyBar>
 
       {isBranchesLoading ? (
         <div className="flex items-center justify-center py-16">
