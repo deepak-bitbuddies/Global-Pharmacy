@@ -2,13 +2,10 @@
 
 import { useTranslations } from "next-intl"
 
-import { CustomFilterBar, CustomSearchFilter, FILTER_TRIGGER_CLASSNAME } from "@/components/ui"
+import { CustomSearchFilter } from "@/components/ui"
 import type { ReportFilters } from "../../types"
-import { BranchFilter } from "./branch-filter"
-import { CompanyFilter } from "./company-filter"
-import { ReportDateRangeFilter } from "./date-range-filter"
-import { ExpiryTierFilter } from "./expiry-tier-filter"
-import { SchemeTierFilter } from "./scheme-tier-filter"
+import { FilterChips } from "./filter-chips"
+import { FilterModal } from "./filter-modal"
 
 export type ReportFilterFlags = {
   search?: boolean
@@ -24,56 +21,52 @@ type ReportFilterPanelProps = {
   onFiltersChange: (updater: (prev: ReportFilters) => ReportFilters) => void
   /** Which filter controls to render — flip these per page instead of hand-wiring each filter. */
   show: ReportFilterFlags
-  /** Forwarded to the underlying `CustomFilterBar` — e.g. a grid-cols override for 3+ filters. */
-  className?: string
 }
 
 /**
  * Single configurable filter panel shared by every report/dashboard page. Each page just
- * declares which filters it needs via `show`; this handles fetching, options, layout, and
- * wiring them into `filters`/`onFiltersChange` identically everywhere instead of every page
- * re-implementing its own combination of Branch/Company/Scheme %/Date range controls.
+ * declares which filters it needs via `show`; this handles fetching, options, and wiring them
+ * into `filters`/`onFiltersChange` identically everywhere instead of every page re-implementing
+ * its own combination of Branch/Company/Scheme %/Expiry/Date range controls.
+ *
+ * Layout: the search box (if `show.search`) stays directly on the page; every other filter lives
+ * behind a "Filters" button that opens `FilterModal` (staged edits, Apply/Cancel); active filters
+ * show as removable chips via `FilterChips` underneath.
  */
-export function ReportFilterPanel({ filters, onFiltersChange, show, className }: ReportFilterPanelProps) {
+export function ReportFilterPanel({ filters, onFiltersChange, show }: ReportFilterPanelProps) {
   const tCommon = useTranslations("Common")
 
-  const hasFilterBarContent = show.branch || show.company || show.schemeTier || show.expiryTier || show.dateRange
-  if (!show.search && !hasFilterBarContent) return null
+  const hasFilterModalContent = show.branch || show.company || show.schemeTier || show.expiryTier || show.dateRange
+  if (!show.search && !hasFilterModalContent) return null
 
-  const hasActiveFilters = Boolean(
-    filters.branchId || filters.dateFrom || filters.dateTo || filters.company || filters.item || filters.schemeTier || filters.expiryTier,
-  )
-  const clearFilters = () => onFiltersChange(() => ({}))
+  const activeCount = [
+    show.branch && filters.branchId,
+    show.company && filters.company,
+    show.schemeTier && filters.schemeTier,
+    show.expiryTier && filters.expiryTier,
+    show.dateRange && filters.dateFrom && filters.dateTo,
+  ].filter(Boolean).length
 
   return (
     <div className="space-y-2">
-      {show.search && (
-        <CustomSearchFilter
-          placeholder={tCommon("searchItem")}
-          value={filters.item}
-          onChange={(value) => onFiltersChange((prev) => ({ ...prev, item: value || undefined }))}
-          wrapperClassName={FILTER_TRIGGER_CLASSNAME}
-        />
-      )}
-      {hasFilterBarContent && (
-        <CustomFilterBar className={className} onReset={hasActiveFilters ? clearFilters : undefined}>
-          {show.branch && <BranchFilter value={filters.branchId} onChange={(branchId) => onFiltersChange((prev) => ({ ...prev, branchId }))} />}
-          {show.company && <CompanyFilter value={filters.company} onChange={(company) => onFiltersChange((prev) => ({ ...prev, company }))} />}
-          {show.schemeTier && (
-            <SchemeTierFilter value={filters.schemeTier} onChange={(schemeTier) => onFiltersChange((prev) => ({ ...prev, schemeTier }))} />
-          )}
-          {show.expiryTier && (
-            <ExpiryTierFilter value={filters.expiryTier} onChange={(expiryTier) => onFiltersChange((prev) => ({ ...prev, expiryTier }))} />
-          )}
-          {show.dateRange && (
-            <ReportDateRangeFilter
-              dateFrom={filters.dateFrom}
-              dateTo={filters.dateTo}
-              onChange={({ dateFrom, dateTo }) => onFiltersChange((prev) => ({ ...prev, dateFrom, dateTo }))}
+      <div className="flex items-center gap-2">
+        {show.search && (
+          <div className="min-w-0 flex-1">
+            <CustomSearchFilter
+              placeholder={tCommon("searchItem")}
+              value={filters.item}
+              onChange={(value) => onFiltersChange((prev) => ({ ...prev, item: value || undefined }))}
+              wrapperClassName="rounded-app border border-default bg-card transition-colors hover:bg-card"
             />
-          )}
-        </CustomFilterBar>
-      )}
+          </div>
+        )}
+        {hasFilterModalContent && (
+          <div className="shrink-0">
+            <FilterModal filters={filters} onFiltersChange={onFiltersChange} show={show} activeCount={activeCount} />
+          </div>
+        )}
+      </div>
+      <FilterChips filters={filters} onFiltersChange={onFiltersChange} show={show} />
     </div>
   )
 }

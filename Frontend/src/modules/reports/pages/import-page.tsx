@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl"
 
 import { BuildingsIcon, CheckCircleIcon, InfoIcon } from "@phosphor-icons/react"
 
-import { CustomCard, CustomEmptyState, CustomPageHeader, CustomSelect, CustomSpinner, CustomStickyBar, CustomTabs } from "@/components/ui"
+import { CustomCard, CustomEmptyState, CustomPageHeader, CustomSelect, CustomSpinner, CustomTabs } from "@/components/ui"
 import { useAuthStore } from "@/providers"
 import { BulkUploadModal } from "../components/bulk-upload-modal"
 import { UploadTypePanel } from "../components/upload-type-panel"
@@ -45,12 +45,10 @@ export function ImportPage() {
 
   return (
     <div className="space-y-4">
-      <CustomStickyBar>
-        <div className="flex items-start justify-between gap-4">
-          <CustomPageHeader title={t("title")} description={t("description")} />
-          {role === "super_admin" && branchId && <BulkUploadModal branchId={branchId} />}
-        </div>
-      </CustomStickyBar>
+      <div className="flex items-start justify-between gap-4">
+        <CustomPageHeader title={t("title")} description={t("description")} />
+        {role === "super_admin" && branchId && <BulkUploadModal branchId={branchId} />}
+      </div>
 
       {isBranchesLoading ? (
         <div className="flex items-center justify-center py-16">

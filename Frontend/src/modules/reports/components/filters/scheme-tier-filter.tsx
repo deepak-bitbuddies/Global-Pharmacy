@@ -6,22 +6,17 @@ import { useTranslations } from "next-intl"
 import { CustomSelectFilter } from "@/components/ui"
 import type { SchemeTier } from "../../types"
 
-type SchemeTierOption = { id: SchemeTier; label: string }
-
-type SchemeTierFilterProps = {
-  value?: SchemeTier
-  onChange: (schemeTier: SchemeTier | undefined) => void
-}
+export type SchemeTierOption = { id: SchemeTier; label: string }
 
 /**
- * Shared Scheme % filter dropdown (Purchase Report). Fixed tiers, not fetched — scheme % is a
- * continuous number so this needs preset buckets rather than one option per distinct value.
+ * Shared Scheme % tier option list + labels — used by both the dropdown (`SchemeTierFilter`) and
+ * the active-filter chip label lookup (`FilterChips`), so they can never drift apart.
  * Boundaries must match the backend's schemeTierFilter in reports/repository.ts.
  */
-export function SchemeTierFilter({ value, onChange }: SchemeTierFilterProps) {
+export function useSchemeTierOptions(): SchemeTierOption[] {
   const t = useTranslations("Reports.purchase")
 
-  const schemeTierOptions = useMemo<SchemeTierOption[]>(
+  return useMemo<SchemeTierOption[]>(
     () => [
       { id: "none", label: t("schemeTierNone") },
       { id: "lt5", label: t("schemeTierLt5") },
@@ -34,6 +29,17 @@ export function SchemeTierFilter({ value, onChange }: SchemeTierFilterProps) {
     ],
     [t],
   )
+}
+
+type SchemeTierFilterProps = {
+  value?: SchemeTier
+  onChange: (schemeTier: SchemeTier | undefined) => void
+}
+
+/** Shared Scheme % filter dropdown (Purchase Report). Fixed tiers, not fetched — scheme % is a continuous number so this needs preset buckets rather than one option per distinct value. */
+export function SchemeTierFilter({ value, onChange }: SchemeTierFilterProps) {
+  const t = useTranslations("Reports.purchase")
+  const schemeTierOptions = useSchemeTierOptions()
   const selected = schemeTierOptions.find((option) => option.id === value)
 
   return (

@@ -4,7 +4,7 @@ import { CustomSize } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { Selection, SortDescriptor } from "@heroui/react";
 import { Checkbox, Label, Table } from "@heroui/react";
-import { ArrowDownIcon, ClipboardTextIcon, ColumnsIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ClipboardTextIcon, ColumnsIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { ReactNode, useCallback, useMemo, useState } from "react";
 import { CustomAppIcon } from "../customAppIcon/customAppIcon";
@@ -197,9 +197,27 @@ type CustomTableProps<T extends object> = {
   /**
    * Prevents header labels and cell content from wrapping (keeps every
    * column to a single line, relying on the table's horizontal scroll for
-   * overflow). Defaults to false.
+   * overflow). Defaults to true — pass `false` for a table that should wrap
+   * instead.
    */
   noWrap?: boolean;
+  /**
+   * True when the query backing `data` failed — shows a distinct "something
+   * went wrong" empty state instead of the generic "no data" one, so a fetch
+   * error is never confused with a genuinely empty table. Defaults to false.
+   */
+  isError?: boolean;
+  /**
+   * Caps the table at its parent's available height (which must itself have
+   * a real, bounded height — e.g. a flex child with `min-h-0`) instead of
+   * always growing to fill it — a short/empty table stays its natural size,
+   * a long one scrolls its own body between the column header and the
+   * pagination footer rather than growing the page. Also defaults
+   * `isHeaderSticky` to `true` (still overridable) so the column header
+   * stays put while that body scrolls. Defaults to false — every other
+   * consumer is unaffected.
+   */
+  fillHeight?: boolean;
 };
 
 /**
@@ -242,6 +260,7 @@ export const CustomTable = <T extends object>({
   onPageChange,
   onRowsPerPageChange,
   onSortChange,
+  noWrap = true,
   ...props
 }: CustomTableProps<T>) => {
   const t = useTranslations();
@@ -398,7 +417,7 @@ export const CustomTable = <T extends object>({
 
   const bottomContent = useMemo(() => {
     return (
-      <div className="flex w-full flex-wrap items-center justify-between gap-4 px-2 py-2">
+      <div className="flex w-full flex-wrap items-center justify-between gap-4">
         <div className="flex flex-row items-center gap-2">
           <Label>{t("Show")}</Label>
           <CustomSelect
@@ -471,7 +490,10 @@ export const CustomTable = <T extends object>({
 
   return (
     <Table
-      className="w-full max-w-[calc(100vw-32px)] lg:max-w-[calc(100vw-128px)]"
+      className={cn(
+        "w-full max-w-[calc(100vw-32px)] lg:max-w-[calc(100vw-128px)]",
+        props.fillHeight && "flex min-h-0 shrink flex-col",
+      )}
     >
       {(props.onGlobalFilterChange || props.bulkActions || props.enableColumnVisibility) && (
         <div className="flex items-center justify-between gap-2 pb-3">
@@ -535,7 +557,7 @@ export const CustomTable = <T extends object>({
         </div>
       )}
       <div>{props.topContent}</div>
-      <Table.ScrollContainer>
+      <Table.ScrollContainer className={cn(props.fillHeight && "min-h-0 flex-1 overflow-y-auto")}>
         <Table.Content
           aria-label="Table with selection"
           selectionMode={selectionMode}
@@ -546,11 +568,11 @@ export const CustomTable = <T extends object>({
           onSortChange={handleSortChange}
           className={cn(
             props.isCompact && "[&_td]:py-1.5 [&_th]:py-1.5",
-            props.noWrap && "[&_td]:text-nowrap [&_th]:text-nowrap",
+            noWrap && "[&_td]:text-nowrap [&_th]:text-nowrap",
           )}
         >
           <Table.Header
-            className={cn(props.isHeaderSticky && "sticky top-0 z-10 bg-background")}
+            className={cn((props.isHeaderSticky ?? props.fillHeight) && "sticky top-0 z-10")}
           >
             {selectionMode === TableSelectionModeEnum.Multiple && (
               <Table.Column className="w-12 pr-0">
@@ -623,7 +645,9 @@ export const CustomTable = <T extends object>({
           ) : (
             <Table.Body
               renderEmptyState={() =>
-                props.emptyText ? (
+                props.isError ? (
+                  <CustomEmptyState icon={WarningCircleIcon} title={t("DataLoadError")} />
+                ) : props.emptyText ? (
                   <CustomEmptyState
                     icon={ClipboardTextIcon}
                     title={props.emptyText ?? t("DataNotAvailable")}
@@ -673,7 +697,7 @@ export const CustomTable = <T extends object>({
           )}
         </Table.Content>
       </Table.ScrollContainer>
-      {showPagination && <Table.Footer>{bottomContent}</Table.Footer>}
+      {showPagination && <Table.Footer className="px-2 py-1.5">{bottomContent}</Table.Footer>}
     </Table>
   );
 };

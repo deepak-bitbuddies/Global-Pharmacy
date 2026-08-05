@@ -50,11 +50,13 @@ export function DashboardShell({
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
-        {/* The one scroll container for all dashboard page content — lets any page pin part of
-            itself (e.g. `CustomStickyBar`) via plain `sticky top-0`, since there's a single,
-            well-defined scrolling ancestor instead of the whole document scrolling. */}
+        {/* The one scroll container for all dashboard page content. `h-full` on the inner wrapper
+            gives pages a real height to fill: one that opts into `CustomTable`'s `fillHeight` can
+            size itself to exactly this space and scroll its own body, instead of the whole page
+            scrolling — pages that don't opt in are unaffected, since actual overflow (and this
+            `overflow-y-auto`) is driven by rendered content size, not the declared height. */}
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-screen-2xl px-4">
+          <div className="mx-auto h-full max-w-screen-2xl px-4 pt-4">
             {children}
           </div>
         </main>

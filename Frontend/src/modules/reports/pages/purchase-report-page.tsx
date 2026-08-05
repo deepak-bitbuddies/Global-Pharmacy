@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 
-import { CustomPageHeader, CustomStickyBar, CustomTable } from "@/components/ui"
+import { CustomPageHeader, CustomTable } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { ReportFilterPanel } from "../components/filters"
@@ -15,7 +15,7 @@ export function PurchaseReportPage() {
   const tCommon = useTranslations("Common")
   const [filters, setFilters] = useState<ReportFilters>({})
   const pagination = useCursorPagination()
-  const { data, isLoading } = usePurchaseDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
+  const { data, isLoading, isError } = usePurchaseDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
 
   const updateFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
     setFilters(updater)
@@ -23,17 +23,19 @@ export function PurchaseReportPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <CustomStickyBar>
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <div className="shrink-0 space-y-2">
         <CustomPageHeader title={t("title")} description={t("description")} />
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}
           show={{ search: true, branch: true, company: true, schemeTier: true, dateRange: true }}
         />
-      </CustomStickyBar>
+      </div>
 
       <CustomTable<PurchaseDetailRow>
+        fillHeight
+        isError={isError}
         columns={[
           { key: "date", label: tCommon("date"), sortable: true },
           { key: "branchName", label: tCommon("branch") },

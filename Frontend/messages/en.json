@@ -3,9 +3,14 @@
   "Show": "Show",
   "entries": "entries",
   "DataNotAvailable": "No data available",
+  "DataLoadError": "Something went wrong loading this data",
   "Close": "Close",
   "Done": "Done",
   "Reset": "Reset",
+  "Apply": "Apply",
+  "Cancel": "Cancel",
+  "Filters": "Filters",
+  "ClearAllFilters": "Clear all",
   "Search": "Search",
   "Columns": "Columns",
   "ShowAll": "Show all",
@@ -169,6 +174,7 @@
       "expiryTierGt90": "90+ days",
       "expiryTierNone": "No expiry set",
       "expiryTierPlaceholder": "All expiry",
+      "expiryTierCustom": "Custom range",
       "emptyText": "No stock data — import a Stock Register file first."
     },
     "purchase": {

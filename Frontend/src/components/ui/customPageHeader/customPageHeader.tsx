@@ -23,9 +23,9 @@ export const CustomPageHeader = ({
 }: CustomPageHeaderProps) => {
   return (
     <div
-      className={`flex flex-col gap-2 border-b border-border/60 pb-4 sm:flex-row sm:items-center sm:justify-between ${className ?? ""}`}
+      className={`flex flex-col gap-2 border-b border-border/60 pb-2 sm:flex-row sm:items-center sm:justify-between ${className ?? ""}`}
     >
-      <div className="space-y-0.5">
+      <div className="space-y-0">
         {breadcrumb && breadcrumb.length > 0 && (
           <CustomBreadcrumb items={breadcrumb} />
         )}

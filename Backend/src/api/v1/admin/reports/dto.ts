@@ -3,7 +3,7 @@
 export type SchemeTier = "none" | "lt5" | "5to10" | "10to20" | "20to30" | "30to50" | "50to100" | "gte100"
 
 // Stock-only filter (expDate only exists on stock_snapshots) — same precedent as `schemeTier` above.
-export type ExpiryTier = "expired" | "lte30" | "31to60" | "61to90" | "gt90" | "none"
+export type ExpiryTier = "expired" | "lte30" | "31to60" | "61to90" | "gt90" | "none" | "custom"
 
 export type ReportFilters = {
   branchId?: string
@@ -13,6 +13,9 @@ export type ReportFilters = {
   item?: string
   schemeTier?: SchemeTier
   expiryTier?: ExpiryTier
+  /** Only used when `expiryTier === "custom"` — a caller-chosen expiry-date range distinct from `dateFrom`/`dateTo` (which filter the report's own date, not expiry). */
+  expiryDateFrom?: string
+  expiryDateTo?: string
 }
 
 export type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"

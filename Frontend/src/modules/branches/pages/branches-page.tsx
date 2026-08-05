@@ -13,7 +13,6 @@ import {
   CustomButton,
   CustomModal,
   CustomPageHeader,
-  CustomStickyBar,
   CustomTable,
   customToast,
   FormInput,
@@ -69,7 +68,7 @@ export function BranchesPage() {
   )
 
   const pagination = useCursorPagination()
-  const { data: branches, isLoading } = useBranches({ cursor: pagination.cursor, pageSize: pagination.pageSize })
+  const { data: branches, isLoading, isError } = useBranches({ cursor: pagination.cursor, pageSize: pagination.pageSize })
   const { mutateAsync: createBranch, isPending: isCreating } = useCreateBranch()
   const { mutateAsync: updateBranchMutation, isPending: isUpdating } = useUpdateBranch()
   const { mutateAsync: deleteBranchMutation } = useDeleteBranch()
@@ -138,21 +137,22 @@ export function BranchesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <CustomStickyBar>
-        <CustomPageHeader
-          title={t("title")}
-          description={t("description")}
-          actions={
-            <CustomButton onClick={openCreateForm}>
-              <PlusIcon className="size-4" />
-              {t("addBranch")}
-            </CustomButton>
-          }
-        />
-      </CustomStickyBar>
+    <div className="flex h-full min-h-0 flex-col gap-2">
+      <CustomPageHeader
+        className="shrink-0"
+        title={t("title")}
+        description={t("description")}
+        actions={
+          <CustomButton onClick={openCreateForm}>
+            <PlusIcon className="size-4" />
+            {t("addBranch")}
+          </CustomButton>
+        }
+      />
 
       <CustomTable<Branch>
+        fillHeight
+        isError={isError}
         columns={[
           { key: "name", label: tCommon("branch"), sortable: true },
           { key: "gstin", label: t("gstin") },

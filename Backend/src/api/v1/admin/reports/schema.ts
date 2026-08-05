@@ -14,13 +14,15 @@ export const expiryQuerySchema = reportFiltersSchema.extend({
 
 export const cursorPaginationSchema = z.object({
   cursor: z.string().optional(),
-  pageSize: z.coerce.number().int().positive().max(200).default(10),
+  pageSize: z.coerce.number().int().positive().max(500).default(10),
 })
 
 export const itemWiseSalesQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 export const salesDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 export const stockReportQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({
-  expiryTier: z.enum(["expired", "lte30", "31to60", "61to90", "gt90", "none"]).optional(),
+  expiryTier: z.enum(["expired", "lte30", "31to60", "61to90", "gt90", "none", "custom"]).optional(),
+  expiryDateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  expiryDateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 export const purchaseSummaryQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 export const purchaseDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({

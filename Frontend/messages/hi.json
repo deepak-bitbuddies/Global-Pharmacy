@@ -3,9 +3,14 @@
   "Show": "दिखाएं",
   "entries": "प्रविष्टियाँ",
   "DataNotAvailable": "कोई डेटा उपलब्ध नहीं है",
+  "DataLoadError": "डेटा लोड करने में समस्या हुई",
   "Close": "बंद करें",
   "Done": "पूर्ण",
   "Reset": "रीसेट करें",
+  "Apply": "लागू करें",
+  "Cancel": "रद्द करें",
+  "Filters": "फ़िल्टर",
+  "ClearAllFilters": "सभी हटाएं",
   "Search": "खोजें",
   "Columns": "कॉलम",
   "ShowAll": "सभी दिखाएं",
@@ -169,6 +174,7 @@
       "expiryTierGt90": "90+ दिन",
       "expiryTierNone": "समाप्ति तिथि नहीं",
       "expiryTierPlaceholder": "सभी समाप्ति",
+      "expiryTierCustom": "कस्टम श्रेणी",
       "emptyText": "कोई स्टॉक डेटा नहीं — पहले एक स्टॉक रजिस्टर फ़ाइल आयात करें।"
     },
     "purchase": {

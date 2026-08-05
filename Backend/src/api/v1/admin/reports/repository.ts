@@ -67,6 +67,13 @@ function expiryTierFilter(filters: ReportFilters): SQL | undefined {
       return sql`${stockSnapshots.expDate} is not null and ${stockSnapshots.expDate} >= current_date + 60 and ${stockSnapshots.expDate} < current_date + 90`
     case "gt90":
       return sql`${stockSnapshots.expDate} is not null and ${stockSnapshots.expDate} >= current_date + 90`
+    case "custom": {
+      const clauses = [
+        filters.expiryDateFrom ? gte(stockSnapshots.expDate, filters.expiryDateFrom) : undefined,
+        filters.expiryDateTo ? lte(stockSnapshots.expDate, filters.expiryDateTo) : undefined,
+      ].filter((c): c is SQL => c !== undefined)
+      return clauses.length > 0 ? and(...clauses) : undefined
+    }
     default:
       return undefined
   }

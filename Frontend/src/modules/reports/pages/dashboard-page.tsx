@@ -4,7 +4,7 @@ import { useState } from "react"
 import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
 
-import { CustomPageHeader, CustomSkeleton, CustomStickyBar, CustomTabs } from "@/components/ui"
+import { CustomPageHeader, CustomSkeleton, CustomTabs } from "@/components/ui"
 import { ReportFilterPanel } from "../components/filters"
 import type { ReportFilters } from "../types"
 
@@ -24,10 +24,8 @@ export function ReportsDashboardPage() {
 
   return (
     <div className="space-y-4">
-      <CustomStickyBar>
-        <CustomPageHeader title={t("title")} description={t("description")} />
-        <ReportFilterPanel filters={filters} onFiltersChange={setFilters} show={{ branch: true, dateRange: true }} />
-      </CustomStickyBar>
+      <CustomPageHeader title={t("title")} description={t("description")} />
+      <ReportFilterPanel filters={filters} onFiltersChange={setFilters} show={{ branch: true, dateRange: true }} />
 
       <CustomTabs
         items={[
