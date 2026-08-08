@@ -16,6 +16,15 @@ export type ReportFilters = {
   /** Only used when `expiryTier === "custom"` — a caller-chosen expiry-date range distinct from `dateFrom`/`dateTo` (which filter the report's own date, not expiry). */
   expiryDateFrom?: string
   expiryDateTo?: string
+  // Stock-only filters — stockSnapshots columns, ignored by every other report.
+  supplier?: string
+  stockFrom?: number
+  stockTo?: number
+  // Purchase-only filter — purchaseLines.supplierGroup, the Purchase register's equivalent of Sales' partyGroup.
+  supplierGroup?: string
+  // Purchase/Sales amount range — purchaseLines.amount / salesLines.amount.
+  amountFrom?: number
+  amountTo?: number
 }
 
 export type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"

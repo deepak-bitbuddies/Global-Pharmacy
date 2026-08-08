@@ -6,12 +6,23 @@ import { env } from "../config/env.js"
 let io: SocketIOServer | null = null
 
 export type ImportBatchUpdatePayload = {
+  // Null only for a bulk file whose report type couldn't be identified at all — there's no batch
+  // row for it (nothing to attach one to), so this is the sole way the frontend hears about it.
+  batchId: string | null
+  branchId: string
+  fileType: string | null
+  fileName: string
+  status: "processing" | "completed" | "failed"
+  rowCount?: number
+  errorMessage?: string
+}
+
+export type ImportBatchProgressPayload = {
   batchId: string
   branchId: string
   fileType: string
-  status: "completed" | "failed"
-  rowCount?: number
-  errorMessage?: string
+  rowsProcessed: number
+  totalRows: number
 }
 
 /**
@@ -44,4 +55,9 @@ export function attachSocketServer(fastify: FastifyInstance): void {
 
 export function emitImportBatchUpdate(payload: ImportBatchUpdatePayload): void {
   io?.emit("import-batch:update", payload)
+}
+
+/** High-frequency (per insert-chunk) progress ticks — kept as a separate event from `import-batch:update` so listeners can treat them differently (e.g. never trigger a full query invalidation off of one). */
+export function emitImportBatchProgress(payload: ImportBatchProgressPayload): void {
+  io?.emit("import-batch:progress", payload)
 }

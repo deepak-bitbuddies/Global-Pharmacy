@@ -29,7 +29,16 @@ export function StockReportPage() {
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}
-          show={{ search: true, branch: true, company: true, expiryTier: true, dateRange: true }}
+          show={{
+            search: true,
+            branch: true,
+            company: true,
+            expiryTier: true,
+            dateRange: true,
+            supplier: true,
+            stockRange: true,
+          }}
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </div>
 

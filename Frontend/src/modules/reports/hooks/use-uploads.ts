@@ -1,5 +1,6 @@
 "use client"
 
+import type { AxiosProgressEvent } from "axios"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { reportsQueryKeys } from "../constants/query-keys"
@@ -26,7 +27,19 @@ export function useUploadFile() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ fileType, branchId, file }: { fileType: ImportFileType; branchId: string; file: File }) => uploadFile(fileType, branchId, file),
+    mutationFn: ({
+      fileType,
+      branchId,
+      file,
+      onUploadProgress,
+    }: {
+      fileType: ImportFileType
+      branchId: string
+      file: File
+      onUploadProgress?: (event: AxiosProgressEvent) => void
+    }) => uploadFile(fileType, branchId, file, onUploadProgress),
+    // The batch already lands as a "processing" row by the time this ack comes back — worth a
+    // refresh right away, on top of the live per-file refresh `useImportSocket` triggers as it finishes.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reports"] })
     },
@@ -37,9 +50,15 @@ export function useBulkUploadFiles() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ branchId, files }: { branchId: string; files: File[] }) => bulkUploadFiles(branchId, files),
-    // "accepted" files land as "processing" rows immediately — worth a refresh right away, on top
-    // of the live per-file refresh `useImportSocket` triggers as each one actually finishes.
+    mutationFn: ({
+      branchId,
+      files,
+      onUploadProgress,
+    }: {
+      branchId: string
+      files: File[]
+      onUploadProgress?: (event: AxiosProgressEvent) => void
+    }) => bulkUploadFiles(branchId, files, onUploadProgress),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reports"] })
     },

@@ -34,6 +34,8 @@ import {
   stockReport,
   stockSummary,
   stockValueByCompany,
+  supplierGroups,
+  suppliers,
   zeroOrderAlerts,
 } from "./service.js"
 
@@ -60,6 +62,14 @@ export async function branchesHandler(request: FastifyRequest, reply: FastifyRep
 
 export async function companiesHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
   sendSuccess(reply, await companies())
+}
+
+export async function suppliersHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  sendSuccess(reply, await suppliers())
+}
+
+export async function supplierGroupsHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  sendSuccess(reply, await supplierGroups())
 }
 
 export async function itemWiseSalesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {

@@ -31,6 +31,16 @@ export async function getCompanies(): Promise<string[]> {
   return data.data
 }
 
+export async function getSuppliers(): Promise<string[]> {
+  const { data } = await api.get<{ data: string[] }>(`${BASE}/suppliers`)
+  return data.data
+}
+
+export async function getSupplierGroups(): Promise<string[]> {
+  const { data } = await api.get<{ data: string[] }>(`${BASE}/supplier-groups`)
+  return data.data
+}
+
 export async function getDashboardSummary(filters: ReportFilters): Promise<DashboardSummary> {
   const { data } = await api.get<{ data: DashboardSummary }>(`${BASE}/dashboard/summary`, { params: filters })
   return data.data

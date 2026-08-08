@@ -9,7 +9,10 @@ import type { ReportFilters } from "../../types"
 import type { ReportFilterFlags } from "./report-filter-panel"
 import { BranchFilter } from "./branch-filter"
 import { CompanyFilter } from "./company-filter"
+import { SupplierFilter } from "./supplier-filter"
+import { SupplierGroupFilter } from "./supplier-group-filter"
 import { ReportDateRangeFilter } from "./date-range-filter"
+import { NumberRangeFilter } from "./number-range-filter"
 import { ExpiryTierFilter } from "./expiry-tier-filter"
 import { SchemeTierFilter } from "./scheme-tier-filter"
 
@@ -108,6 +111,38 @@ export function FilterModal({ filters, onFiltersChange, show, activeCount }: Fil
                 dateFrom={draft.dateFrom}
                 dateTo={draft.dateTo}
                 onChange={({ dateFrom, dateTo }) => setDraft((prev) => ({ ...prev, dateFrom, dateTo }))}
+              />
+            </FilterField>
+          )}
+          {show.supplier && (
+            <FilterField label={tStock("supplier")}>
+              <SupplierFilter value={draft.supplier} onChange={(supplier) => setDraft((prev) => ({ ...prev, supplier }))} />
+            </FilterField>
+          )}
+          {show.stockRange && (
+            <FilterField label={tStock("stockRange")}>
+              <NumberRangeFilter
+                from={draft.stockFrom}
+                to={draft.stockTo}
+                onChange={({ from, to }) => setDraft((prev) => ({ ...prev, stockFrom: from, stockTo: to }))}
+                fromLabel={tStock("minStock")}
+                toLabel={tStock("maxStock")}
+              />
+            </FilterField>
+          )}
+          {show.supplierGroup && (
+            <FilterField label={tPurchase("supplier")}>
+              <SupplierGroupFilter value={draft.supplierGroup} onChange={(supplierGroup) => setDraft((prev) => ({ ...prev, supplierGroup }))} />
+            </FilterField>
+          )}
+          {show.amountRange && (
+            <FilterField label={tCommon("amountRange")}>
+              <NumberRangeFilter
+                from={draft.amountFrom}
+                to={draft.amountTo}
+                onChange={({ from, to }) => setDraft((prev) => ({ ...prev, amountFrom: from, amountTo: to }))}
+                fromLabel={tCommon("minAmount")}
+                toLabel={tCommon("maxAmount")}
               />
             </FilterField>
           )}

@@ -4,17 +4,35 @@ import { useEffect } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { io } from "socket.io-client"
 
+import { customToast } from "@/components/ui"
+import { useImportProgressStore } from "./use-import-progress-store"
+import { useImportStatusStore } from "./use-import-status-store"
+import type { ImportBatchProgressEvent, ImportBatchUpdateEvent } from "../types"
+
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000"
 
 /**
- * Live-refreshes import data as bulk-upload background jobs finish, from any screen — mounted
- * once in `DashboardShell` rather than per-page. Fetches a short-lived token via `/api/socket-token`
- * (the browser never otherwise holds the raw backend JWT, see that route's comment) and, on every
- * `import-batch:update` event, invalidates the whole `["reports", ...]` query key prefix — covers
- * import-batch history, upload-cycle-status, and every report table in one shot.
+ * Live-refreshes import data as background upload jobs (single-file and bulk alike) progress and
+ * finish, from any screen — mounted once in `DashboardShell` rather than per-page. Fetches a
+ * short-lived token via `/api/socket-token` (the browser never otherwise holds the raw backend
+ * JWT, see that route's comment), then listens for two distinct events:
+ *
+ * - `import-batch:update` — a status transition (processing/completed/failed). Invalidates the
+ *   whole `["reports", ...]` query key prefix (covers import-batch history, upload-cycle-status,
+ *   and every report table in one shot), clears any lingering progress bar for that batch, and
+ *   records the transition by filename (`useImportStatusStore`) so the upload UI itself — which
+ *   only knows filenames, not batch ids, right after submitting — can show live per-sheet status.
+ *   A `batchId: null` update means a bulk file's report type couldn't be identified at all —
+ *   there's no history row for it, so a toast is the only way the user hears about it.
+ * - `import-batch:progress` — a high-frequency per-insert-chunk tick. Only updates the transient
+ *   progress store (`useImportProgressStore`), never triggers a query invalidation — far too
+ *   chatty for that at chunk frequency.
  */
 export function useImportSocket(): void {
   const queryClient = useQueryClient()
+  const setProgress = useImportProgressStore((state) => state.setProgress)
+  const clearProgress = useImportProgressStore((state) => state.clearProgress)
+  const setStatus = useImportStatusStore((state) => state.setStatus)
 
   useEffect(() => {
     let socket: ReturnType<typeof io> | undefined
@@ -27,8 +45,18 @@ export function useImportSocket(): void {
       if (cancelled) return
 
       socket = io(SOCKET_URL, { auth: { token } })
-      socket.on("import-batch:update", () => {
+
+      socket.on("import-batch:update", (payload: ImportBatchUpdateEvent) => {
         queryClient.invalidateQueries({ queryKey: ["reports"] })
+        if (payload.batchId) clearProgress(payload.batchId)
+        setStatus(payload.fileName, { batchId: payload.batchId, fileType: payload.fileType, status: payload.status, errorMessage: payload.errorMessage })
+        if (payload.batchId === null && payload.status === "failed") {
+          customToast.danger(`${payload.fileName}: ${payload.errorMessage ?? "Could not process this file"}`)
+        }
+      })
+
+      socket.on("import-batch:progress", (payload: ImportBatchProgressEvent) => {
+        setProgress(payload.batchId, { rowsProcessed: payload.rowsProcessed, totalRows: payload.totalRows })
       })
     })()
 
@@ -36,5 +64,5 @@ export function useImportSocket(): void {
       cancelled = true
       socket?.disconnect()
     }
-  }, [queryClient])
+  }, [queryClient, setProgress, clearProgress, setStatus])
 }

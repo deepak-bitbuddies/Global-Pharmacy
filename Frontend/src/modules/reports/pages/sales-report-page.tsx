@@ -29,7 +29,7 @@ export function SalesReportPage() {
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}
-          show={{ search: true, branch: true, company: true, dateRange: true }}
+          show={{ search: true, branch: true, company: true, dateRange: true, amountRange: true }}
         />
       </div>
 
@@ -40,7 +40,6 @@ export function SalesReportPage() {
           { key: "date", label: tCommon("date"), sortable: true },
           { key: "branchName", label: tCommon("branch") },
           { key: "itemNameRaw", label: tCommon("item"), sortable: true },
-          { key: "partyGroup", label: t("party"), sortable: true },
           { key: "company", label: tCommon("company") },
           { key: "qty", label: tCommon("qty") },
           { key: "unit", label: tCommon("unit") },

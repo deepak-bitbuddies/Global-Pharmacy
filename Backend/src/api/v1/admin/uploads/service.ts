@@ -1,23 +1,22 @@
 import { ForbiddenError, NotFoundError } from "../../../../shared/errors/index.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
-import { emitImportBatchUpdate } from "../../../../core/realtime/socket.js"
+import { db, type DbOrTransaction } from "../../../../core/database/db.js"
+import { emitImportBatchProgress, emitImportBatchUpdate } from "../../../../core/realtime/socket.js"
 import { FileType, type FileTypeValue } from "./enums.js"
 import { EmptyImportError, MissingDateError, MultiDayFileError, OutOfSequenceError, WrongFileTypeError } from "./errors.js"
 import type {
-  BulkUploadAcceptedDto,
+  BulkUploadAckDto,
   BulkUploadFileInputDto,
-  BulkUploadRejectedDto,
-  BulkUploadResultDto,
   ImportBatchListItemDto,
+  UploadAckDto,
   UploadCycleStatusDto,
   UploadFileDto,
-  UploadResultDto,
 } from "./dto.js"
 import { parseStockFile, type ParsedStockRow } from "./parsers/stock.parser.js"
 import { parseSalesFile, type ParsedSalesRow } from "./parsers/sales.parser.js"
 import { parsePurchaseFile, type ParsedPurchaseRow } from "./parsers/purchase.parser.js"
 import { parseDaySalesFile, type ParsedDaySalesRow } from "./parsers/day-sales.parser.js"
-import { normalizeItemName, sniffReportKind } from "./parsers/parse-utils.js"
+import { detectReportKind, normalizeItemName, readWorkbookRows, type SheetRow } from "./parsers/parse-utils.js"
 import type { BranchDocument, NewDailySalesSummaryDocument, NewPurchaseLineDocument, NewSalesLineDocument, NewStockSnapshotDocument } from "./model.js"
 import {
   createImportBatch,
@@ -49,9 +48,9 @@ async function requireBranch(branchId: string): Promise<BranchDocument> {
   return branch
 }
 
-/** Blocks a file from landing under the wrong section (e.g. a Purchase Register uploaded as Sales) by checking its own title row. A sniff that doesn't recognize the file at all (null) is let through — the type-specific parser below will reject it on its own terms (e.g. `EmptyImportError`) rather than this guard blocking an unrecognized-but-possibly-valid format. */
-function assertReportKind(buffer: Buffer, expected: FileTypeValue): void {
-  const detected = sniffReportKind(buffer)
+/** Blocks a file from landing under the wrong section (e.g. a Purchase Register uploaded as Sales) by checking its own title row. A sniff that doesn't recognize the file at all (null) is let through — parsing continues under the caller's expected type regardless, on its own terms (e.g. `EmptyImportError`) rather than this guard blocking an unrecognized-but-possibly-valid format. */
+function assertReportKind(rows: SheetRow[], expected: FileTypeValue): void {
+  const detected = detectReportKind(rows)
   if (detected && detected !== expected) throw new WrongFileTypeError(expected, detected)
 }
 
@@ -68,35 +67,56 @@ function assertReplaceAllowed(fileType: FileTypeValue, actorRole: SystemRoleCode
   throw new ForbiddenError(`A ${FILE_TYPE_LABEL[fileType]} file for ${forLabel} has already been imported — only a super admin can replace it.`)
 }
 
-/** Day-Wise Sale is exempt from the dated pipeline (one row per day, inherently multi-day) — it still replaces by exact filename, as every file type did before this pipeline existed. */
-async function replaceExistingBatchByFilename(branchId: string, fileType: FileTypeValue, fileName: string, actorRole: SystemRoleCode): Promise<boolean> {
-  const existing = await findImportBatch(branchId, fileType, fileName)
+/**
+ * Day-Wise Sale is exempt from the dated pipeline (one row per day, inherently multi-day) — it
+ * still replaces by exact filename, as every file type did before this pipeline existed.
+ * `excludeBatchId` is this import's own placeholder batch (already created before this runs) —
+ * without excluding it, a same-filename re-upload would match its own not-yet-finished row
+ * instead of the prior completed one. Runs inside `runImportPipeline`'s transaction (`dbClient`
+ * is `tx`), so the delete is atomic with the insert that follows it.
+ */
+async function replaceExistingBatchByFilename(
+  branchId: string,
+  fileType: FileTypeValue,
+  fileName: string,
+  actorRole: SystemRoleCode,
+  excludeBatchId: string,
+  dbClient: DbOrTransaction,
+): Promise<boolean> {
+  const existing = await findImportBatch(branchId, fileType, fileName, excludeBatchId, dbClient)
   if (!existing) return false
   assertReplaceAllowed(fileType, actorRole, fileName)
 
-  await deleteDailySalesSummaryByBatch(existing.id)
-  await deleteImportBatch(existing.id)
+  await deleteDailySalesSummaryByBatch(existing.id, dbClient)
+  await deleteImportBatch(existing.id, dbClient)
   return true
 }
 
-/** Stock/Sales/Purchase are now single-day-per-upload — re-uploading for a date that already has a batch (whatever the filename) replaces it, so corrections never duplicate. */
-async function replaceExistingBatchByDate(branchId: string, fileType: FileTypeValue, date: string, actorRole: SystemRoleCode): Promise<boolean> {
-  const existing = await findImportBatchByDate(branchId, fileType, date)
+/** Stock/Sales/Purchase are single-day-per-upload — re-uploading for a date that already has a batch (whatever the filename) replaces it, so corrections never duplicate. Same `excludeBatchId`/transactional-`dbClient` notes as `replaceExistingBatchByFilename`. */
+async function replaceExistingBatchByDate(
+  branchId: string,
+  fileType: FileTypeValue,
+  date: string,
+  actorRole: SystemRoleCode,
+  excludeBatchId: string,
+  dbClient: DbOrTransaction,
+): Promise<boolean> {
+  const existing = await findImportBatchByDate(branchId, fileType, date, excludeBatchId, dbClient)
   if (!existing) return false
   assertReplaceAllowed(fileType, actorRole, date)
 
   switch (fileType) {
     case FileType.Stock:
-      await deleteStockSnapshotsByBatch(existing.id)
+      await deleteStockSnapshotsByBatch(existing.id, dbClient)
       break
     case FileType.Sales:
-      await deleteSalesLinesByBatch(existing.id)
+      await deleteSalesLinesByBatch(existing.id, dbClient)
       break
     case FileType.Purchase:
-      await deletePurchaseLinesByBatch(existing.id)
+      await deletePurchaseLinesByBatch(existing.id, dbClient)
       break
   }
-  await deleteImportBatch(existing.id)
+  await deleteImportBatch(existing.id, dbClient)
   return true
 }
 
@@ -106,7 +126,9 @@ async function replaceExistingBatchByDate(branchId: string, fileType: FileTypeVa
  *   Purchase and/or Sales pending.
  * - Purchase/Sales for a date is blocked until Stock exists for that exact date.
  * Re-uploading for a date that already has a batch of that type is always a "correction"
- * and skips these checks entirely (handled by `replaceExistingBatchByDate` instead).
+ * and skips these checks entirely (handled by `replaceExistingBatchByDate` instead). Always reads
+ * committed state (`db`, never a transaction) — by the time this runs for a given file, every
+ * earlier file in the commit order has already fully committed or failed.
  */
 async function assertUploadAllowed(branchId: string, fileType: FileTypeValue, date: string): Promise<void> {
   if (await hasBatchForDate(branchId, fileType, date)) return // correction to an existing date — always allowed
@@ -134,8 +156,7 @@ async function assertUploadAllowed(branchId: string, fileType: FileTypeValue, da
   }
 }
 
-// ---- Shared row-builders — used by both the synchronous single-file path below and the
-// background bulk committer, so the two paths can never drift on how a parsed row becomes a DB row.
+// ---- Row-builders — pure, shared by every commit path ----
 
 function buildStockSnapshotRows(
   rows: ParsedStockRow[],
@@ -241,282 +262,265 @@ function buildDailySalesSummaryRows(rows: ParsedDaySalesRow[], branchId: string,
   }))
 }
 
-// ---- Single-file upload path (unchanged behavior — fully synchronous) ----
+/** Inserts in chunks (rather than one statement) purely to report live progress — all chunks still run inside the caller's transaction, so atomicity is unaffected: either every chunk lands or (on any failure) none do. */
+const INSERT_CHUNK_SIZE = 500
 
-async function importStock(branchId: string, fileName: string, buffer: Buffer, actorRole: SystemRoleCode): Promise<UploadResultDto> {
-  assertReportKind(buffer, FileType.Stock)
-  const parsed = parseStockFile(buffer)
-  if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Stock)
-  const asOfDate = parsed.asOfDate
-  if (!asOfDate) throw new MissingDateError(FileType.Stock)
-
-  const branch = await requireBranch(branchId)
-  await assertUploadAllowed(branch.id, FileType.Stock, asOfDate)
-  const replaced = await replaceExistingBatchByDate(branch.id, FileType.Stock, asOfDate, actorRole)
-  const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.Stock, fileName, date: asOfDate, rowCount: parsed.rows.length })
-
-  const itemIdByCode = await resolveItemIdsByCode(
-    parsed.rows.map((row) => ({ code: row.itemCode, name: row.itemName, unit: row.unit, company: row.company, manufacturer: row.manufacturer })),
-  )
-  const inserted = await insertStockSnapshots(buildStockSnapshotRows(parsed.rows, branch.id, batch.id, asOfDate, itemIdByCode))
-
-  return { branchId: branch.id, branchName: branch.name, fileType: FileType.Stock, fileName, rowCount: inserted, importedAt: batch.importedAt, replaced }
+async function insertRowsWithProgress<T>(
+  rows: T[],
+  chunkSize: number,
+  insertChunk: (chunk: T[]) => Promise<number>,
+  onProgress: (processed: number, total: number) => void,
+): Promise<number> {
+  let processed = 0
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    processed += await insertChunk(rows.slice(i, i + chunkSize))
+    onProgress(processed, rows.length)
+  }
+  return processed
 }
 
-async function importSales(branchId: string, fileName: string, buffer: Buffer, actorRole: SystemRoleCode): Promise<UploadResultDto> {
-  assertReportKind(buffer, FileType.Sales)
-  const parsed = parseSalesFile(buffer)
-  if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Sales)
-  const { reportDateFrom, reportDateTo } = parsed
-  if (!reportDateFrom || !reportDateTo) throw new MissingDateError(FileType.Sales)
-  if (reportDateFrom !== reportDateTo) throw new MultiDayFileError(reportDateFrom, reportDateTo)
+// ---- Shared pipeline: an already-parsed, already-structurally-valid file, ready to commit ----
 
-  const branch = await requireBranch(branchId)
-  await assertUploadAllowed(branch.id, FileType.Sales, reportDateFrom)
-  const replaced = await replaceExistingBatchByDate(branch.id, FileType.Sales, reportDateFrom, actorRole)
-  const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.Sales, fileName, date: reportDateFrom, rowCount: parsed.rows.length })
+type PreparedImport =
+  | { kind: typeof FileType.Stock; batchId: string; branchId: string; fileName: string; asOfDate: string; rows: ParsedStockRow[] }
+  | { kind: typeof FileType.Sales; batchId: string; branchId: string; fileName: string; reportDateFrom: string; reportDateTo: string; rows: ParsedSalesRow[] }
+  | { kind: typeof FileType.Purchase; batchId: string; branchId: string; fileName: string; reportDateFrom: string; reportDateTo: string; rows: ParsedPurchaseRow[] }
+  | { kind: typeof FileType.DayWiseSale; batchId: string; branchId: string; fileName: string; rows: ParsedDaySalesRow[] }
 
-  const itemIdByName = await resolveItemIdsByName(parsed.rows.map((row) => row.itemNameRaw))
-  const inserted = await insertSalesLines(buildSalesLineRows(parsed.rows, branch.id, batch.id, reportDateFrom, reportDateTo, itemIdByName))
+type ValidatedParse =
+  | { kind: typeof FileType.Stock; asOfDate: string; rows: ParsedStockRow[] }
+  | { kind: typeof FileType.Sales; reportDateFrom: string; reportDateTo: string; rows: ParsedSalesRow[] }
+  | { kind: typeof FileType.Purchase; reportDateFrom: string; reportDateTo: string; rows: ParsedPurchaseRow[] }
+  | { kind: typeof FileType.DayWiseSale; rows: ParsedDaySalesRow[] }
 
-  return { branchId: branch.id, branchName: branch.name, fileType: FileType.Sales, fileName, rowCount: inserted, importedAt: batch.importedAt, replaced }
-}
+/** Parses the already-loaded rows under a known type and runs the per-type structural checks (row count, date presence, single-day) every upload path needs — throws the same pre-existing error classes either way. */
+function parseAndValidate(kind: FileTypeValue, rows: SheetRow[]): ValidatedParse {
+  if (kind === FileType.Stock) {
+    const parsed = parseStockFile(rows)
+    if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Stock)
+    if (!parsed.asOfDate) throw new MissingDateError(FileType.Stock)
+    return { kind: FileType.Stock, asOfDate: parsed.asOfDate, rows: parsed.rows }
+  }
 
-async function importPurchase(branchId: string, fileName: string, buffer: Buffer, actorRole: SystemRoleCode): Promise<UploadResultDto> {
-  assertReportKind(buffer, FileType.Purchase)
-  const parsed = parsePurchaseFile(buffer)
-  if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Purchase)
-  const { reportDateFrom, reportDateTo } = parsed
-  if (!reportDateFrom || !reportDateTo) throw new MissingDateError(FileType.Purchase)
-  if (reportDateFrom !== reportDateTo) throw new MultiDayFileError(reportDateFrom, reportDateTo)
+  if (kind === FileType.Sales) {
+    const parsed = parseSalesFile(rows)
+    if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Sales)
+    if (!parsed.reportDateFrom || !parsed.reportDateTo) throw new MissingDateError(FileType.Sales)
+    if (parsed.reportDateFrom !== parsed.reportDateTo) throw new MultiDayFileError(parsed.reportDateFrom, parsed.reportDateTo)
+    return { kind: FileType.Sales, reportDateFrom: parsed.reportDateFrom, reportDateTo: parsed.reportDateTo, rows: parsed.rows }
+  }
 
-  const branch = await requireBranch(branchId)
-  await assertUploadAllowed(branch.id, FileType.Purchase, reportDateFrom)
-  const replaced = await replaceExistingBatchByDate(branch.id, FileType.Purchase, reportDateFrom, actorRole)
-  const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.Purchase, fileName, date: reportDateFrom, rowCount: parsed.rows.length })
+  if (kind === FileType.Purchase) {
+    const parsed = parsePurchaseFile(rows)
+    if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Purchase)
+    if (!parsed.reportDateFrom || !parsed.reportDateTo) throw new MissingDateError(FileType.Purchase)
+    if (parsed.reportDateFrom !== parsed.reportDateTo) throw new MultiDayFileError(parsed.reportDateFrom, parsed.reportDateTo)
+    return { kind: FileType.Purchase, reportDateFrom: parsed.reportDateFrom, reportDateTo: parsed.reportDateTo, rows: parsed.rows }
+  }
 
-  const itemIdByName = await resolveItemIdsByName(parsed.rows.map((row) => row.itemNameRaw))
-  const inserted = await insertPurchaseLines(buildPurchaseLineRows(parsed.rows, branch.id, batch.id, reportDateFrom, reportDateTo, itemIdByName))
-
-  return { branchId: branch.id, branchName: branch.name, fileType: FileType.Purchase, fileName, rowCount: inserted, importedAt: batch.importedAt, replaced }
-}
-
-async function importDaySales(branchId: string, fileName: string, buffer: Buffer, actorRole: SystemRoleCode): Promise<UploadResultDto> {
-  assertReportKind(buffer, FileType.DayWiseSale)
-  const parsed = parseDaySalesFile(buffer)
+  // Day-Wise Sale
+  const parsed = parseDaySalesFile(rows)
   if (parsed.rows.length === 0) throw new EmptyImportError(FileType.DayWiseSale)
-
-  const branch = await requireBranch(branchId)
-  const replaced = await replaceExistingBatchByFilename(branch.id, FileType.DayWiseSale, fileName, actorRole)
-  const batch = await createImportBatch({ branchId: branch.id, fileType: FileType.DayWiseSale, fileName, rowCount: parsed.rows.length })
-
-  const inserted = await insertDailySalesSummary(buildDailySalesSummaryRows(parsed.rows, branch.id, batch.id))
-
-  return { branchId: branch.id, branchName: branch.name, fileType: FileType.DayWiseSale, fileName, rowCount: inserted, importedAt: batch.importedAt, replaced }
+  return { kind: FileType.DayWiseSale, rows: parsed.rows }
 }
 
-export async function importFile(input: UploadFileDto): Promise<UploadResultDto> {
-  switch (input.fileType) {
+function toPreparedImport(validated: ValidatedParse, branchId: string, batchId: string, fileName: string): PreparedImport {
+  switch (validated.kind) {
     case FileType.Stock:
-      return importStock(input.branchId, input.fileName, input.buffer, input.actorRole)
+      return { kind: FileType.Stock, batchId, branchId, fileName, asOfDate: validated.asOfDate, rows: validated.rows }
     case FileType.Sales:
-      return importSales(input.branchId, input.fileName, input.buffer, input.actorRole)
+      return { kind: FileType.Sales, batchId, branchId, fileName, reportDateFrom: validated.reportDateFrom, reportDateTo: validated.reportDateTo, rows: validated.rows }
     case FileType.Purchase:
-      return importPurchase(input.branchId, input.fileName, input.buffer, input.actorRole)
+      return { kind: FileType.Purchase, batchId, branchId, fileName, reportDateFrom: validated.reportDateFrom, reportDateTo: validated.reportDateTo, rows: validated.rows }
     case FileType.DayWiseSale:
-      return importDaySales(input.branchId, input.fileName, input.buffer, input.actorRole)
+      return { kind: FileType.DayWiseSale, batchId, branchId, fileName, rows: validated.rows }
   }
 }
 
-// ---- Bulk upload path (super_admin only — enforced at the route) ----
-// Split in two: `prepareBulkFile` does everything fast/synchronous (sniff, parse, date/sequence
-// validation, replace-lookup, and creating the "processing" placeholder row) so the client gets an
-// immediate accept/reject verdict per file. `commitBulkFile` does the slow part (item resolution +
-// bulk insert) in the background — called from `bulkImportFiles` without being awaited — and pushes
-// the final outcome over the socket once it's done.
+function preparedDate(prepared: PreparedImport): string | null {
+  if (prepared.kind === FileType.Stock) return prepared.asOfDate
+  if (prepared.kind === FileType.DayWiseSale) return null
+  return prepared.reportDateFrom
+}
 
-type BulkPrepared =
-  | { kind: typeof FileType.Stock; batchId: string; branchId: string; asOfDate: string; rows: ParsedStockRow[] }
-  | { kind: typeof FileType.Sales; batchId: string; branchId: string; reportDateFrom: string; reportDateTo: string; rows: ParsedSalesRow[] }
-  | { kind: typeof FileType.Purchase; batchId: string; branchId: string; reportDateFrom: string; reportDateTo: string; rows: ParsedPurchaseRow[] }
-  | { kind: typeof FileType.DayWiseSale; batchId: string; branchId: string; rows: ParsedDaySalesRow[] }
-
-async function prepareBulkFile(
-  branch: BranchDocument,
-  fileName: string,
-  buffer: Buffer,
-): Promise<{ accepted: BulkUploadAcceptedDto; prepared: BulkPrepared } | { rejected: BulkUploadRejectedDto }> {
+/**
+ * Commits an already-parsed, already-structurally-valid file — the one place that does the "slow"
+ * work (sequence gate, replace-if-existing, item resolution, row insert), called once it's this
+ * file's turn in the commit order. Never throws: every outcome (success or failure) is written to
+ * the batch row and pushed over the socket, since nothing is awaiting this beyond a background loop.
+ */
+async function runImportPipeline(prepared: PreparedImport, actorRole: SystemRoleCode): Promise<void> {
   try {
-    const kind = sniffReportKind(buffer)
-    if (!kind) return { rejected: { fileName, reason: "Could not identify this file's report type from its content — check the file format." } }
+    const date = preparedDate(prepared)
+    if (date) await assertUploadAllowed(prepared.branchId, prepared.kind, date)
 
-    if (kind === FileType.Stock) {
-      const parsed = parseStockFile(buffer)
-      if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Stock)
-      if (!parsed.asOfDate) throw new MissingDateError(FileType.Stock)
-      await assertUploadAllowed(branch.id, FileType.Stock, parsed.asOfDate)
-      await replaceExistingBatchByDate(branch.id, FileType.Stock, parsed.asOfDate, SystemRoleCode.SUPER_ADMIN)
-      const batch = await createImportBatch({
-        branchId: branch.id,
-        fileType: FileType.Stock,
-        fileName,
-        date: parsed.asOfDate,
-        rowCount: parsed.rows.length,
-        status: "processing",
-      })
-      return {
-        accepted: { fileName, batchId: batch.id, fileType: FileType.Stock, date: parsed.asOfDate },
-        prepared: { kind: FileType.Stock, batchId: batch.id, branchId: branch.id, asOfDate: parsed.asOfDate, rows: parsed.rows },
+    let rowCount = 0
+    await db.transaction(async (tx) => {
+      if (prepared.kind === FileType.DayWiseSale) {
+        await replaceExistingBatchByFilename(prepared.branchId, prepared.kind, prepared.fileName, actorRole, prepared.batchId, tx)
+      } else {
+        await replaceExistingBatchByDate(prepared.branchId, prepared.kind, date!, actorRole, prepared.batchId, tx)
       }
-    }
 
-    if (kind === FileType.Sales) {
-      const parsed = parseSalesFile(buffer)
-      if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Sales)
-      if (!parsed.reportDateFrom || !parsed.reportDateTo) throw new MissingDateError(FileType.Sales)
-      if (parsed.reportDateFrom !== parsed.reportDateTo) throw new MultiDayFileError(parsed.reportDateFrom, parsed.reportDateTo)
-      await assertUploadAllowed(branch.id, FileType.Sales, parsed.reportDateFrom)
-      await replaceExistingBatchByDate(branch.id, FileType.Sales, parsed.reportDateFrom, SystemRoleCode.SUPER_ADMIN)
-      const batch = await createImportBatch({
-        branchId: branch.id,
-        fileType: FileType.Sales,
-        fileName,
-        date: parsed.reportDateFrom,
-        rowCount: parsed.rows.length,
-        status: "processing",
-      })
-      return {
-        accepted: { fileName, batchId: batch.id, fileType: FileType.Sales, date: parsed.reportDateFrom },
-        prepared: {
-          kind: FileType.Sales,
-          batchId: batch.id,
-          branchId: branch.id,
-          reportDateFrom: parsed.reportDateFrom,
-          reportDateTo: parsed.reportDateTo,
-          rows: parsed.rows,
-        },
+      const onProgress = (processed: number, total: number) =>
+        emitImportBatchProgress({ batchId: prepared.batchId, branchId: prepared.branchId, fileType: prepared.kind, rowsProcessed: processed, totalRows: total })
+
+      switch (prepared.kind) {
+        case FileType.Stock: {
+          const itemIdByCode = await resolveItemIdsByCode(
+            prepared.rows.map((row) => ({ code: row.itemCode, name: row.itemName, unit: row.unit, company: row.company, manufacturer: row.manufacturer })),
+            tx,
+          )
+          rowCount = await insertRowsWithProgress(
+            buildStockSnapshotRows(prepared.rows, prepared.branchId, prepared.batchId, prepared.asOfDate, itemIdByCode),
+            INSERT_CHUNK_SIZE,
+            (chunk) => insertStockSnapshots(chunk, tx),
+            onProgress,
+          )
+          break
+        }
+        case FileType.Sales: {
+          const itemIdByName = await resolveItemIdsByName(prepared.rows.map((row) => row.itemNameRaw), tx)
+          rowCount = await insertRowsWithProgress(
+            buildSalesLineRows(prepared.rows, prepared.branchId, prepared.batchId, prepared.reportDateFrom, prepared.reportDateTo, itemIdByName),
+            INSERT_CHUNK_SIZE,
+            (chunk) => insertSalesLines(chunk, tx),
+            onProgress,
+          )
+          break
+        }
+        case FileType.Purchase: {
+          const itemIdByName = await resolveItemIdsByName(prepared.rows.map((row) => row.itemNameRaw), tx)
+          rowCount = await insertRowsWithProgress(
+            buildPurchaseLineRows(prepared.rows, prepared.branchId, prepared.batchId, prepared.reportDateFrom, prepared.reportDateTo, itemIdByName),
+            INSERT_CHUNK_SIZE,
+            (chunk) => insertPurchaseLines(chunk, tx),
+            onProgress,
+          )
+          break
+        }
+        case FileType.DayWiseSale:
+          rowCount = await insertRowsWithProgress(
+            buildDailySalesSummaryRows(prepared.rows, prepared.branchId, prepared.batchId),
+            INSERT_CHUNK_SIZE,
+            (chunk) => insertDailySalesSummary(chunk, tx),
+            onProgress,
+          )
+          break
       }
-    }
-
-    if (kind === FileType.Purchase) {
-      const parsed = parsePurchaseFile(buffer)
-      if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Purchase)
-      if (!parsed.reportDateFrom || !parsed.reportDateTo) throw new MissingDateError(FileType.Purchase)
-      if (parsed.reportDateFrom !== parsed.reportDateTo) throw new MultiDayFileError(parsed.reportDateFrom, parsed.reportDateTo)
-      await assertUploadAllowed(branch.id, FileType.Purchase, parsed.reportDateFrom)
-      await replaceExistingBatchByDate(branch.id, FileType.Purchase, parsed.reportDateFrom, SystemRoleCode.SUPER_ADMIN)
-      const batch = await createImportBatch({
-        branchId: branch.id,
-        fileType: FileType.Purchase,
-        fileName,
-        date: parsed.reportDateFrom,
-        rowCount: parsed.rows.length,
-        status: "processing",
-      })
-      return {
-        accepted: { fileName, batchId: batch.id, fileType: FileType.Purchase, date: parsed.reportDateFrom },
-        prepared: {
-          kind: FileType.Purchase,
-          batchId: batch.id,
-          branchId: branch.id,
-          reportDateFrom: parsed.reportDateFrom,
-          reportDateTo: parsed.reportDateTo,
-          rows: parsed.rows,
-        },
-      }
-    }
-
-    // Day-Wise Sale
-    const parsed = parseDaySalesFile(buffer)
-    if (parsed.rows.length === 0) throw new EmptyImportError(FileType.DayWiseSale)
-    await replaceExistingBatchByFilename(branch.id, FileType.DayWiseSale, fileName, SystemRoleCode.SUPER_ADMIN)
-    const batch = await createImportBatch({
-      branchId: branch.id,
-      fileType: FileType.DayWiseSale,
-      fileName,
-      rowCount: parsed.rows.length,
-      status: "processing",
     })
-    return {
-      accepted: { fileName, batchId: batch.id, fileType: FileType.DayWiseSale, date: null },
-      prepared: { kind: FileType.DayWiseSale, batchId: batch.id, branchId: branch.id, rows: parsed.rows },
-    }
-  } catch (err) {
-    return { rejected: { fileName, reason: err instanceof Error ? err.message : "Unknown error while reading this file" } }
-  }
-}
 
-async function commitBulkFile(prepared: BulkPrepared): Promise<void> {
-  try {
-    let rowCount: number
-
-    switch (prepared.kind) {
-      case FileType.Stock: {
-        const itemIdByCode = await resolveItemIdsByCode(
-          prepared.rows.map((row) => ({ code: row.itemCode, name: row.itemName, unit: row.unit, company: row.company, manufacturer: row.manufacturer })),
-        )
-        rowCount = await insertStockSnapshots(buildStockSnapshotRows(prepared.rows, prepared.branchId, prepared.batchId, prepared.asOfDate, itemIdByCode))
-        break
-      }
-      case FileType.Sales: {
-        const itemIdByName = await resolveItemIdsByName(prepared.rows.map((row) => row.itemNameRaw))
-        rowCount = await insertSalesLines(
-          buildSalesLineRows(prepared.rows, prepared.branchId, prepared.batchId, prepared.reportDateFrom, prepared.reportDateTo, itemIdByName),
-        )
-        break
-      }
-      case FileType.Purchase: {
-        const itemIdByName = await resolveItemIdsByName(prepared.rows.map((row) => row.itemNameRaw))
-        rowCount = await insertPurchaseLines(
-          buildPurchaseLineRows(prepared.rows, prepared.branchId, prepared.batchId, prepared.reportDateFrom, prepared.reportDateTo, itemIdByName),
-        )
-        break
-      }
-      case FileType.DayWiseSale:
-        rowCount = await insertDailySalesSummary(buildDailySalesSummaryRows(prepared.rows, prepared.branchId, prepared.batchId))
-        break
-    }
-
-    await updateImportBatchStatus(prepared.batchId, { status: "completed", rowCount })
-    emitImportBatchUpdate({ batchId: prepared.batchId, branchId: prepared.branchId, fileType: prepared.kind, status: "completed", rowCount })
+    await updateImportBatchStatus(prepared.batchId, { status: "completed", date, rowCount })
+    emitImportBatchUpdate({ batchId: prepared.batchId, branchId: prepared.branchId, fileType: prepared.kind, fileName: prepared.fileName, status: "completed", rowCount })
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Unknown error while importing this file"
     await updateImportBatchStatus(prepared.batchId, { status: "failed", errorMessage })
-    emitImportBatchUpdate({ batchId: prepared.batchId, branchId: prepared.branchId, fileType: prepared.kind, status: "failed", errorMessage })
+    emitImportBatchUpdate({ batchId: prepared.batchId, branchId: prepared.branchId, fileType: prepared.kind, fileName: prepared.fileName, status: "failed", errorMessage })
   }
 }
 
-export async function bulkImportFiles(branchId: string, files: BulkUploadFileInputDto[]): Promise<BulkUploadResultDto> {
-  const branch = await requireBranch(branchId)
+// ---- Single-file upload — instant ack, background pipeline ----
 
-  const accepted: BulkUploadAcceptedDto[] = []
-  const rejected: BulkUploadRejectedDto[] = []
-  const toCommit: BulkPrepared[] = []
+export async function importFile(input: UploadFileDto): Promise<UploadAckDto> {
+  const branch = await requireBranch(input.branchId)
+  const batch = await createImportBatch({ branchId: branch.id, fileType: input.fileType, fileName: input.fileName, rowCount: 0, status: "processing" })
+  emitImportBatchUpdate({ batchId: batch.id, branchId: branch.id, fileType: input.fileType, fileName: input.fileName, status: "processing" })
 
-  for (const file of files) {
-    const result = await prepareBulkFile(branch, file.fileName, file.buffer)
-    if ("rejected" in result) {
-      rejected.push(result.rejected)
-    } else {
-      accepted.push(result.accepted)
-      toCommit.push(result.prepared)
-    }
+  // Not awaited — see `processBulkFilesInBackground` below for why this is safe/expected.
+  void processSingleFileInBackground(branch, input, batch.id)
+
+  return { batchId: batch.id, branchId: branch.id, branchName: branch.name, fileType: input.fileType, fileName: input.fileName }
+}
+
+async function processSingleFileInBackground(branch: BranchDocument, input: UploadFileDto, batchId: string): Promise<void> {
+  try {
+    const rows = readWorkbookRows(input.buffer)
+    assertReportKind(rows, input.fileType)
+    const validated = parseAndValidate(input.fileType, rows)
+    const prepared = toPreparedImport(validated, branch.id, batchId, input.fileName)
+    await runImportPipeline(prepared, input.actorRole)
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error while importing this file"
+    await updateImportBatchStatus(batchId, { status: "failed", errorMessage })
+    emitImportBatchUpdate({ batchId, branchId: branch.id, fileType: input.fileType, fileName: input.fileName, status: "failed", errorMessage })
+  }
+}
+
+// ---- Bulk upload — instant ack, background two-phase pipeline (super_admin only, enforced at the route) ----
+
+const TYPE_PRIORITY: Record<FileTypeValue, number> = {
+  [FileType.Stock]: 0,
+  [FileType.Purchase]: 1,
+  [FileType.Sales]: 2,
+  [FileType.DayWiseSale]: 3,
+}
+
+/** Day-Wise Sale has no date — sort it after every dated file; order among multiple Day-Wise Sale files doesn't matter. */
+function commitDateKey(prepared: PreparedImport): string {
+  return preparedDate(prepared) ?? "9999-12-31"
+}
+
+/** Turns whatever order the user attached files in into the order they must actually commit in: date ascending, then Stock -> Purchase -> Sales within a date. */
+function compareCommitOrder(a: PreparedImport, b: PreparedImport): number {
+  const dateCompare = commitDateKey(a).localeCompare(commitDateKey(b))
+  return dateCompare !== 0 ? dateCompare : TYPE_PRIORITY[a.kind] - TYPE_PRIORITY[b.kind]
+}
+
+/** Phase A per file: detect type, create its placeholder row immediately (so the table fills in fast), parse + structurally validate. Returns null if the file couldn't be handled at all (unrecognized type, or a structural failure) — either way the failure is already recorded/emitted, nothing left for the caller to do with it. */
+async function prepareBulkFile(branch: BranchDocument, fileName: string, buffer: Buffer): Promise<PreparedImport | null> {
+  const rows = readWorkbookRows(buffer)
+  const kind = detectReportKind(rows)
+  if (!kind) {
+    emitImportBatchUpdate({
+      batchId: null,
+      branchId: branch.id,
+      fileType: null,
+      fileName,
+      status: "failed",
+      errorMessage: "Could not identify this file's report type from its content — check the file format.",
+    })
+    return null
   }
 
-  // Not awaited — this keeps running after `bulkImportFiles` returns (plain Node async execution,
-  // no queue/worker needed). The prepare loop above already ran sequentially and awaited each
-  // `createImportBatch`, so if the batch includes e.g. Stock and Purchase for the same new date,
-  // Stock's placeholder row is already committed by the time Purchase's sequence-gate check runs
-  // — same ordering requirement as two separate uploads (Stock must come first in the file list).
-  // This background loop stays sequential too, just to avoid hammering the DB with many
-  // concurrent bulk inserts at once — gate correctness doesn't depend on it.
-  void (async () => {
-    for (const prepared of toCommit) {
-      await commitBulkFile(prepared)
-    }
-  })()
+  const batch = await createImportBatch({ branchId: branch.id, fileType: kind, fileName, rowCount: 0, status: "processing" })
+  emitImportBatchUpdate({ batchId: batch.id, branchId: branch.id, fileType: kind, fileName, status: "processing" })
 
-  return { accepted, rejected }
+  try {
+    const validated = parseAndValidate(kind, rows)
+    return toPreparedImport(validated, branch.id, batch.id, fileName)
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error while reading this file"
+    await updateImportBatchStatus(batch.id, { status: "failed", errorMessage })
+    emitImportBatchUpdate({ batchId: batch.id, branchId: branch.id, fileType: kind, fileName, status: "failed", errorMessage })
+    return null
+  }
+}
+
+async function processBulkFilesInBackground(branch: BranchDocument, files: BulkUploadFileInputDto[]): Promise<void> {
+  // Phase A — parse & structurally validate every file; order doesn't matter yet.
+  const ready: PreparedImport[] = []
+  for (const file of files) {
+    const prepared = await prepareBulkFile(branch, file.fileName, file.buffer)
+    if (prepared) ready.push(prepared)
+  }
+
+  // Phase B — commit in pipeline order, sequentially (required for the Stock-before-Purchase/Sales
+  // gate — each file's transaction fully commits or fails before the next one starts).
+  const sorted = [...ready].sort(compareCommitOrder)
+  for (const prepared of sorted) {
+    await runImportPipeline(prepared, SystemRoleCode.SUPER_ADMIN)
+  }
+}
+
+export async function bulkImportFiles(branchId: string, files: BulkUploadFileInputDto[]): Promise<BulkUploadAckDto> {
+  const branch = await requireBranch(branchId)
+
+  // Not awaited — this keeps running after `bulkImportFiles` returns (plain Node async execution,
+  // no queue/worker needed). The whole point: the caller gets an instant ack, and every file's
+  // status (processing -> completed/failed) shows up live via socket + the history table instead.
+  void processBulkFilesInBackground(branch, files)
+
+  return { receivedCount: files.length }
 }
 
 export async function getImportBatches(branchId?: string, fileType?: FileTypeValue): Promise<ImportBatchListItemDto[]> {

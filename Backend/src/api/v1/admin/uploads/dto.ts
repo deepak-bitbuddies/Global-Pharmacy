@@ -9,14 +9,13 @@ export type UploadFileDto = {
   actorRole: SystemRoleCode
 }
 
-export type UploadResultDto = {
+/** Instant ack for a single-file upload — the batch is created and returned right away with status "processing"; the actual outcome (rowCount, replaced-or-not) arrives later via socket + the history table, not synchronously. */
+export type UploadAckDto = {
+  batchId: string
   branchId: string
   branchName: string
   fileType: FileTypeValue
   fileName: string
-  rowCount: number
-  importedAt: Date
-  replaced: boolean
 }
 
 export type ImportBatchListItemDto = {
@@ -44,20 +43,7 @@ export type BulkUploadFileInputDto = {
   buffer: Buffer
 }
 
-export type BulkUploadAcceptedDto = {
-  fileName: string
-  batchId: string
-  fileType: FileTypeValue
-  /** Null for Day-Wise Sale, which has no single date (see `import_batches.date`). */
-  date: string | null
-}
-
-export type BulkUploadRejectedDto = {
-  fileName: string
-  reason: string
-}
-
-export type BulkUploadResultDto = {
-  accepted: BulkUploadAcceptedDto[]
-  rejected: BulkUploadRejectedDto[]
+/** Instant ack for a bulk upload — nothing has been validated yet at this point (that all happens in the background), so this is just a receipt. Per-file outcomes arrive via socket + the history table. */
+export type BulkUploadAckDto = {
+  receivedCount: number
 }

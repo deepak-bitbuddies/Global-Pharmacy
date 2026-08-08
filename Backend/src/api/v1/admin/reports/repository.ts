@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, notExists, sql, type AnyColumn, type SQL } from "drizzle-orm"
+import { and, desc, eq, gte, ilike, lte, notExists, or, sql, type AnyColumn, type SQL } from "drizzle-orm"
 
 import { db } from "../../../../core/database/db.js"
 import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
@@ -236,6 +236,8 @@ export async function getSalesDetail(filters: ReportFilters, pagination: CursorP
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
     filters.company ? eq(items.company, filters.company) : undefined,
+    filters.amountFrom !== undefined ? gte(salesLines.amount, filters.amountFrom) : undefined,
+    filters.amountTo !== undefined ? lte(salesLines.amount, filters.amountTo) : undefined,
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -291,6 +293,9 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
     itemFilter(purchaseLines.itemNameRaw, filters),
     filters.company ? eq(items.company, filters.company) : undefined,
     schemeTierFilter(filters),
+    filters.supplierGroup ? eq(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
+    filters.amountFrom !== undefined ? gte(purchaseLines.amount, filters.amountFrom) : undefined,
+    filters.amountTo !== undefined ? lte(purchaseLines.amount, filters.amountTo) : undefined,
     ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
   )
 
@@ -578,6 +583,18 @@ export async function getTotalStockValue(filters: ReportFilters): Promise<number
   return Number(row?.total ?? 0)
 }
 
+/** Stock's item search matches name, code, batch, or rack no — Batch/Rack No used to be their own filter fields but folded into the one search box so users don't have to know which box to type a rack/batch number into. */
+function stockItemFilter(filters: ReportFilters): SQL | undefined {
+  if (!filters.item) return undefined
+  const pattern = `%${filters.item}%`
+  return or(
+    ilike(stockSnapshots.itemName, pattern),
+    ilike(stockSnapshots.itemCode, pattern),
+    ilike(stockSnapshots.batch, pattern),
+    ilike(stockSnapshots.rackNo, pattern),
+  )
+}
+
 /**
  * Stock now accumulates one snapshot per uploaded date (only a same-date re-upload replaces),
  * instead of always holding just the single "current" snapshot — so without a date filter,
@@ -585,10 +602,13 @@ export async function getTotalStockValue(filters: ReportFilters): Promise<number
  * single-day column (not a from/to range like Sales/Purchase), so this is a plain range check.
  */
 function stockFilterClauses(filters: ReportFilters): SQL[] {
-  const clauses = [branchFilter(stockSnapshots.branchId, filters), itemFilter(stockSnapshots.itemName, filters), expiryTierFilter(filters)].filter(
+  const clauses = [branchFilter(stockSnapshots.branchId, filters), stockItemFilter(filters), expiryTierFilter(filters)].filter(
     (c): c is SQL => c !== undefined,
   )
   if (filters.company) clauses.push(eq(stockSnapshots.company, filters.company))
+  if (filters.supplier) clauses.push(eq(stockSnapshots.supplier, filters.supplier))
+  if (filters.stockFrom !== undefined) clauses.push(gte(stockSnapshots.currentStock, filters.stockFrom))
+  if (filters.stockTo !== undefined) clauses.push(lte(stockSnapshots.currentStock, filters.stockTo))
   if (filters.dateFrom) clauses.push(gte(stockSnapshots.asOfDate, filters.dateFrom))
   if (filters.dateTo) clauses.push(lte(stockSnapshots.asOfDate, filters.dateTo))
   return clauses
@@ -662,4 +682,20 @@ export async function listCompanies(): Promise<string[]> {
     .where(sql`${items.company} is not null`)
     .orderBy(items.company)
   return rows.map((row) => row.company).filter((c): c is string => c !== null)
+}
+
+/** Unlike company, supplier is a per-batch/per-receipt fact (who a specific delivery came from), not a stable item attribute — no `items.supplier` column exists, so this sources straight from `stock_snapshots`. */
+export async function listSuppliers(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ supplier: stockSnapshots.supplier })
+    .from(stockSnapshots)
+    .where(sql`${stockSnapshots.supplier} is not null`)
+    .orderBy(stockSnapshots.supplier)
+  return rows.map((row) => row.supplier).filter((s): s is string => s !== null)
+}
+
+/** Purchase register's own grouping column (its equivalent of Sales' `partyGroup`) — sourced directly, no item join involved. */
+export async function listSupplierGroups(): Promise<string[]> {
+  const rows = await db.selectDistinct({ supplierGroup: purchaseLines.supplierGroup }).from(purchaseLines).orderBy(purchaseLines.supplierGroup)
+  return rows.map((row) => row.supplierGroup)
 }

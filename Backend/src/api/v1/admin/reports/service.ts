@@ -40,6 +40,8 @@ import {
   getTotalStockValue,
   getZeroOrderAlerts,
   listCompanies,
+  listSupplierGroups,
+  listSuppliers,
 } from "./repository.js"
 
 const num = (value: string | number | null): number => Number(value ?? 0)
@@ -267,4 +269,12 @@ export async function dashboardSummary(filters: ReportFilters): Promise<Dashboar
 
 export async function companies(): Promise<string[]> {
   return listCompanies()
+}
+
+export async function suppliers(): Promise<string[]> {
+  return listSuppliers()
+}
+
+export async function supplierGroups(): Promise<string[]> {
+  return listSupplierGroups()
 }

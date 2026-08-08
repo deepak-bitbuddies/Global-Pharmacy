@@ -16,6 +16,15 @@ export type ReportFilters = {
   /** Only used when `expiryTier === "custom"` — a separate expiry-date range from `dateFrom`/`dateTo` (which filter the report's own date, not expiry). */
   expiryDateFrom?: string
   expiryDateTo?: string
+  // Stock-only filters.
+  supplier?: string
+  stockFrom?: number
+  stockTo?: number
+  // Purchase-only filter — Purchase's equivalent of Sales' party grouping.
+  supplierGroup?: string
+  // Purchase/Sales amount range.
+  amountFrom?: number
+  amountTo?: number
 }
 
 export type { Branch } from "@/modules/branches"
@@ -181,14 +190,13 @@ export type DashboardSummary = {
 
 export type ImportFileType = "stock" | "sales" | "purchase" | "day_wise_sale"
 
-export type UploadResult = {
+/** Instant ack for a single-file upload — the batch already exists (status "processing") by the time this comes back; the real outcome (rowCount, replaced-or-not) only ever shows up later as the matching row in `ImportBatch` history, driven live by the import socket. */
+export type UploadAck = {
+  batchId: string
   branchId: string
   branchName: string
   fileType: ImportFileType
   fileName: string
-  rowCount: number
-  importedAt: string
-  replaced: boolean
 }
 
 export type ImportBatch = {
@@ -210,19 +218,27 @@ export type UploadCycleStatus = {
   salesDone: boolean
 }
 
-export type BulkUploadAccepted = {
+/** Instant ack for a bulk upload — nothing has been validated yet at this point (that's all backgrounded); per-file outcomes arrive via socket + the history table instead. */
+export type BulkUploadAck = {
+  receivedCount: number
+}
+
+/** `import-batch:update` socket payload — every processing/completed/failed transition for both upload paths. `batchId`/`fileType` are only null for a bulk file whose report type couldn't be identified at all (no history table row exists for it). */
+export type ImportBatchUpdateEvent = {
+  batchId: string | null
+  branchId: string
+  fileType: ImportFileType | null
   fileName: string
+  status: "processing" | "completed" | "failed"
+  rowCount?: number
+  errorMessage?: string
+}
+
+/** `import-batch:progress` socket payload — high-frequency per-insert-chunk ticks for a batch already known to exist (never null). */
+export type ImportBatchProgressEvent = {
   batchId: string
+  branchId: string
   fileType: ImportFileType
-  date: string | null
-}
-
-export type BulkUploadRejected = {
-  fileName: string
-  reason: string
-}
-
-export type BulkUploadResult = {
-  accepted: BulkUploadAccepted[]
-  rejected: BulkUploadRejected[]
+  rowsProcessed: number
+  totalRows: number
 }

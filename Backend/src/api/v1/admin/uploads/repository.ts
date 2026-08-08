@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm"
 
 import { db, type DbOrTransaction } from "../../../../core/database/db.js"
 import { InternalServerError } from "../../../../shared/errors/index.js"
@@ -75,12 +75,12 @@ export async function countImportBatchesForBranch(branchId: string): Promise<num
   return row?.count ?? 0
 }
 
-/** Bulk-resolves item ids by normalized name, creating any item that doesn't exist yet. */
-export async function resolveItemIdsByName(names: string[]): Promise<Map<string, string>> {
+/** Bulk-resolves item ids by normalized name, creating any item that doesn't exist yet. `dbClient` accepts a transaction so the created rows can be rolled back atomically with the rest of the import — see `repository.ts:32`'s `createBranch` for the same pattern. */
+export async function resolveItemIdsByName(names: string[], dbClient: DbOrTransaction = db): Promise<Map<string, string>> {
   const uniqueNormalized = [...new Set(names.map(normalizeItemName))].filter(Boolean)
   if (uniqueNormalized.length === 0) return new Map()
 
-  const existing = await db
+  const existing = await dbClient
     .select()
     .from(items)
     .where(inArray(items.normalizedName, uniqueNormalized))
@@ -89,7 +89,7 @@ export async function resolveItemIdsByName(names: string[]): Promise<Map<string,
 
   const missing = uniqueNormalized.filter((name) => !map.has(name))
   if (missing.length > 0) {
-    const created = await db
+    const created = await dbClient
       .insert(items)
       .values(missing.map((normalizedName) => ({ name: normalizedName, normalizedName })))
       .returning()
@@ -107,13 +107,13 @@ export type StockItemInput = {
   manufacturer: string | null
 }
 
-/** Bulk-resolves item ids by code (Stock file is the one source with real item codes), creating any that don't exist yet. */
-export async function resolveItemIdsByCode(rows: StockItemInput[]): Promise<Map<string, string>> {
+/** Bulk-resolves item ids by code (Stock file is the one source with real item codes), creating any that don't exist yet. `dbClient` accepts a transaction so item creation/adoption rolls back atomically with the rest of the import. */
+export async function resolveItemIdsByCode(rows: StockItemInput[], dbClient: DbOrTransaction = db): Promise<Map<string, string>> {
   const distinctByCode = new Map(rows.map((row) => [row.code, row]))
   const codes = [...distinctByCode.keys()]
   if (codes.length === 0) return new Map()
 
-  const existing = await db.select().from(items).where(inArray(items.code, codes))
+  const existing = await dbClient.select().from(items).where(inArray(items.code, codes))
   const map = new Map<string, string>()
   for (const item of existing) if (item.code) map.set(item.code, item.id)
 
@@ -124,7 +124,7 @@ export async function resolveItemIdsByCode(rows: StockItemInput[]): Promise<Map<
   // import that ran before Stock ever did) — adopt that row instead of creating a duplicate,
   // so rows already linked to it stay correctly connected instead of being orphaned.
   const missingNormalizedNames = missing.map((row) => normalizeItemName(row.name))
-  const existingCodeless = await db
+  const existingCodeless = await dbClient
     .select()
     .from(items)
     .where(and(inArray(items.normalizedName, missingNormalizedNames), isNull(items.code)))
@@ -137,7 +137,7 @@ export async function resolveItemIdsByCode(rows: StockItemInput[]): Promise<Map<
       toCreate.push(row)
       continue
     }
-    await db
+    await dbClient
       .update(items)
       .set({ code: row.code, unit: row.unit, company: row.company, manufacturer: row.manufacturer, updatedAt: new Date() })
       .where(eq(items.id, codeless.id))
@@ -145,7 +145,7 @@ export async function resolveItemIdsByCode(rows: StockItemInput[]): Promise<Map<
   }
 
   if (toCreate.length > 0) {
-    const created = await db
+    const created = await dbClient
       .insert(items)
       .values(
         toCreate.map((row) => ({
@@ -164,21 +164,44 @@ export async function resolveItemIdsByCode(rows: StockItemInput[]): Promise<Map<
   return map
 }
 
-export async function findImportBatch(branchId: string, fileType: string, fileName: string): Promise<ImportBatchDocument | null> {
-  const [batch] = await db
+/** `excludeBatchId` matters now that a "processing" placeholder batch (same branch/type/filename) can already exist by the time this replace-lookup runs — without it, a re-upload with the same filename would match its own not-yet-finished placeholder instead of the prior completed batch. */
+export async function findImportBatch(
+  branchId: string,
+  fileType: string,
+  fileName: string,
+  excludeBatchId?: string,
+  dbClient: DbOrTransaction = db,
+): Promise<ImportBatchDocument | null> {
+  const clauses = [eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType), eq(importBatches.fileName, fileName)]
+  if (excludeBatchId) clauses.push(ne(importBatches.id, excludeBatchId))
+  const [batch] = await dbClient
     .select()
     .from(importBatches)
-    .where(and(eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType), eq(importBatches.fileName, fileName)))
+    .where(and(...clauses))
     .limit(1)
   return batch ?? null
 }
 
-/** Stock/Sales/Purchase are now single-day-per-upload, so "the batch for this date" (regardless of filename) is what re-upload/replace and the sequence gate key off. */
-export async function findImportBatchByDate(branchId: string, fileType: string, date: string): Promise<ImportBatchDocument | null> {
-  const [batch] = await db
+/**
+ * Stock/Sales/Purchase are now single-day-per-upload, so "the batch for this date" (regardless of
+ * filename) is what re-upload/replace and the sequence gate key off. `dbClient` accepts a
+ * transaction — the replace flow looks this up from inside the same transaction that then deletes
+ * it, so the lookup sees the transaction's own view of the data. `excludeBatchId` — see
+ * `findImportBatch`'s comment; same reason.
+ */
+export async function findImportBatchByDate(
+  branchId: string,
+  fileType: string,
+  date: string,
+  excludeBatchId?: string,
+  dbClient: DbOrTransaction = db,
+): Promise<ImportBatchDocument | null> {
+  const clauses = [eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType), eq(importBatches.date, date)]
+  if (excludeBatchId) clauses.push(ne(importBatches.id, excludeBatchId))
+  const [batch] = await dbClient
     .select()
     .from(importBatches)
-    .where(and(eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType), eq(importBatches.date, date)))
+    .where(and(...clauses))
     .limit(1)
   return batch ?? null
 }
@@ -204,17 +227,17 @@ export async function hasBatchForDate(branchId: string, fileType: string, date: 
   return !!row
 }
 
-export async function createImportBatch(input: NewImportBatchDocument): Promise<ImportBatchDocument> {
-  const [batch] = await db.insert(importBatches).values(input).returning()
+export async function createImportBatch(input: NewImportBatchDocument, dbClient: DbOrTransaction = db): Promise<ImportBatchDocument> {
+  const [batch] = await dbClient.insert(importBatches).values(input).returning()
   if (!batch) throw new InternalServerError("Failed to record import batch")
   return batch
 }
 
-export async function deleteImportBatch(batchId: string): Promise<void> {
-  await db.delete(importBatches).where(eq(importBatches.id, batchId))
+export async function deleteImportBatch(batchId: string, dbClient: DbOrTransaction = db): Promise<void> {
+  await dbClient.delete(importBatches).where(eq(importBatches.id, batchId))
 }
 
-export type ImportBatchStatusUpdate = { status: "completed" | "failed"; rowCount?: number; errorMessage?: string | null }
+export type ImportBatchStatusUpdate = { status: "processing" | "completed" | "failed"; date?: string | null; rowCount?: number; errorMessage?: string | null }
 
 /** Flips a bulk-uploaded batch's placeholder "processing" row to its final outcome once the background committer finishes with it. */
 export async function updateImportBatchStatus(batchId: string, update: ImportBatchStatusUpdate): Promise<void> {
@@ -229,42 +252,42 @@ export async function listImportBatches(branchId?: string, fileType?: string): P
   return (clauses.length > 0 ? query.where(and(...clauses)) : query).orderBy(importBatches.importedAt)
 }
 
-export async function deleteStockSnapshotsByBatch(batchId: string): Promise<void> {
-  await db.delete(stockSnapshots).where(eq(stockSnapshots.importBatchId, batchId))
+export async function deleteStockSnapshotsByBatch(batchId: string, dbClient: DbOrTransaction = db): Promise<void> {
+  await dbClient.delete(stockSnapshots).where(eq(stockSnapshots.importBatchId, batchId))
 }
 
-export async function insertStockSnapshots(rows: NewStockSnapshotDocument[]): Promise<number> {
+export async function insertStockSnapshots(rows: NewStockSnapshotDocument[], dbClient: DbOrTransaction = db): Promise<number> {
   if (rows.length === 0) return 0
-  const inserted = await db.insert(stockSnapshots).values(rows).returning({ id: stockSnapshots.id })
+  const inserted = await dbClient.insert(stockSnapshots).values(rows).returning({ id: stockSnapshots.id })
   return inserted.length
 }
 
-export async function deleteSalesLinesByBatch(batchId: string): Promise<void> {
-  await db.delete(salesLines).where(eq(salesLines.importBatchId, batchId))
+export async function deleteSalesLinesByBatch(batchId: string, dbClient: DbOrTransaction = db): Promise<void> {
+  await dbClient.delete(salesLines).where(eq(salesLines.importBatchId, batchId))
 }
 
-export async function insertSalesLines(rows: NewSalesLineDocument[]): Promise<number> {
+export async function insertSalesLines(rows: NewSalesLineDocument[], dbClient: DbOrTransaction = db): Promise<number> {
   if (rows.length === 0) return 0
-  const inserted = await db.insert(salesLines).values(rows).returning({ id: salesLines.id })
+  const inserted = await dbClient.insert(salesLines).values(rows).returning({ id: salesLines.id })
   return inserted.length
 }
 
-export async function deletePurchaseLinesByBatch(batchId: string): Promise<void> {
-  await db.delete(purchaseLines).where(eq(purchaseLines.importBatchId, batchId))
+export async function deletePurchaseLinesByBatch(batchId: string, dbClient: DbOrTransaction = db): Promise<void> {
+  await dbClient.delete(purchaseLines).where(eq(purchaseLines.importBatchId, batchId))
 }
 
-export async function insertPurchaseLines(rows: NewPurchaseLineDocument[]): Promise<number> {
+export async function insertPurchaseLines(rows: NewPurchaseLineDocument[], dbClient: DbOrTransaction = db): Promise<number> {
   if (rows.length === 0) return 0
-  const inserted = await db.insert(purchaseLines).values(rows).returning({ id: purchaseLines.id })
+  const inserted = await dbClient.insert(purchaseLines).values(rows).returning({ id: purchaseLines.id })
   return inserted.length
 }
 
-export async function deleteDailySalesSummaryByBatch(batchId: string): Promise<void> {
-  await db.delete(dailySalesSummary).where(eq(dailySalesSummary.importBatchId, batchId))
+export async function deleteDailySalesSummaryByBatch(batchId: string, dbClient: DbOrTransaction = db): Promise<void> {
+  await dbClient.delete(dailySalesSummary).where(eq(dailySalesSummary.importBatchId, batchId))
 }
 
-export async function insertDailySalesSummary(rows: NewDailySalesSummaryDocument[]): Promise<number> {
+export async function insertDailySalesSummary(rows: NewDailySalesSummaryDocument[], dbClient: DbOrTransaction = db): Promise<number> {
   if (rows.length === 0) return 0
-  const inserted = await db.insert(dailySalesSummary).values(rows).returning({ id: dailySalesSummary.id })
+  const inserted = await dbClient.insert(dailySalesSummary).values(rows).returning({ id: dailySalesSummary.id })
   return inserted.length
 }

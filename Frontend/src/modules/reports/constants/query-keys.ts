@@ -4,6 +4,8 @@ import type { ReportFilters } from "../types"
 export const reportsQueryKeys = {
   branches: ["reports", "branches"] as const,
   companies: ["reports", "companies"] as const,
+  suppliers: ["reports", "suppliers"] as const,
+  supplierGroups: ["reports", "supplier-groups"] as const,
   dashboardSummary: (filters: ReportFilters) => ["reports", "dashboard-summary", filters] as const,
   itemWiseSales: (filters: ReportFilters, pagination: CursorPaginationParams) => ["reports", "item-wise-sales", filters, pagination] as const,
   salesDetail: (filters: ReportFilters, pagination: CursorPaginationParams) => ["reports", "sales-detail", filters, pagination] as const,

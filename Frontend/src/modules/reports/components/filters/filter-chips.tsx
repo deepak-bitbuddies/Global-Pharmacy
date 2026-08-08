@@ -17,6 +17,13 @@ type FilterChipsProps = {
 
 type Chip = { key: string; label: string; onRemove: () => void }
 
+/** "500 – 1000" when both bounds are set, "≥ 500" / "≤ 1000" when only one is. */
+function rangeLabel(from: number | undefined, to: number | undefined): string {
+  if (from !== undefined && to !== undefined) return `${from} – ${to}`
+  if (from !== undefined) return `≥ ${from}`
+  return `≤ ${to}`
+}
+
 /** Removable chips for every *active* filter except search (already visible/editable in its own box) — plus a "Clear all" that also resets search, matching the modal's Apply committing the same shape. */
 export function FilterChips({ filters, onFiltersChange, show }: FilterChipsProps) {
   const t = useTranslations()
@@ -72,6 +79,38 @@ export function FilterChips({ filters, onFiltersChange, show }: FilterChipsProps
       key: "dateRange",
       label: `${tCommon("dateRange")}: ${filters.dateFrom} – ${filters.dateTo}`,
       onRemove: () => onFiltersChange((prev) => ({ ...prev, dateFrom: undefined, dateTo: undefined })),
+    })
+  }
+
+  if (show.supplier && filters.supplier) {
+    chips.push({
+      key: "supplier",
+      label: `${tStock("supplier")}: ${filters.supplier}`,
+      onRemove: () => onFiltersChange((prev) => ({ ...prev, supplier: undefined })),
+    })
+  }
+
+  if (show.stockRange && (filters.stockFrom !== undefined || filters.stockTo !== undefined)) {
+    chips.push({
+      key: "stockRange",
+      label: `${tStock("stockRange")}: ${rangeLabel(filters.stockFrom, filters.stockTo)}`,
+      onRemove: () => onFiltersChange((prev) => ({ ...prev, stockFrom: undefined, stockTo: undefined })),
+    })
+  }
+
+  if (show.supplierGroup && filters.supplierGroup) {
+    chips.push({
+      key: "supplierGroup",
+      label: `${tPurchase("supplier")}: ${filters.supplierGroup}`,
+      onRemove: () => onFiltersChange((prev) => ({ ...prev, supplierGroup: undefined })),
+    })
+  }
+
+  if (show.amountRange && (filters.amountFrom !== undefined || filters.amountTo !== undefined)) {
+    chips.push({
+      key: "amountRange",
+      label: `${tCommon("amountRange")}: ${rangeLabel(filters.amountFrom, filters.amountTo)}`,
+      onRemove: () => onFiltersChange((prev) => ({ ...prev, amountFrom: undefined, amountTo: undefined })),
     })
   }
 

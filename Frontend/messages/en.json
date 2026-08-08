@@ -58,9 +58,13 @@
     "date": "Date",
     "company": "Company",
     "allCompanies": "All companies",
+    "allSupplierGroups": "All supplier groups",
     "item": "Item",
     "searchItem": "Search item...",
     "amount": "Amount",
+    "amountRange": "Amount range",
+    "minAmount": "Min amount",
+    "maxAmount": "Max amount",
     "qty": "Qty",
     "rate": "Rate",
     "unit": "Unit",
@@ -139,7 +143,6 @@
     "sales": {
       "title": "Sales Report",
       "description": "Party/item-wise sales detail, one row per line item — same shape as Purchase and Stock, not aggregated.",
-      "party": "Party",
       "emptyText": "No sales data — import a Sales Register file first."
     },
     "stock": {
@@ -175,6 +178,11 @@
       "expiryTierNone": "No expiry set",
       "expiryTierPlaceholder": "All expiry",
       "expiryTierCustom": "Custom range",
+      "allSuppliers": "All suppliers",
+      "searchPlaceholder": "Search by item, code, batch, rack no...",
+      "stockRange": "Stock range",
+      "minStock": "Min stock",
+      "maxStock": "Max stock",
       "emptyText": "No stock data — import a Stock Register file first."
     },
     "purchase": {
@@ -244,9 +252,9 @@
       "title": "Day-Wise Sale (Sales Book)",
       "description": "Daily bill totals — independent of the pipeline above, can span any date range."
     },
-    "importSuccess": "Imported {rowCount} rows from {fileName}",
-    "importSuccessReplaced": "Imported {rowCount} rows from {fileName} (replaced previous import)",
+    "importReceived": "{fileName} received — processing",
     "importFailed": "Import failed",
+    "statusQueued": "Queued",
     "statusProcessing": "Processing",
     "statusCompleted": "Completed",
     "statusFailed": "Failed",
@@ -257,10 +265,7 @@
     "bulkUploadDropzoneHint": ".xls or .xlsx — any mix of Stock, Purchase, Sales, Day-Wise Sale",
     "bulkUploadSubmit": "Upload",
     "bulkUploadFilesSelected": "{count} file(s) selected",
-    "bulkUploadAllAccepted": "All {count} file(s) accepted — processing in the background",
-    "bulkUploadSomeRejected": "{accepted} file(s) accepted, {rejected} rejected — see details below",
-    "bulkUploadAcceptedHeading": "Accepted ({count}) — processing",
-    "bulkUploadRejectedHeading": "Rejected ({count})"
+    "bulkUploadProcessing": "{count} file(s) received — processing in the background"
   },
   "Branches": {
     "title": "Branches",

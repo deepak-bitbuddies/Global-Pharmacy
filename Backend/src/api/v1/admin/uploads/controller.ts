@@ -35,7 +35,7 @@ export async function uploadFileHandler(request: FastifyRequest, reply: FastifyR
   const buffer = await file.toBuffer()
   const result = await importFile({ fileType, branchId: branchId!, fileName: file.filename, buffer, actorRole: request.user.role as SystemRoleCode })
 
-  sendSuccess(reply, result, result.replaced ? "File re-imported (previous data replaced)" : "File imported successfully")
+  sendSuccess(reply, result, "File received — processing", 202)
 }
 
 /** Multi-file bulk import — `super_admin` only (enforced in `routes.ts`), so there's no per-file role check to make here; each file's type is auto-detected from its own content instead of a client-supplied `fileType`. */
@@ -52,7 +52,7 @@ export async function bulkUploadFileHandler(request: FastifyRequest, reply: Fast
   const { branchId: validBranchId } = validateSchema(bulkUploadBranchSchema, { branchId })
 
   const result = await bulkImportFiles(validBranchId, files)
-  sendSuccess(reply, result, `${result.accepted.length} file(s) accepted for processing, ${result.rejected.length} rejected`, 202)
+  sendSuccess(reply, result, `${result.receivedCount} file(s) received — processing in the background`, 202)
 }
 
 export async function listImportBatchesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {

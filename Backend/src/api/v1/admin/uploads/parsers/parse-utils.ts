@@ -113,12 +113,11 @@ export function detectReportKind(rows: SheetRow[]): ReportKind | null {
   return null
 }
 
-/** Same as `detectReportKind`, but reads the workbook itself — for callers (the upload service) that only have the raw buffer, not already-parsed rows. */
-export function sniffReportKind(buffer: Buffer): ReportKind | null {
+/** Loads a workbook's first sheet into row-of-cells form — the shared first step every parser (and `detectReportKind`) needs. Callers should call this exactly once per upload and pass the resulting `rows` to both detection and parsing, instead of each re-reading the buffer. */
+export function readWorkbookRows(buffer: Buffer): SheetRow[] {
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false })
   const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows: SheetRow[] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" })
-  return detectReportKind(rows)
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" })
 }
 
 function splitNameAndAddress(line: string): { name: string; address: string | null } {

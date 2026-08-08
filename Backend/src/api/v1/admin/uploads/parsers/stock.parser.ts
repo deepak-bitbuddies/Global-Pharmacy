@@ -1,5 +1,3 @@
-import * as XLSX from "xlsx"
-
 import {
   extractStockBranchHeader,
   parseMargDateShortYear,
@@ -67,11 +65,7 @@ const COL = {
   rackNo: 22,
 }
 
-export function parseStockFile(buffer: Buffer): ParsedStockFile {
-  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false })
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows: SheetRow[] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" })
-
+export function parseStockFile(rows: SheetRow[]): ParsedStockFile {
   const branch = extractStockBranchHeader(rows)
 
   const asOfDateMatch = /AS ON DATE\s+(\d{2}-\d{2}-\d{4})/i.exec(rows[1]?.[0] ?? "")

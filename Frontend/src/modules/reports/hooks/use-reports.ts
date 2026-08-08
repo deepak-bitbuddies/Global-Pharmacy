@@ -24,6 +24,8 @@ import {
   getStockReport,
   getStockSummary,
   getStockValueByCompany,
+  getSupplierGroups,
+  getSuppliers,
   getZeroOrderAlerts,
 } from "../api/reports-api"
 
@@ -33,6 +35,14 @@ export function useBranches() {
 
 export function useCompanies() {
   return useQuery({ queryKey: reportsQueryKeys.companies, queryFn: getCompanies })
+}
+
+export function useSuppliers() {
+  return useQuery({ queryKey: reportsQueryKeys.suppliers, queryFn: getSuppliers })
+}
+
+export function useSupplierGroups() {
+  return useQuery({ queryKey: reportsQueryKeys.supplierGroups, queryFn: getSupplierGroups })
 }
 
 // All hooks below feed filter- and/or pagination-driven dashboard widgets —

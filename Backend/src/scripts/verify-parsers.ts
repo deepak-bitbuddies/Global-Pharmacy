@@ -3,6 +3,7 @@
 // `npx tsx src/scripts/verify-parsers.ts` after changing any parser.
 import { readFileSync } from "node:fs"
 
+import { readWorkbookRows } from "../api/v1/admin/uploads/parsers/parse-utils.js"
 import { parseStockFile } from "../api/v1/admin/uploads/parsers/stock.parser.js"
 import { parseSalesFile } from "../api/v1/admin/uploads/parsers/sales.parser.js"
 import { parsePurchaseFile } from "../api/v1/admin/uploads/parsers/purchase.parser.js"
@@ -17,14 +18,14 @@ const FILES = {
 
 console.log("\n########## STOCK ##########")
 {
-  const result = parseStockFile(readFileSync(FILES.stock))
+  const result = parseStockFile(readWorkbookRows(readFileSync(FILES.stock)))
   console.log("row count:", result.rows.length)
   console.log("SUM(value):", result.rows.reduce((s, r) => s + (r.value ?? 0), 0).toFixed(2), "(expected 1,844,243.28)")
 }
 
 console.log("\n########## SALES ##########")
 {
-  const result = parseSalesFile(readFileSync(FILES.sales))
+  const result = parseSalesFile(readWorkbookRows(readFileSync(FILES.sales)))
   console.log("row count:", result.rows.length)
   console.log("SUM(amount):", result.rows.reduce((s, r) => s + r.amount, 0).toFixed(2), "(expected 865,704.84)")
   console.log("any TOTAL rows leaked?", result.rows.filter((r) => /^TOTAL\s*:/i.test(r.itemNameRaw)).length)
@@ -32,7 +33,7 @@ console.log("\n########## SALES ##########")
 
 console.log("\n########## PURCHASE ##########")
 {
-  const result = parsePurchaseFile(readFileSync(FILES.purchase))
+  const result = parsePurchaseFile(readWorkbookRows(readFileSync(FILES.purchase)))
   console.log("row count:", result.rows.length)
   console.log("SUM(amount):", result.rows.reduce((s, r) => s + r.amount, 0).toFixed(2), "(expected 324,837.12)")
   console.log("any TOTAL rows leaked?", result.rows.filter((r) => /^TOTAL\s*:/i.test(r.itemNameRaw)).length)
@@ -40,7 +41,7 @@ console.log("\n########## PURCHASE ##########")
 
 console.log("\n########## DAY-WISE SALE ##########")
 {
-  const result = parseDaySalesFile(readFileSync(FILES.daySales))
+  const result = parseDaySalesFile(readWorkbookRows(readFileSync(FILES.daySales)))
   console.log("row count:", result.rows.length, "(expected 18)")
   console.log("SUM(billValue):", result.rows.reduce((s, r) => s + r.billValue, 0).toFixed(2), "(expected 963,435.00)")
 }

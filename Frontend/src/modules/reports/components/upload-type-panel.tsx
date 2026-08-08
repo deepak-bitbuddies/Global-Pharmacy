@@ -3,9 +3,10 @@
 import { useTranslations } from "next-intl"
 
 import { CustomColor } from "@/lib/types"
-import { CustomSection, CustomTable, CustomTooltip, renderStatusCell, type StatusColorMap } from "@/components/ui"
+import { CustomProgress, CustomSection, CustomTable, CustomTooltip, renderStatusCell, type StatusColorMap } from "@/components/ui"
 import { FileUploadSlot } from "./file-upload-slot"
 import { useImportBatches } from "../hooks/use-uploads"
+import { useImportProgressStore } from "../hooks/use-import-progress-store"
 import type { ImportBatch, ImportFileType } from "../types"
 
 type BatchStatus = "processing" | "completed" | "failed"
@@ -27,6 +28,7 @@ type UploadTypePanelProps = {
 export function UploadTypePanel({ fileType, title, description, branchId }: UploadTypePanelProps) {
   const t = useTranslations("Import")
   const { data: batches, isLoading } = useImportBatches(branchId, fileType)
+  const progressByBatch = useImportProgressStore((state) => state.progress)
 
   return (
     <div className="space-y-4">
@@ -51,6 +53,18 @@ export function UploadTypePanel({ fileType, title, description, branchId }: Uplo
             if (key === "importedAt") return new Date(batch.importedAt).toLocaleString()
             if (key === "status") {
               const status = batch.status as BatchStatus
+              const progress = progressByBatch[batch.id]
+              if (status === "processing" && progress) {
+                return (
+                  <div className="w-32 space-y-1">
+                    <CustomProgress progress={Math.round((progress.rowsProcessed / progress.totalRows) * 100)} className="w-full" />
+                    <p className="text-xs text-muted-foreground">
+                      {progress.rowsProcessed}/{progress.totalRows}
+                    </p>
+                  </div>
+                )
+              }
+
               const chip = renderStatusCell(status, STATUS_COLOR_MAP, {
                 processing: t("statusProcessing"),
                 completed: t("statusCompleted"),

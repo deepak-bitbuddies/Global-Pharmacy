@@ -29,7 +29,7 @@ export function PurchaseReportPage() {
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}
-          show={{ search: true, branch: true, company: true, schemeTier: true, dateRange: true }}
+          show={{ search: true, branch: true, company: true, schemeTier: true, dateRange: true, supplierGroup: true, amountRange: true }}
         />
       </div>
 

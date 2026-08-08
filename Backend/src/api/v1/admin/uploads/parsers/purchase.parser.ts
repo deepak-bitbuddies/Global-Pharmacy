@@ -1,5 +1,3 @@
-import * as XLSX from "xlsx"
-
 import { extractLetterhead, parseMargDateFullYear, parseMargNumber, type BranchHeader, type SheetRow } from "./parse-utils.js"
 import { extractPartyGroupedRows, letterheadNameLine, parseQtyAndUnit } from "./party-grouped.js"
 
@@ -24,11 +22,7 @@ export type ParsedPurchaseFile = {
   rows: ParsedPurchaseRow[]
 }
 
-export function parsePurchaseFile(buffer: Buffer): ParsedPurchaseFile {
-  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false })
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  const rows: SheetRow[] = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" })
-
+export function parsePurchaseFile(rows: SheetRow[]): ParsedPurchaseFile {
   const branch = extractLetterhead(rows)
 
   const dateMatch = /FROM\s+(\d{2}-\d{2}-\d{4})-(\d{2}-\d{2}-\d{4})/i.exec(rows[6]?.[0] ?? "")

@@ -58,9 +58,13 @@
     "date": "दिनांक",
     "company": "कंपनी",
     "allCompanies": "सभी कंपनियां",
+    "allSupplierGroups": "सभी सप्लायर समूह",
     "item": "आइटम",
     "searchItem": "आइटम खोजें...",
     "amount": "राशि",
+    "amountRange": "राशि सीमा",
+    "minAmount": "न्यूनतम राशि",
+    "maxAmount": "अधिकतम राशि",
     "qty": "मात्रा",
     "rate": "दर",
     "unit": "इकाई",
@@ -139,7 +143,6 @@
     "sales": {
       "title": "बिक्री रिपोर्ट",
       "description": "पार्टी/आइटम-वार बिक्री विवरण, प्रति पंक्ति एक आइटम — खरीद और स्टॉक जैसा ही, समुच्चित नहीं।",
-      "party": "पार्टी",
       "emptyText": "कोई बिक्री डेटा नहीं — पहले एक सेल रजिस्टर फ़ाइल आयात करें।"
     },
     "stock": {
@@ -175,6 +178,11 @@
       "expiryTierNone": "समाप्ति तिथि नहीं",
       "expiryTierPlaceholder": "सभी समाप्ति",
       "expiryTierCustom": "कस्टम श्रेणी",
+      "allSuppliers": "सभी आपूर्तिकर्ता",
+      "searchPlaceholder": "आइटम, कोड, बैच, रैक नं. से खोजें...",
+      "stockRange": "स्टॉक सीमा",
+      "minStock": "न्यूनतम स्टॉक",
+      "maxStock": "अधिकतम स्टॉक",
       "emptyText": "कोई स्टॉक डेटा नहीं — पहले एक स्टॉक रजिस्टर फ़ाइल आयात करें।"
     },
     "purchase": {
@@ -244,9 +252,9 @@
       "title": "डे-वाइज़ सेल (सेल्स बुक)",
       "description": "दैनिक बिल कुल — ऊपर की पाइपलाइन से स्वतंत्र, किसी भी दिनांक सीमा में हो सकती है।"
     },
-    "importSuccess": "{fileName} से {rowCount} पंक्तियाँ आयात हुईं",
-    "importSuccessReplaced": "{fileName} से {rowCount} पंक्तियाँ आयात हुईं (पिछला आयात बदला गया)",
+    "importReceived": "{fileName} प्राप्त हुई — प्रोसेस हो रही है",
     "importFailed": "आयात विफल",
+    "statusQueued": "कतार में",
     "statusProcessing": "प्रोसेसिंग",
     "statusCompleted": "पूर्ण",
     "statusFailed": "विफल",
@@ -257,10 +265,7 @@
     "bulkUploadDropzoneHint": ".xls या .xlsx — Stock, Purchase, Sales, Day-Wise Sale का कोई भी मिश्रण",
     "bulkUploadSubmit": "अपलोड करें",
     "bulkUploadFilesSelected": "{count} फ़ाइल चुनी गईं",
-    "bulkUploadAllAccepted": "सभी {count} फ़ाइलें स्वीकृत — बैकग्राउंड में प्रोसेस हो रही हैं",
-    "bulkUploadSomeRejected": "{accepted} फ़ाइलें स्वीकृत, {rejected} अस्वीकृत — नीचे विवरण देखें",
-    "bulkUploadAcceptedHeading": "स्वीकृत ({count}) — प्रोसेसिंग",
-    "bulkUploadRejectedHeading": "अस्वीकृत ({count})"
+    "bulkUploadProcessing": "{count} फ़ाइलें प्राप्त हुईं — बैकग्राउंड में प्रोसेस हो रही हैं"
   },
   "Branches": {
     "title": "शाखाएं",
