@@ -22,8 +22,7 @@ export const branches = pgTable("branches", {
   // The branch's point of contact — also the person who logs in as this
   // branch's user (see `admin/branches/service.ts`, which creates a linked
   // `authUsers` row from these same fields at registration time).
-  contactFirstName: text("contact_first_name").notNull(),
-  contactLastName: text("contact_last_name").notNull(),
+  contactName: text("contact_name").notNull(),
   contactEmail: text("contact_email").notNull(),
   contactPhone: text("contact_phone").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

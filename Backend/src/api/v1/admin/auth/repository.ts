@@ -26,3 +26,7 @@ export async function createAuthUser(input: NewAuthUserDocument, dbClient: DbOrT
 export async function deleteAuthUserByBranchId(branchId: string, dbClient: DbOrTransaction = db): Promise<void> {
   await dbClient.delete(authUsers).where(eq(authUsers.branchId, branchId))
 }
+
+export async function updateAuthUserPasswordByBranchId(branchId: string, passwordHash: string, dbClient: DbOrTransaction = db): Promise<void> {
+  await dbClient.update(authUsers).set({ passwordHash }).where(eq(authUsers.branchId, branchId))
+}

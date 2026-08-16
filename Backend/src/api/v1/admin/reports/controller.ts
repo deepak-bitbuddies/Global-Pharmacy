@@ -6,10 +6,13 @@ import { ForbiddenError } from "../../../../shared/errors/index.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
 import { listBranches } from "../uploads/index.js"
 import {
+  createExportSchema,
   daySalesDetailQuerySchema,
+  exportIdParamSchema,
   expiryQuerySchema,
   grossProfitQuerySchema,
   itemWiseSalesQuerySchema,
+  listExportJobsQuerySchema,
   purchaseDetailQuerySchema,
   purchaseSummaryQuerySchema,
   reportFiltersSchema,
@@ -20,12 +23,15 @@ import {
   branchSales,
   cashInHand,
   companies,
+  createExport,
   dailyCollection,
   dashboardSummary,
   daySalesDetail,
   expiryReport,
+  getExportFileForDownload,
   grossProfitByItem,
   itemWiseSales,
+  listExports,
   nonMovingItems,
   outstanding,
   purchaseDetail,
@@ -170,4 +176,26 @@ export async function outstandingHandler(request: FastifyRequest, reply: Fastify
 export async function dashboardSummaryHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await dashboardSummary(filters))
+}
+
+export async function createExportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { reportType, ...rest } = validateSchema(createExportSchema, request.body)
+  const filters = scopeToUserBranch(request, rest)
+  const job = await createExport(reportType, filters, filters.branchId ?? null)
+  sendSuccess(reply, job, "Export started — processing in background", 202)
+}
+
+export async function listExportsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { branchId: requestedBranchId, reportType } = validateSchema(listExportJobsQuerySchema, request.query)
+  const { branchId } = scopeToUserBranch(request, { branchId: requestedBranchId })
+  sendSuccess(reply, await listExports(branchId, reportType))
+}
+
+export async function downloadExportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { id } = validateSchema(exportIdParamSchema, request.params)
+  const { buffer, fileName } = await getExportFileForDownload(id)
+  reply
+    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    .header("Content-Disposition", `attachment; filename="${fileName}"`)
+    .send(buffer)
 }

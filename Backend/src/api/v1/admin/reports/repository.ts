@@ -2,6 +2,7 @@ import { and, desc, eq, gte, ilike, lte, notExists, or, sql, type AnyColumn, typ
 
 import { db } from "../../../../core/database/db.js"
 import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
+import { InternalServerError } from "../../../../shared/errors/index.js"
 import {
   branches,
   dailySalesSummary,
@@ -10,6 +11,7 @@ import {
   salesLines,
   stockSnapshots,
 } from "../uploads/model.js"
+import { exportJobs, type ExportJobDocument } from "./model.js"
 import type { CursorPaginationParams, PaginatedResult, ReportFilters } from "./dto.js"
 
 function branchFilter(column: AnyColumn, filters: ReportFilters): SQL | undefined {
@@ -419,7 +421,7 @@ export async function getZeroOrderAlerts(filters: ReportFilters) {
       currentStock: sql<string>`sum(${stockSnapshots.currentStock})`.as("current_stock"),
     })
     .from(stockSnapshots)
-    .where(filters.branchId ? eq(stockSnapshots.branchId, filters.branchId) : undefined)
+    .where(and(filters.branchId ? eq(stockSnapshots.branchId, filters.branchId) : undefined, latestStockDateClause()))
     .groupBy(stockSnapshots.itemId)
     .as("stock_by_item")
 
@@ -438,6 +440,7 @@ export async function getZeroOrderAlerts(filters: ReportFilters) {
 export async function getExpiryReport(filters: ReportFilters, withinDays: number) {
   const clauses = [
     branchFilter(stockSnapshots.branchId, filters),
+    latestStockDateClause(),
     sql`${stockSnapshots.expDate} is not null`,
     sql`${stockSnapshots.expDate} <= current_date + ${withinDays}::int`,
   ]
@@ -458,7 +461,7 @@ export async function getExpiryReport(filters: ReportFilters, withinDays: number
 
 /** Items in stock with no matching sales line at all for this branch (ever imported) — non-moving candidates. */
 export async function getNonMovingItems(filters: ReportFilters) {
-  const clauses = [branchFilter(stockSnapshots.branchId, filters), sql`${stockSnapshots.itemId} is not null`]
+  const clauses = [branchFilter(stockSnapshots.branchId, filters), latestStockDateClause(), sql`${stockSnapshots.itemId} is not null`]
 
   return db
     .select({
@@ -557,9 +560,12 @@ export async function getCashInHand(filters: ReportFilters) {
 }
 
 export async function getOutstanding(filters: ReportFilters) {
+  // "DUE BILLS" is the real party group Marg's Sales register uses for credit dues — this
+  // previously matched "CREDIT DUE BILL", a string that never actually occurs in the data, so
+  // Outstanding silently always came back as 0 regardless of what was actually owed.
   const where = and(
     branchFilter(salesLines.branchId, filters),
-    eq(salesLines.partyGroup, "CREDIT DUE BILL"),
+    eq(salesLines.partyGroup, "DUE BILLS"),
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -579,7 +585,7 @@ export async function getTotalStockValue(filters: ReportFilters): Promise<number
   const [row] = await db
     .select({ total: sql<string>`coalesce(sum(${stockSnapshots.value}), 0)` })
     .from(stockSnapshots)
-    .where(branchFilter(stockSnapshots.branchId, filters))
+    .where(and(branchFilter(stockSnapshots.branchId, filters), latestStockDateClause()))
   return Number(row?.total ?? 0)
 }
 
@@ -597,9 +603,23 @@ function stockItemFilter(filters: ReportFilters): SQL | undefined {
 
 /**
  * Stock now accumulates one snapshot per uploaded date (only a same-date re-upload replaces),
- * instead of always holding just the single "current" snapshot — so without a date filter,
- * every query here would silently sum/list every historical date together. `asOfDate` is a
- * single-day column (not a from/to range like Sales/Purchase), so this is a plain range check.
+ * instead of always holding just the single "current" snapshot for each item. Any query that reads
+ * `stock_snapshots` without pinning down a date would silently sum/list the same physical stock
+ * once per upload date — this is the fix: a correlated scalar subquery restricting to each branch's
+ * *most recent* `asOfDate`, which is the only sensible meaning of "current stock" now. Every
+ * consumer of `stock_snapshots` that doesn't have its own explicit date filter should use this.
+ */
+function latestStockDateClause(): SQL {
+  return sql`${stockSnapshots.asOfDate} = (
+    select max(latest.as_of_date) from stock_snapshots latest where latest.branch_id = ${stockSnapshots.branchId}
+  )`
+}
+
+/**
+ * An explicit `dateFrom`/`dateTo` (a plain range check — `asOfDate` is a single-day column, not a
+ * from/to range like Sales/Purchase) is honored as-is, e.g. to look at a specific past date on the
+ * Stock report page. With neither set, this defaults to `latestStockDateClause` instead of leaving
+ * every historical date unrestricted.
  */
 function stockFilterClauses(filters: ReportFilters): SQL[] {
   const clauses = [branchFilter(stockSnapshots.branchId, filters), stockItemFilter(filters), expiryTierFilter(filters)].filter(
@@ -611,6 +631,7 @@ function stockFilterClauses(filters: ReportFilters): SQL[] {
   if (filters.stockTo !== undefined) clauses.push(lte(stockSnapshots.currentStock, filters.stockTo))
   if (filters.dateFrom) clauses.push(gte(stockSnapshots.asOfDate, filters.dateFrom))
   if (filters.dateTo) clauses.push(lte(stockSnapshots.asOfDate, filters.dateTo))
+  if (!filters.dateFrom && !filters.dateTo) clauses.push(latestStockDateClause())
   return clauses
 }
 
@@ -698,4 +719,175 @@ export async function listSuppliers(): Promise<string[]> {
 export async function listSupplierGroups(): Promise<string[]> {
   const rows = await db.selectDistinct({ supplierGroup: purchaseLines.supplierGroup }).from(purchaseLines).orderBy(purchaseLines.supplierGroup)
   return rows.map((row) => row.supplierGroup)
+}
+
+// ---- Export (background jobs) — same filter-building helpers as the paginated reports above,
+// just a flat capped fetch instead of cursor/count machinery. No page ever needs more than one of
+// these rows loaded into memory at once (see `service.ts`'s chunked-progress loop), so a plain
+// `.limit()` is enough; this cap exists purely as a safety net against an unbounded query.
+
+const EXPORT_ROW_CAP = 50_000
+
+export async function exportStockReport(filters: ReportFilters) {
+  return db
+    .select({
+      id: stockSnapshots.id,
+      itemCode: stockSnapshots.itemCode,
+      itemName: stockSnapshots.itemName,
+      unit: stockSnapshots.unit,
+      currentStock: stockSnapshots.currentStock,
+      costPrice: stockSnapshots.costPrice,
+      value: stockSnapshots.value,
+      mrp: stockSnapshots.mrp,
+      purchasePrice: stockSnapshots.purchasePrice,
+      salesPrice: stockSnapshots.salesPrice,
+      company: stockSnapshots.company,
+      manufacturer: stockSnapshots.manufacturer,
+      batch: stockSnapshots.batch,
+      mfgDateRaw: stockSnapshots.mfgDateRaw,
+      expDate: stockSnapshots.expDate,
+      supplier: stockSnapshots.supplier,
+      invNo: stockSnapshots.invNo,
+      invDate: stockSnapshots.invDate,
+      rackNo: stockSnapshots.rackNo,
+      salesSchemeDeal: stockSnapshots.salesSchemeDeal,
+      salesSchemeFree: stockSnapshots.salesSchemeFree,
+      purcSchemeDeal: stockSnapshots.purcSchemeDeal,
+      purcSchemeFree: stockSnapshots.purcSchemeFree,
+      recDate: stockSnapshots.recDate,
+      asOfDate: stockSnapshots.asOfDate,
+      daysToExpiry: sql<number | null>`case when ${stockSnapshots.expDate} is null then null else (${stockSnapshots.expDate} - current_date)::int end`,
+      branchId: stockSnapshots.branchId,
+      branchName: branches.name,
+    })
+    .from(stockSnapshots)
+    .innerJoin(branches, eq(branches.id, stockSnapshots.branchId))
+    .where(and(...stockFilterClauses(filters)))
+    .orderBy(stockSnapshots.itemName, stockSnapshots.id)
+    .limit(EXPORT_ROW_CAP)
+}
+
+export async function exportPurchaseDetail(filters: ReportFilters) {
+  const filterWhere = and(
+    branchFilter(purchaseLines.branchId, filters),
+    itemFilter(purchaseLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
+    schemeTierFilter(filters),
+    filters.supplierGroup ? eq(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
+    filters.amountFrom !== undefined ? gte(purchaseLines.amount, filters.amountFrom) : undefined,
+    filters.amountTo !== undefined ? lte(purchaseLines.amount, filters.amountTo) : undefined,
+    ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
+  )
+  return db
+    .select({
+      id: purchaseLines.id,
+      supplierGroup: purchaseLines.supplierGroup,
+      itemNameRaw: purchaseLines.itemNameRaw,
+      packSizeRaw: purchaseLines.packSizeRaw,
+      qty: purchaseLines.qty,
+      freeQty: purchaseLines.freeQty,
+      rate: purchaseLines.rate,
+      amount: purchaseLines.amount,
+      schemePct: purchaseLines.schemePct,
+      company: items.company,
+      branchId: purchaseLines.branchId,
+      branchName: branches.name,
+      date: purchaseLines.reportDateFrom,
+    })
+    .from(purchaseLines)
+    .leftJoin(items, eq(items.id, purchaseLines.itemId))
+    .innerJoin(branches, eq(branches.id, purchaseLines.branchId))
+    .where(filterWhere)
+    .orderBy(purchaseLines.itemNameRaw, purchaseLines.id)
+    .limit(EXPORT_ROW_CAP)
+}
+
+export async function exportSalesDetail(filters: ReportFilters) {
+  const filterWhere = and(
+    branchFilter(salesLines.branchId, filters),
+    itemFilter(salesLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.amountFrom !== undefined ? gte(salesLines.amount, filters.amountFrom) : undefined,
+    filters.amountTo !== undefined ? lte(salesLines.amount, filters.amountTo) : undefined,
+    ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
+  )
+  return db
+    .select({
+      id: salesLines.id,
+      partyGroup: salesLines.partyGroup,
+      itemNameRaw: salesLines.itemNameRaw,
+      packSizeRaw: salesLines.packSizeRaw,
+      qty: salesLines.qty,
+      unit: salesLines.unit,
+      rate: salesLines.rate,
+      amount: salesLines.amount,
+      company: items.company,
+      branchId: salesLines.branchId,
+      branchName: branches.name,
+      date: salesLines.reportDateFrom,
+    })
+    .from(salesLines)
+    .leftJoin(items, eq(items.id, salesLines.itemId))
+    .innerJoin(branches, eq(branches.id, salesLines.branchId))
+    .where(filterWhere)
+    .orderBy(salesLines.itemNameRaw, salesLines.id)
+    .limit(EXPORT_ROW_CAP)
+}
+
+export async function exportDaySalesDetail(filters: ReportFilters) {
+  const clauses = [branchFilter(dailySalesSummary.branchId, filters)]
+  if (filters.dateFrom) clauses.push(gte(dailySalesSummary.date, filters.dateFrom))
+  if (filters.dateTo) clauses.push(lte(dailySalesSummary.date, filters.dateTo))
+  return db
+    .select({
+      id: dailySalesSummary.id,
+      date: dailySalesSummary.date,
+      billNoRange: dailySalesSummary.billNoRange,
+      billValue: dailySalesSummary.billValue,
+      taxable: dailySalesSummary.taxable,
+      taxPayable: dailySalesSummary.taxPayable,
+      taxFree: dailySalesSummary.taxFree,
+      exempted: dailySalesSummary.exempted,
+      roundOff: dailySalesSummary.roundOff,
+      branchId: dailySalesSummary.branchId,
+      branchName: branches.name,
+    })
+    .from(dailySalesSummary)
+    .innerJoin(branches, eq(branches.id, dailySalesSummary.branchId))
+    .where(and(...clauses))
+    .orderBy(dailySalesSummary.date, dailySalesSummary.id)
+    .limit(EXPORT_ROW_CAP)
+}
+
+// ---- export_jobs CRUD ----
+
+export async function createExportJob(input: { reportType: string; branchId: string | null; filters: ReportFilters }): Promise<ExportJobDocument> {
+  const [job] = await db.insert(exportJobs).values(input).returning()
+  if (!job) throw new InternalServerError("Failed to record export job")
+  return job
+}
+
+export type ExportJobStatusUpdate =
+  | { status: "completed"; rowCount: number; fileName: string; storageKey: string }
+  | { status: "failed"; errorMessage: string }
+
+export async function updateExportJobStatus(id: string, update: ExportJobStatusUpdate): Promise<void> {
+  await db
+    .update(exportJobs)
+    .set({ ...update, completedAt: new Date() })
+    .where(eq(exportJobs.id, id))
+}
+
+/** Most recent 20 for the branch/type — the inline history panel next to each report's Export button, not a full audit log. */
+export async function listExportJobs(branchId?: string, reportType?: string): Promise<ExportJobDocument[]> {
+  const clauses = [branchId ? eq(exportJobs.branchId, branchId) : undefined, reportType ? eq(exportJobs.reportType, reportType) : undefined].filter(
+    (c): c is SQL => c !== undefined,
+  )
+  const query = db.select().from(exportJobs)
+  return (clauses.length > 0 ? query.where(and(...clauses)) : query).orderBy(desc(exportJobs.requestedAt)).limit(20)
+}
+
+export async function findExportJob(id: string): Promise<ExportJobDocument | null> {
+  const [job] = await db.select().from(exportJobs).where(eq(exportJobs.id, id)).limit(1)
+  return job ?? null
 }

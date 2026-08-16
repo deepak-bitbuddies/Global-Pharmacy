@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import { useTranslations } from "next-intl"
 
 import { CustomPageHeader, CustomSkeleton, CustomTabs } from "@/components/ui"
+import { useAuthStore } from "@/providers"
 import { ReportFilterPanel } from "../components/filters"
 import type { ReportFilters } from "../types"
 
@@ -21,11 +22,15 @@ const FinanceTab = dynamic(() => import("../components/dashboard/finance-tab").t
 export function ReportsDashboardPage() {
   const t = useTranslations("Dashboard")
   const [filters, setFilters] = useState<ReportFilters>({})
+  // A branch_user only ever has one branch — a branch picker offering that same single option
+  // back to them is pointless, so it's admin-only here (same reasoning as hiding the "Branch
+  // Wise Sales" chart in OverviewTab).
+  const role = useAuthStore((state) => state.user?.role)
 
   return (
     <div className="space-y-4">
       <CustomPageHeader title={t("title")} description={t("description")} />
-      <ReportFilterPanel filters={filters} onFiltersChange={setFilters} show={{ branch: true, dateRange: true }} />
+      <ReportFilterPanel filters={filters} onFiltersChange={setFilters} show={{ branch: role !== "branch_user", dateRange: true }} />
 
       <CustomTabs
         items={[

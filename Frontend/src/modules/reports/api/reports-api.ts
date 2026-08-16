@@ -7,6 +7,8 @@ import type {
   DashboardSummary,
   DaySalesDetailRow,
   ExpiryRow,
+  ExportJob,
+  ExportJobAck,
   GrossProfitRow,
   ItemWiseSalesRow,
   NonMovingRow,
@@ -14,6 +16,7 @@ import type {
   PurchaseDetailRow,
   PurchaseSummaryRow,
   ReportFilters,
+  ReportType,
   SalesDetailRow,
   StockRow,
   ZeroOrderAlertRow,
@@ -124,4 +127,23 @@ export async function getCashInHand(filters: ReportFilters): Promise<CashInHandR
 export async function getOutstanding(filters: ReportFilters): Promise<OutstandingRow[]> {
   const { data } = await api.get<{ data: OutstandingRow[] }>(`${BASE}/finance/outstanding`, { params: filters })
   return data.data
+}
+
+/** Kicks off a background export job — instant ack (status "processing"), the file itself shows up later via socket + `downloadExportJob`. */
+export async function createExportJob(reportType: ReportType, filters: ReportFilters): Promise<ExportJobAck> {
+  const { data } = await api.post<{ data: ExportJobAck }>(`${BASE}/exports`, { reportType, ...filters })
+  return data.data
+}
+
+export async function getExportJobs(reportType?: ReportType, branchId?: string): Promise<ExportJob[]> {
+  const { data } = await api.get<{ data: ExportJob[] }>(`${BASE}/exports`, { params: { reportType, branchId } })
+  return data.data
+}
+
+/** Only ever called against a job already known to be `completed` — the file itself, plus its display filename parsed off `Content-Disposition` (the proxy forwards that header for this one binary route, see `app/api/admin/[...path]/route.ts`). */
+export async function downloadExportJob(id: string): Promise<{ blob: Blob; fileName: string | null }> {
+  const response = await api.get<Blob>(`${BASE}/exports/${id}/download`, { responseType: "blob" })
+  const disposition = response.headers["content-disposition"] as string | undefined
+  const fileName = disposition ? (/filename="?([^"]+)"?/.exec(disposition)?.[1] ?? null) : null
+  return { blob: response.data, fileName }
 }

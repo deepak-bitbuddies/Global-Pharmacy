@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { FileType } from "../uploads/enums.js"
+
 export const reportFiltersSchema = z.object({
   branchId: z.string().uuid().optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -39,3 +41,31 @@ export const purchaseDetailQuerySchema = reportFiltersSchema.merge(cursorPaginat
 })
 export const grossProfitQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 export const daySalesDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+
+const reportTypeSchema = z.enum([FileType.Stock, FileType.Sales, FileType.Purchase, FileType.DayWiseSale])
+
+/** Export can be requested for any of the four report types, so this is every optional filter field any of them use, unioned onto one schema — a field that doesn't apply to the requested `reportType` is simply ignored (same as `ReportFilters` already being one flat shared type across all four). */
+export const createExportSchema = z
+  .object({ reportType: reportTypeSchema })
+  .merge(reportFiltersSchema)
+  .extend({
+    expiryTier: z.enum(["expired", "lte30", "31to60", "61to90", "gt90", "none", "custom"]).optional(),
+    expiryDateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    expiryDateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    supplier: z.string().optional(),
+    stockFrom: z.coerce.number().optional(),
+    stockTo: z.coerce.number().optional(),
+    schemeTier: z.enum(["none", "lt5", "5to10", "10to20", "20to30", "30to50", "50to100", "gte100"]).optional(),
+    supplierGroup: z.string().optional(),
+    amountFrom: z.coerce.number().optional(),
+    amountTo: z.coerce.number().optional(),
+  })
+
+export const listExportJobsQuerySchema = z.object({
+  branchId: z.string().uuid().optional(),
+  reportType: reportTypeSchema.optional(),
+})
+
+export const exportIdParamSchema = z.object({
+  id: z.string().uuid(),
+})

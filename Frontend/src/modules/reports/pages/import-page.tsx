@@ -56,20 +56,24 @@ export function ImportPage() {
         </div>
       ) : (
         <>
-          <CustomSelect<Branch>
-            data={branches ?? []}
-            value={selectedBranch}
-            onChange={(value) => {
-              const branch = Array.isArray(value) ? value[0] : value
-              setManualBranchId(branch?.id)
-            }}
-            displayKey="name"
-            idKey="id"
-            label={tCommon("branch")}
-            placeholder={t("branchPlaceholder")}
-            isRequired
-            fullWidth
-          />
+          {/* A branch_user only ever has one branch (already auto-selected above) — picking
+              between branches only makes sense for roles that manage more than one. */}
+          {role !== "branch_user" && (
+            <CustomSelect<Branch>
+              data={branches ?? []}
+              value={selectedBranch}
+              onChange={(value) => {
+                const branch = Array.isArray(value) ? value[0] : value
+                setManualBranchId(branch?.id)
+              }}
+              displayKey="name"
+              idKey="id"
+              label={tCommon("branch")}
+              placeholder={t("branchPlaceholder")}
+              isRequired
+              fullWidth
+            />
+          )}
 
           {branchId ? (
             <>

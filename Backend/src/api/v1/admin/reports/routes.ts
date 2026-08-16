@@ -6,12 +6,15 @@ import {
   branchSalesHandler,
   cashInHandHandler,
   companiesHandler,
+  createExportHandler,
   dailyCollectionHandler,
   dashboardSummaryHandler,
   daySalesDetailHandler,
+  downloadExportHandler,
   expiryReportHandler,
   grossProfitHandler,
   itemWiseSalesHandler,
+  listExportsHandler,
   nonMovingHandler,
   outstandingHandler,
   purchaseDetailHandler,
@@ -32,6 +35,9 @@ export async function reportsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get("/companies", companiesHandler)
   fastify.get("/suppliers", suppliersHandler)
   fastify.get("/supplier-groups", supplierGroupsHandler)
+  fastify.post("/exports", createExportHandler)
+  fastify.get("/exports", listExportsHandler)
+  fastify.get("/exports/:id/download", downloadExportHandler)
   fastify.get("/sales/item-wise", itemWiseSalesHandler)
   fastify.get("/sales/detail", salesDetailHandler)
   fastify.get("/sales/by-branch", branchSalesHandler)

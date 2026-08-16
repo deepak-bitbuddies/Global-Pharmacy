@@ -5,8 +5,7 @@ export type Branch = {
   gstin: string | null
   phone: string | null
   drugLicenseNo: string | null
-  contactFirstName: string
-  contactLastName: string
+  contactName: string
   contactEmail: string
   contactPhone: string
   createdAt: string
@@ -19,10 +18,10 @@ export type CreateBranchInput = {
   gstin?: string
   phone?: string
   drugLicenseNo?: string
-  contactFirstName: string
-  contactLastName: string
+  contactName: string
   contactEmail: string
   contactPhone: string
+  password: string
 }
 
 export type UpdateBranchInput = Partial<CreateBranchInput>

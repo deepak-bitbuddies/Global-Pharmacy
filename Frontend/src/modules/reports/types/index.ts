@@ -242,3 +242,42 @@ export type ImportBatchProgressEvent = {
   rowsProcessed: number
   totalRows: number
 }
+
+/** Same 4 values as `ImportFileType` — a report export and the file that produced its data are always the same "kind." */
+export type ReportType = ImportFileType
+
+/** A background report export — mirrors `ImportBatch`'s processing/completed/failed shape; `fileName` is only set once `status === "completed"`, and is what `downloadExportJob` needs. */
+export type ExportJob = {
+  id: string
+  reportType: ReportType
+  branchId: string | null
+  filters: ReportFilters
+  status: "processing" | "completed" | "failed"
+  rowCount: number
+  fileName: string | null
+  errorMessage: string | null
+  requestedAt: string
+  completedAt: string | null
+}
+
+/** Instant ack for a new export job — same shape as `ExportJob`, just the moment it's created (`status: "processing"`). */
+export type ExportJobAck = ExportJob
+
+/** `export-job:update` socket payload. */
+export type ExportJobUpdateEvent = {
+  id: string
+  reportType: ReportType
+  branchId: string | null
+  status: "processing" | "completed" | "failed"
+  rowCount?: number
+  errorMessage?: string
+}
+
+/** `export-job:progress` socket payload. */
+export type ExportJobProgressEvent = {
+  id: string
+  reportType: ReportType
+  branchId: string | null
+  rowsProcessed: number
+  totalRows: number
+}

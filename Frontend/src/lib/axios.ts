@@ -17,7 +17,7 @@ export interface ApiErrorPayload {
 
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string; code?: string }>) => {
+  async (error: AxiosError<{ message?: string; code?: string }>) => {
     // Session cookie missing/expired: bounce to login with a full reload so
     // the root layout re-reads the (now-absent) session cookie server-side.
     if (
@@ -28,11 +28,23 @@ api.interceptors.response.use(
       window.location.href = "/login"
     }
 
+    // A `responseType: "blob"` request (e.g. downloading a completed export) still gets its error
+    // body back as a Blob, not parsed JSON — read it as text so the real backend message survives
+    // instead of silently falling back to the generic one below.
+    let data: unknown = error.response?.data
+    if (data instanceof Blob) {
+      try {
+        data = JSON.parse(await data.text())
+      } catch {
+        // leave `data` as the unreadable Blob — falls through to the generic message below
+      }
+    }
+    const errorData = data as { message?: string; code?: string } | undefined
+
     const payload: ApiErrorPayload = {
-      message:
-        error.response?.data?.message ?? error.message ?? "Something went wrong. Please try again.",
+      message: errorData?.message ?? error.message ?? "Something went wrong. Please try again.",
       status: error.response?.status,
-      code: error.response?.data?.code,
+      code: errorData?.code,
     }
 
     return Promise.reject(payload)

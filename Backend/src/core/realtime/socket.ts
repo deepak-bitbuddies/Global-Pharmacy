@@ -25,6 +25,23 @@ export type ImportBatchProgressPayload = {
   totalRows: number
 }
 
+export type ExportJobUpdatePayload = {
+  id: string
+  reportType: string
+  branchId: string | null
+  status: "processing" | "completed" | "failed"
+  rowCount?: number
+  errorMessage?: string
+}
+
+export type ExportJobProgressPayload = {
+  id: string
+  reportType: string
+  branchId: string | null
+  rowsProcessed: number
+  totalRows: number
+}
+
 /**
  * Real-time push for the bulk-upload background committer (see `uploads/service.ts`) — currently
  * the only consumer. Auth: the handshake carries a short-lived JWT (the frontend mints one via
@@ -60,4 +77,13 @@ export function emitImportBatchUpdate(payload: ImportBatchUpdatePayload): void {
 /** High-frequency (per insert-chunk) progress ticks — kept as a separate event from `import-batch:update` so listeners can treat them differently (e.g. never trigger a full query invalidation off of one). */
 export function emitImportBatchProgress(payload: ImportBatchProgressPayload): void {
   io?.emit("import-batch:progress", payload)
+}
+
+/** Same processing/completed/failed shape as `emitImportBatchUpdate`, for background report exports (see `reports/service.ts`'s `runExportPipeline`). */
+export function emitExportJobUpdate(payload: ExportJobUpdatePayload): void {
+  io?.emit("export-job:update", payload)
+}
+
+export function emitExportJobProgress(payload: ExportJobProgressPayload): void {
+  io?.emit("export-job:progress", payload)
 }

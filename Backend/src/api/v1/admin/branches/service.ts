@@ -1,11 +1,11 @@
 import { hash } from "bcryptjs"
 
 import { db } from "../../../../core/database/db.js"
-import { BCRYPT_SALT_ROUNDS, DEFAULT_USER_PASSWORD } from "../../../../shared/constants/auth.constants.js"
+import { BCRYPT_SALT_ROUNDS } from "../../../../shared/constants/auth.constants.js"
 import { ConflictError, NotFoundError } from "../../../../shared/errors/index.js"
 import { rethrowUniqueViolation } from "../../../../shared/helpers/db-errors.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
-import { createAuthUser, deleteAuthUserByBranchId, findAuthUserByEmail } from "../auth/index.js"
+import { createAuthUser, deleteAuthUserByBranchId, findAuthUserByEmail, updateAuthUserPasswordByBranchId } from "../auth/index.js"
 import {
   countImportBatchesForBranch,
   createBranch as createBranchRow,
@@ -50,7 +50,7 @@ export async function createBranch(input: CreateBranchDto): Promise<BranchDto> {
   const existingUser = await findAuthUserByEmail(contactEmail)
   if (existingUser) throw new ConflictError("A user with this email already exists")
 
-  const passwordHash = await hash(DEFAULT_USER_PASSWORD, BCRYPT_SALT_ROUNDS)
+  const passwordHash = await hash(input.password, BCRYPT_SALT_ROUNDS)
 
   try {
     const branch = await db.transaction(async (tx) => {
@@ -61,8 +61,7 @@ export async function createBranch(input: CreateBranchDto): Promise<BranchDto> {
           gstin: input.gstin ?? null,
           phone: input.phone ?? null,
           drugLicenseNo: input.drugLicenseNo ?? null,
-          contactFirstName: input.contactFirstName,
-          contactLastName: input.contactLastName,
+          contactName: input.contactName,
           contactEmail,
           contactPhone: input.contactPhone,
         },
@@ -71,7 +70,7 @@ export async function createBranch(input: CreateBranchDto): Promise<BranchDto> {
 
       await createAuthUser(
         {
-          name: `${input.contactFirstName} ${input.contactLastName}`.trim(),
+          name: input.contactName.trim(),
           email: contactEmail,
           passwordHash,
           role: SystemRoleCode.BRANCH_USER,
@@ -101,8 +100,7 @@ export async function updateBranch(branchId: string, input: UpdateBranchDto): Pr
       ...(input.gstin !== undefined && { gstin: input.gstin }),
       ...(input.phone !== undefined && { phone: input.phone }),
       ...(input.drugLicenseNo !== undefined && { drugLicenseNo: input.drugLicenseNo }),
-      ...(input.contactFirstName !== undefined && { contactFirstName: input.contactFirstName }),
-      ...(input.contactLastName !== undefined && { contactLastName: input.contactLastName }),
+      ...(input.contactName !== undefined && { contactName: input.contactName }),
       ...(input.contactEmail !== undefined && { contactEmail: input.contactEmail.toLowerCase() }),
       ...(input.contactPhone !== undefined && { contactPhone: input.contactPhone }),
     })
@@ -110,6 +108,13 @@ export async function updateBranch(branchId: string, input: UpdateBranchDto): Pr
     rethrowUniqueViolation(error, UNIQUE_CONSTRAINT_MESSAGES)
   }
   if (!updated) throw new NotFoundError("Branch not found")
+
+  // Blank/omitted password means "leave it unchanged" — only touch the linked login user's
+  // password when the admin actually typed a new one.
+  if (input.password) {
+    const passwordHash = await hash(input.password, BCRYPT_SALT_ROUNDS)
+    await updateAuthUserPasswordByBranchId(branchId, passwordHash)
+  }
 
   return toBranchDto(updated)
 }

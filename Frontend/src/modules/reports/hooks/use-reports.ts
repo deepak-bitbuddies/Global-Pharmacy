@@ -1,11 +1,12 @@
 "use client"
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import type { CursorPaginationParams } from "@/types/pagination"
 import { reportsQueryKeys } from "../constants/query-keys"
-import type { ReportFilters } from "../types"
+import type { ExportJob, ReportFilters, ReportType } from "../types"
 import {
+  createExportJob,
   getBranches,
   getBranchSales,
   getCashInHand,
@@ -14,6 +15,7 @@ import {
   getDashboardSummary,
   getDaySalesDetail,
   getExpiryReport,
+  getExportJobs,
   getGrossProfit,
   getItemWiseSales,
   getNonMovingItems,
@@ -116,4 +118,27 @@ export function useCashInHand(filters: ReportFilters) {
 
 export function useOutstanding(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.outstanding(filters), queryFn: () => getOutstanding(filters), placeholderData: keepPreviousData })
+}
+
+/** Recent export jobs for one report's inline history panel — kept live by `useImportSocket`'s `export-job:update` listener invalidating this same query key. */
+export function useExportJobs(reportType: ReportType, branchId?: string) {
+  return useQuery({ queryKey: reportsQueryKeys.exportJobs(reportType, branchId), queryFn: () => getExportJobs(reportType, branchId) })
+}
+
+export function useCreateExportJob() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ reportType, filters }: { reportType: ReportType; filters: ReportFilters }) => createExportJob(reportType, filters),
+    // Write the "processing" job into the cache directly instead of just invalidating — an
+    // `invalidateQueries` refetch is a round trip, and export jobs on this app's current data
+    // volumes routinely finish in a few seconds. The caller (`ExportReportButton`) opens the
+    // history popover synchronously right after this resolves, so if we only invalidated, that
+    // popover could easily open before the refetch lands and show nothing new until the job is
+    // already done — this way the row is there the instant the ack comes back, no race. A later
+    // `export-job:update` (completed/failed) still invalidates normally and overwrites this.
+    onSuccess: (job, { reportType, filters }) => {
+      queryClient.setQueryData<ExportJob[]>(reportsQueryKeys.exportJobs(reportType, filters.branchId), (existing) => [job, ...(existing ?? [])])
+    },
+  })
 }

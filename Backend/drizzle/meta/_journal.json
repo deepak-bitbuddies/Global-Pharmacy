@@ -50,6 +50,27 @@
       "when": 1785772754209,
       "tag": "0006_add_stock_scheme_and_rec_date",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786781080247,
+      "tag": "0007_tricky_ender_wiggin",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786901492590,
+      "tag": "0008_petite_loki",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786901571871,
+      "tag": "0009_shiny_kabuki",
+      "breakpoints": true
     }
   ]
 }

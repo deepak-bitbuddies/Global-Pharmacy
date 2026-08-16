@@ -54,6 +54,18 @@ async function proxy(request: NextRequest, path: string[]): Promise<NextResponse
     return NextResponse.json({ success: false, message: "Could not reach the backend. Is it running?" }, { status: 502 })
   }
 
+  // Binary responses (currently just report-export downloads) never come back as JSON — stream them
+  // through untouched instead of trying to `.json()` them, forwarding the headers the browser needs
+  // to actually save the file. Every other route still gets the exact envelope-unwrapping behavior
+  // below, unaffected.
+  const responseContentType = backendResponse.headers.get("content-type") ?? ""
+  if (!responseContentType.includes("application/json")) {
+    const headers = new Headers({ "Content-Type": responseContentType })
+    const disposition = backendResponse.headers.get("content-disposition")
+    if (disposition) headers.set("Content-Disposition", disposition)
+    return new NextResponse(backendResponse.body, { status: backendResponse.status, headers })
+  }
+
   const data = await backendResponse.json().catch(() => ({ success: false, message: backendResponse.statusText }))
   return NextResponse.json(data, { status: backendResponse.status })
 }

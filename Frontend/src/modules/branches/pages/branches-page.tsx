@@ -16,6 +16,7 @@ import {
   CustomTable,
   customToast,
   FormInput,
+  InputTypes,
   useConfirm,
 } from "@/components/ui"
 import type { ApiErrorPayload } from "@/lib/axios"
@@ -29,10 +30,12 @@ type BranchFormValues = {
   gstin?: string
   phone?: string
   drugLicenseNo?: string
-  contactFirstName: string
-  contactLastName: string
+  contactName: string
   contactEmail: string
   contactPhone: string
+  // Only ever required/rendered on create (see the conditional validation below and the form
+  // JSX) — on edit this just stays "" and the backend's update handler never reads it anyway.
+  password: string
 }
 
 const EMPTY_FORM: BranchFormValues = {
@@ -41,31 +44,15 @@ const EMPTY_FORM: BranchFormValues = {
   gstin: "",
   phone: "",
   drugLicenseNo: "",
-  contactFirstName: "",
-  contactLastName: "",
+  contactName: "",
   contactEmail: "",
   contactPhone: "",
+  password: "",
 }
 
 export function BranchesPage() {
   const t = useTranslations("Branches")
   const tCommon = useTranslations("Common")
-
-  const branchFormSchema = useMemo(
-    () =>
-      z.object({
-        name: z.string().min(1, t("nameRequired")),
-        address: z.string().optional(),
-        gstin: z.string().optional(),
-        phone: z.string().optional(),
-        drugLicenseNo: z.string().optional(),
-        contactFirstName: z.string().min(1, t("firstNameRequired")),
-        contactLastName: z.string().min(1, t("lastNameRequired")),
-        contactEmail: z.string().email(t("validEmailRequired")),
-        contactPhone: z.string().min(1, t("contactPhoneRequired")),
-      }),
-    [t],
-  )
 
   const pagination = useCursorPagination()
   const { data: branches, isLoading, isError } = useBranches({ cursor: pagination.cursor, pageSize: pagination.pageSize })
@@ -76,6 +63,27 @@ export function BranchesPage() {
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
+
+  const branchFormSchema = useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t("nameRequired")),
+        address: z.string().optional(),
+        gstin: z.string().optional(),
+        phone: z.string().optional(),
+        drugLicenseNo: z.string().optional(),
+        contactName: z.string().min(1, t("contactNameRequired")),
+        contactEmail: z.string().email(t("validEmailRequired")),
+        contactPhone: z.string().min(1, t("contactPhoneRequired")),
+        // Required on create. On edit it's optional — blank means "leave the password
+        // unchanged" (stripped out of the submitted payload below), but a non-blank value must
+        // still meet the same minimum length.
+        password: editingBranch
+          ? z.string().refine((value) => value.length === 0 || value.length >= 6, t("passwordRequired"))
+          : z.string().min(6, t("passwordRequired")),
+      }),
+    [t, editingBranch],
+  )
 
   const { control, handleSubmit, reset } = useForm<BranchFormValues>({
     resolver: zodResolver(branchFormSchema),
@@ -96,10 +104,10 @@ export function BranchesPage() {
       gstin: branch.gstin ?? "",
       phone: branch.phone ?? "",
       drugLicenseNo: branch.drugLicenseNo ?? "",
-      contactFirstName: branch.contactFirstName,
-      contactLastName: branch.contactLastName,
+      contactName: branch.contactName,
       contactEmail: branch.contactEmail,
       contactPhone: branch.contactPhone,
+      password: "",
     })
     setIsFormOpen(true)
   }
@@ -107,7 +115,11 @@ export function BranchesPage() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       if (editingBranch) {
-        await updateBranchMutation({ id: editingBranch.id, input: values })
+        // Blank password means "don't change it" — omit the key entirely rather than sending ""
+        // (which would fail the backend's min-length check on a field meant to be optional).
+        const { password, ...rest } = values
+        const input = password ? { ...rest, password } : rest
+        await updateBranchMutation({ id: editingBranch.id, input })
         customToast.success(t("branchUpdated"))
       } else {
         await createBranch(values)
@@ -156,7 +168,7 @@ export function BranchesPage() {
         columns={[
           { key: "name", label: tCommon("branch"), sortable: true },
           { key: "gstin", label: t("gstin") },
-          { key: "contactFirstName", label: t("contact") },
+          { key: "contactName", label: t("contact") },
           { key: "id", label: t("actions") },
         ]}
         data={branches?.data ?? []}
@@ -176,10 +188,10 @@ export function BranchesPage() {
         emptyText={t("emptyText")}
         renderCustomCell={(branch, key) => {
           if (key === "gstin") return branch.gstin ?? "-"
-          if (key === "contactFirstName") {
+          if (key === "contactName") {
             return (
               <div className="flex flex-col">
-                <span>{`${branch.contactFirstName} ${branch.contactLastName}`}</span>
+                <span>{branch.contactName}</span>
                 <span className="text-xs text-muted-foreground">{branch.contactEmail}</span>
               </div>
             )
@@ -216,21 +228,28 @@ export function BranchesPage() {
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("branchDetails")}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormInput control={control} name="name" label={t("branchName")} fullWidth />
-              <FormInput control={control} name="gstin" label={t("gstin")} fullWidth />
-              <FormInput control={control} name="address" label={t("address")} fullWidth />
-              <FormInput control={control} name="phone" label={t("branchPhone")} fullWidth />
-              <FormInput control={control} name="drugLicenseNo" label={t("drugLicenseNo")} fullWidth />
+              <FormInput control={control} name="name" label={t("branchName")} placeholder={t("namePlaceholder")} fullWidth />
+              <FormInput control={control} name="gstin" label={t("gstin")} placeholder={t("gstinPlaceholder")} fullWidth />
+              <FormInput control={control} name="address" label={t("address")} placeholder={t("addressPlaceholder")} fullWidth />
+              <FormInput control={control} name="phone" label={t("branchPhone")} placeholder={t("branchPhonePlaceholder")} fullWidth />
+              <FormInput control={control} name="drugLicenseNo" label={t("drugLicenseNo")} placeholder={t("drugLicenseNoPlaceholder")} fullWidth />
             </div>
           </div>
 
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("contactPerson")}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <FormInput control={control} name="contactFirstName" label={t("firstName")} fullWidth />
-              <FormInput control={control} name="contactLastName" label={t("lastName")} fullWidth />
-              <FormInput control={control} name="contactEmail" label={t("email")} fullWidth />
-              <FormInput control={control} name="contactPhone" label={t("phone")} fullWidth />
+              <FormInput control={control} name="contactName" label={t("contactName")} placeholder={t("contactNamePlaceholder")} fullWidth />
+              <FormInput control={control} name="contactEmail" label={t("email")} placeholder={t("emailPlaceholder")} fullWidth />
+              <FormInput control={control} name="contactPhone" label={t("phone")} placeholder={t("phonePlaceholder")} fullWidth />
+              <FormInput
+                control={control}
+                name="password"
+                label={t("password")}
+                type={InputTypes.password}
+                placeholder={editingBranch ? t("passwordEditPlaceholder") : t("passwordPlaceholder")}
+                fullWidth
+              />
             </div>
           </div>
         </div>

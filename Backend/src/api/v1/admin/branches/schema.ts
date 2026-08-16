@@ -6,10 +6,10 @@ export const createBranchSchema = z.object({
   gstin: z.string().optional(),
   phone: z.string().optional(),
   drugLicenseNo: z.string().optional(),
-  contactFirstName: z.string().min(1, "Contact first name is required"),
-  contactLastName: z.string().min(1, "Contact last name is required"),
+  contactName: z.string().min(1, "Contact name is required"),
   contactEmail: z.string().email("A valid contact email is required"),
   contactPhone: z.string().min(1, "Contact phone is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 })
 
 export const updateBranchSchema = createBranchSchema.partial()

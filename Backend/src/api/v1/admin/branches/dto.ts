@@ -4,14 +4,15 @@ export type CreateBranchDto = {
   gstin?: string
   phone?: string
   drugLicenseNo?: string
-  contactFirstName: string
-  contactLastName: string
+  contactName: string
   contactEmail: string
   contactPhone: string
+  password: string
 }
 
 export type UpdateBranchDto = Partial<CreateBranchDto>
 
+/** The read-facing shape — never carries a password. */
 export type BranchDto = {
   id: string
   name: string
@@ -19,8 +20,7 @@ export type BranchDto = {
   gstin: string | null
   phone: string | null
   drugLicenseNo: string | null
-  contactFirstName: string
-  contactLastName: string
+  contactName: string
   contactEmail: string
   contactPhone: string
   createdAt: Date

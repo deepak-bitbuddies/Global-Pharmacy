@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { CustomPageHeader, CustomTable } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
+import { ExportReportButton } from "../components/export-report-button"
 import { ReportFilterPanel } from "../components/filters"
 import { useSalesDetail } from "../hooks/use-reports"
 import type { ReportFilters, SalesDetailRow } from "../types"
@@ -25,7 +26,7 @@ export function SalesReportPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="shrink-0 space-y-2">
-        <CustomPageHeader title={t("title")} description={t("description")} />
+        <CustomPageHeader title={t("title")} description={t("description")} actions={<ExportReportButton reportType="sales" filters={filters} />} />
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}

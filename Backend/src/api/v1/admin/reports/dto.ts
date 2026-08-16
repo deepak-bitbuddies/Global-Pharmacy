@@ -200,3 +200,17 @@ export type StockByCompanyRowDto = {
   company: string
   total: number
 }
+
+/** A background report export — never carries `storageKey` (internal disk path), only what the UI needs to show status/history and, once completed, request the download. */
+export type ExportJobDto = {
+  id: string
+  reportType: string
+  branchId: string | null
+  filters: ReportFilters
+  status: string
+  rowCount: number
+  fileName: string | null
+  errorMessage: string | null
+  requestedAt: Date
+  completedAt: Date | null
+}

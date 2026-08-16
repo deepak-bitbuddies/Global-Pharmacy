@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react"
 
 import { TremorAreaChart, TremorBarChart, TremorCard, TremorStatCard, TremorTone } from "@/components/ui/tremor"
+import { useAuthStore } from "@/providers"
 import { formatCurrency } from "@/utils/formatting"
 import { useBranchSales, useDailyCollection, useDashboardSummary } from "../../hooks/use-reports"
 import type { ReportFilters } from "../../types"
@@ -48,6 +49,10 @@ function ChartPanel({
 
 export function OverviewTab({ filters }: { filters: ReportFilters }) {
   const t = useTranslations("Dashboard.overview")
+  // A branch_user only ever has one branch, so a "Branch Wise Sales" breakdown would just be a
+  // redundant single-bar chart repeating totalSales above — it's only meaningful for admins.
+  const role = useAuthStore((state) => state.user?.role)
+  const isBranchScoped = role === "branch_user"
   const { data: summary, isLoading: isSummaryLoading } = useDashboardSummary(filters)
   const { data: dailyCollection, isLoading: isCollectionLoading } = useDailyCollection(filters)
   const { data: branchSales, isLoading: isBranchSalesLoading } = useBranchSales(filters)
@@ -99,16 +104,18 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
         </ChartPanel>
       </div>
 
-      <ChartPanel title={t("branchWiseSales")} icon={PackageIcon}>
-        <TremorBarChart
-          data={(branchSales ?? []).map((row) => ({ branch: row.branchName, amount: row.totalAmount }))}
-          index="branch"
-          categories={["amount"]}
-          valueFormatter={(value) => formatCurrency(value)}
-          isLoading={isBranchSalesLoading}
-          height={260}
-        />
-      </ChartPanel>
+      {!isBranchScoped && (
+        <ChartPanel title={t("branchWiseSales")} icon={PackageIcon}>
+          <TremorBarChart
+            data={(branchSales ?? []).map((row) => ({ branch: row.branchName, amount: row.totalAmount }))}
+            index="branch"
+            categories={["amount"]}
+            valueFormatter={(value) => formatCurrency(value)}
+            isLoading={isBranchSalesLoading}
+            height={260}
+          />
+        </ChartPanel>
+      )}
     </div>
   )
 }

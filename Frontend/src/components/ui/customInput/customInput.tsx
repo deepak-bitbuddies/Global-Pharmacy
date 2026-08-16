@@ -7,11 +7,13 @@ import {
   Label,
   TextField,
 } from "@heroui/react";
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import {
   ClipboardEventHandler,
   FocusEvent,
   FocusEventHandler,
   ReactNode,
+  useState,
 } from "react";
 
 /**
@@ -103,6 +105,29 @@ export type CustomInputProps = {
 };
 
 export const CustomInput = ({ ...props }: CustomInputProps) => {
+  const isPassword = props.type === InputTypes.password;
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  // Every password field gets a show/hide toggle for free — no per-call-site wiring needed.
+  // `endContent` still wins if a caller explicitly passes one (none currently do for password fields).
+  const endContent =
+    props.endContent ??
+    (isPassword ? (
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setIsPasswordVisible((visible) => !visible)}
+        className="flex items-center justify-center px-2 text-muted-foreground hover:text-foreground"
+        aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+      >
+        {isPasswordVisible ? (
+          <EyeSlashIcon className="size-4" />
+        ) : (
+          <EyeIcon className="size-4" />
+        )}
+      </button>
+    ) : undefined);
+
   return (
     <TextField
       aria-label={!props.label ? (props.ariaLabel ?? props.placeholder) : undefined}
@@ -131,14 +156,14 @@ export const CustomInput = ({ ...props }: CustomInputProps) => {
           className={`rounded-app ${props.className} w-full`}
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
-          type={props.type || InputTypes.text}
+          type={isPassword && isPasswordVisible ? InputTypes.text : props.type || InputTypes.text}
           placeholder={props.placeholder}
           onKeyDown={props.onKeyDown}
           onPaste={props.onPaste}
         />
-        {props.endContent && (
+        {endContent && (
           <InputGroup.Suffix className="p-0">
-            {props.endContent}
+            {endContent}
           </InputGroup.Suffix>
         )}
       </InputGroup>

@@ -7,15 +7,15 @@ import { io } from "socket.io-client"
 import { customToast } from "@/components/ui"
 import { useImportProgressStore } from "./use-import-progress-store"
 import { useImportStatusStore } from "./use-import-status-store"
-import type { ImportBatchProgressEvent, ImportBatchUpdateEvent } from "../types"
+import type { ExportJobProgressEvent, ExportJobUpdateEvent, ImportBatchProgressEvent, ImportBatchUpdateEvent } from "../types"
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000"
 
 /**
- * Live-refreshes import data as background upload jobs (single-file and bulk alike) progress and
- * finish, from any screen — mounted once in `DashboardShell` rather than per-page. Fetches a
- * short-lived token via `/api/socket-token` (the browser never otherwise holds the raw backend
- * JWT, see that route's comment), then listens for two distinct events:
+ * Live-refreshes background job data — both bulk/single-file uploads and report exports — from any
+ * screen, over one shared socket connection mounted once in `DashboardShell`. Fetches a short-lived
+ * token via `/api/socket-token` (the browser never otherwise holds the raw backend JWT, see that
+ * route's comment), then listens for four events:
  *
  * - `import-batch:update` — a status transition (processing/completed/failed). Invalidates the
  *   whole `["reports", ...]` query key prefix (covers import-batch history, upload-cycle-status,
@@ -27,6 +27,10 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000"
  * - `import-batch:progress` — a high-frequency per-insert-chunk tick. Only updates the transient
  *   progress store (`useImportProgressStore`), never triggers a query invalidation — far too
  *   chatty for that at chunk frequency.
+ * - `export-job:update` / `export-job:progress` — same processing/completed/failed shape and same
+ *   progress store (keyed generically by job id either way, nothing import-specific about it) for
+ *   background report exports. No filename-correlation needed here the way bulk import needs it —
+ *   `useCreateExportJob`'s ack already returns the job's real id synchronously.
  */
 export function useImportSocket(): void {
   const queryClient = useQueryClient()
@@ -57,6 +61,15 @@ export function useImportSocket(): void {
 
       socket.on("import-batch:progress", (payload: ImportBatchProgressEvent) => {
         setProgress(payload.batchId, { rowsProcessed: payload.rowsProcessed, totalRows: payload.totalRows })
+      })
+
+      socket.on("export-job:update", (payload: ExportJobUpdateEvent) => {
+        queryClient.invalidateQueries({ queryKey: ["reports", "export-jobs"] })
+        clearProgress(payload.id)
+      })
+
+      socket.on("export-job:progress", (payload: ExportJobProgressEvent) => {
+        setProgress(payload.id, { rowsProcessed: payload.rowsProcessed, totalRows: payload.totalRows })
       })
     })()
 

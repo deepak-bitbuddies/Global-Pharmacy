@@ -25,4 +25,5 @@ export const reportsQueryKeys = {
   outstanding: (filters: ReportFilters) => ["reports", "outstanding", filters] as const,
   importBatches: (branchId?: string, fileType?: string) => ["reports", "import-batches", branchId, fileType] as const,
   uploadCycleStatus: (branchId?: string) => ["reports", "upload-cycle-status", branchId] as const,
+  exportJobs: (reportType?: string, branchId?: string) => ["reports", "export-jobs", reportType, branchId] as const,
 }
