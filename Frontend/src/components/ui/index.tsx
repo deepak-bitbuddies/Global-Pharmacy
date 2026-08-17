@@ -56,3 +56,4 @@ export * from "./customTabs/customTabs";
 export * from "./customText/customText";
 export * from "./customToast/customToast";
 export * from "./customTooltip/customTooltip";
+export * from "./customTooltip/customInfoTooltip";

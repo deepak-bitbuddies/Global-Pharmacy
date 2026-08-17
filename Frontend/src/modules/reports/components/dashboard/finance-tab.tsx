@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { CreditCardIcon, HandCoinsIcon, ScalesIcon } from "@phosphor-icons/react"
 import { useTranslations } from "next-intl"
 
-import { CustomTable } from "@/components/ui"
+import { CustomInfoTooltip, CustomTable } from "@/components/ui"
 import { TremorBarList, TremorCard } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
@@ -37,6 +37,7 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
           <div className="flex items-center gap-2">
             <HandCoinsIcon className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold text-foreground">{t("cashInHandByBranch")}</p>
+            <CustomInfoTooltip content={t("cashInHandByBranchDesc")} />
           </div>
           {isCashLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={cashItems} valueFormatter={(value) => formatCurrency(value)} />}
         </TremorCard>
@@ -45,6 +46,7 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
           <div className="flex items-center gap-2">
             <CreditCardIcon className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold text-foreground">{t("outstandingByBranch")}</p>
+            <CustomInfoTooltip content={t("outstandingByBranchDesc")} />
           </div>
           {isOutstandingLoading ? (
             <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
@@ -58,6 +60,7 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
         <div className="flex items-center gap-2">
           <ScalesIcon className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">{t("topItemsByGp")}</p>
+          <CustomInfoTooltip content={t("topItemsByGpDesc")} />
         </div>
         <TremorBarList data={topGp} valueFormatter={(value) => formatCurrency(value)} />
       </TremorCard>

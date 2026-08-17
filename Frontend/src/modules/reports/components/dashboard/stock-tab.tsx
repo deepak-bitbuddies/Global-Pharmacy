@@ -12,7 +12,7 @@ import {
 } from "@phosphor-icons/react"
 import { useTranslations } from "next-intl"
 
-import { CustomTable } from "@/components/ui"
+import { CustomInfoTooltip, CustomTable } from "@/components/ui"
 import { TremorBarChart, TremorBarList, TremorCard, TremorDonutChart, TremorStatCard, TremorTone } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
@@ -62,11 +62,13 @@ const STOCK_LEVEL_BUCKETS = [
 
 function ChartCard({
   title,
+  description,
   icon: Icon,
   className,
   children,
 }: {
   title: string
+  description?: string
   icon: React.ComponentType<{ className?: string }>
   className?: string
   children: React.ReactNode
@@ -76,6 +78,7 @@ function ChartCard({
       <div className="flex items-center gap-2">
         <Icon className="size-4 text-muted-foreground" />
         <p className="text-sm font-semibold text-foreground">{title}</p>
+        {description && <CustomInfoTooltip content={description} />}
       </div>
       {children}
     </TremorCard>
@@ -153,19 +156,54 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
       <ReportFilterPanel filters={localFilters} onFiltersChange={updateLocalFilters} show={{ search: true, company: true }} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <TremorStatCard label={t("stockValue")} value={formatCurrency(stockSummary?.totalValue ?? 0)} icon={PackageIcon} tone={TremorTone.primary} loading={isKpiLoading} />
-        <TremorStatCard label={t("uniqueItems")} value={formatNumber(stockSummary?.uniqueItemCount ?? 0)} icon={ListBulletsIcon} tone={TremorTone.accent} loading={isKpiLoading} />
-        <TremorStatCard label={t("zeroOrderAlerts")} value={zeroOrder?.length ?? 0} icon={WarningIcon} tone={TremorTone.danger} loading={isKpiLoading} />
-        <TremorStatCard label={t("expiringSoon")} value={formatCurrency(expiringSoonValue)} icon={ClockCountdownIcon} tone={TremorTone.warning} loading={isKpiLoading} />
-        <TremorStatCard label={t("nonMovingValue")} value={formatCurrency(nonMovingValue)} icon={ArrowsCounterClockwiseIcon} tone={TremorTone.danger} loading={isKpiLoading} />
+        <TremorStatCard
+          label={t("stockValue")}
+          value={formatCurrency(stockSummary?.totalValue ?? 0)}
+          description={t("stockValueDesc")}
+          icon={PackageIcon}
+          tone={TremorTone.primary}
+          loading={isKpiLoading}
+        />
+        <TremorStatCard
+          label={t("uniqueItems")}
+          value={formatNumber(stockSummary?.uniqueItemCount ?? 0)}
+          description={t("uniqueItemsDesc")}
+          icon={ListBulletsIcon}
+          tone={TremorTone.accent}
+          loading={isKpiLoading}
+        />
+        <TremorStatCard
+          label={t("zeroOrderAlerts")}
+          value={zeroOrder?.length ?? 0}
+          description={t("zeroOrderAlertsDesc")}
+          icon={WarningIcon}
+          tone={TremorTone.danger}
+          loading={isKpiLoading}
+        />
+        <TremorStatCard
+          label={t("expiringSoon")}
+          value={formatCurrency(expiringSoonValue)}
+          description={t("expiringSoonDesc")}
+          icon={ClockCountdownIcon}
+          tone={TremorTone.warning}
+          loading={isKpiLoading}
+        />
+        <TremorStatCard
+          label={t("nonMovingValue")}
+          value={formatCurrency(nonMovingValue)}
+          description={t("nonMovingValueDesc")}
+          icon={ArrowsCounterClockwiseIcon}
+          tone={TremorTone.danger}
+          loading={isKpiLoading}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title={t("stockValueByCompany")} icon={BuildingsIcon}>
+        <ChartCard title={t("stockValueByCompany")} description={t("stockValueByCompanyDesc")} icon={BuildingsIcon}>
           <TremorDonutChart data={stockByCompany} valueFormatter={(value) => formatCurrency(value)} isLoading={isByCompanyLoading} height={240} />
         </ChartCard>
 
-        <ChartCard title={t("stockHealth")} icon={GaugeIcon}>
+        <ChartCard title={t("stockHealth")} description={t("stockHealthDesc")} icon={GaugeIcon}>
           <TremorBarChart
             data={stockLevelData}
             index="label"
@@ -179,11 +217,11 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title={t("zeroOrderReorder")} icon={WarningIcon}>
+        <ChartCard title={t("zeroOrderReorder")} description={t("zeroOrderReorderDesc")} icon={WarningIcon}>
           {isZeroOrderLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={zeroOrderItems} valueFormatter={(value) => formatNumber(value)} />}
         </ChartCard>
 
-        <ChartCard title={t("expiryValueAtRisk")} icon={ClockCountdownIcon}>
+        <ChartCard title={t("expiryValueAtRisk")} description={t("expiryValueAtRiskDesc")} icon={ClockCountdownIcon}>
           <TremorBarChart
             data={expiryBucketData}
             index="label"
@@ -196,12 +234,15 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
         </ChartCard>
       </div>
 
-      <ChartCard title={t("nonMovingByValue")} icon={ArrowsCounterClockwiseIcon}>
+      <ChartCard title={t("nonMovingByValue")} description={t("nonMovingByValueDesc")} icon={ArrowsCounterClockwiseIcon}>
         {isNonMovingLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={nonMovingItems} valueFormatter={(value) => formatCurrency(value)} />}
       </ChartCard>
 
       <TremorCard className="space-y-3">
-        <p className="text-sm font-semibold text-foreground">{t("allStockDetail")}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-foreground">{t("allStockDetail")}</p>
+          <CustomInfoTooltip content={t("allStockDetailDesc")} />
+        </div>
         <CustomTable<StockRow>
           columns={[
             { key: "itemName", label: tCommon("item"), sortable: true },

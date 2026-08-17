@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { ShoppingCartIcon } from "@phosphor-icons/react"
 import { useTranslations } from "next-intl"
 
-import { CustomTable } from "@/components/ui"
+import { CustomInfoTooltip, CustomTable } from "@/components/ui"
 import { TremorBarList, TremorCard } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
@@ -29,6 +29,7 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
         <div className="flex items-center gap-2">
           <ShoppingCartIcon className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">{t("topSuppliers")}</p>
+          <CustomInfoTooltip content={t("topSuppliersDesc")} />
         </div>
         <TremorBarList data={topSuppliers} valueFormatter={(value) => formatCurrency(value)} />
       </TremorCard>

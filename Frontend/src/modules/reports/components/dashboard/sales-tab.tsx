@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { ChartLineUpIcon } from "@phosphor-icons/react"
 import { useTranslations } from "next-intl"
 
-import { CustomTable } from "@/components/ui"
+import { CustomInfoTooltip, CustomTable } from "@/components/ui"
 import { TremorBarList, TremorCard } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
@@ -39,6 +39,7 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
         <div className="flex items-center gap-2">
           <ChartLineUpIcon className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">{t("topItemsBySales")}</p>
+          <CustomInfoTooltip content={t("topItemsBySalesDesc")} />
         </div>
         <TremorBarList data={topItems} valueFormatter={(value) => formatCurrency(value)} />
       </TremorCard>
