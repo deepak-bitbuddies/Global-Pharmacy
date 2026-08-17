@@ -23,6 +23,8 @@ type TremorDonutChartProps = {
   height?: number;
   isLoading?: boolean;
   className?: string;
+  /** Fires when a slice is clicked. Slices get a pointer cursor whenever this is passed. */
+  onSliceClick?: (datum: TremorDonutDatum) => void;
 };
 
 export const TremorDonutChart = ({
@@ -32,6 +34,7 @@ export const TremorDonutChart = ({
   height = 220,
   isLoading,
   className,
+  onSliceClick,
 }: TremorDonutChartProps) => {
   if (isLoading) {
     return (
@@ -53,7 +56,17 @@ export const TremorDonutChart = ({
     <div style={{ height }} className={className}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="60%" outerRadius="90%" paddingAngle={2} strokeWidth={0}>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            innerRadius="60%"
+            outerRadius="90%"
+            paddingAngle={2}
+            strokeWidth={0}
+            className={onSliceClick ? "cursor-pointer" : undefined}
+            onClick={onSliceClick ? (entry) => onSliceClick(entry as unknown as TremorDonutDatum) : undefined}
+          >
             {data.map((entry, i) => (
               <Cell key={`${entry.name}-${i}`} fill={colors[i % colors.length]} />
             ))}

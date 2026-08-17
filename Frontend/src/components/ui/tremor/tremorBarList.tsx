@@ -10,9 +10,11 @@ type TremorBarListProps = {
   data: TremorBarListItem[];
   valueFormatter?: (value: number) => string;
   className?: string;
+  /** Fires when a row is clicked. Rows get a pointer cursor + hover highlight whenever this is passed. */
+  onItemClick?: (item: TremorBarListItem) => void;
 };
 
-export const TremorBarList = ({ data, valueFormatter = (value) => value.toLocaleString(), className }: TremorBarListProps) => {
+export const TremorBarList = ({ data, valueFormatter = (value) => value.toLocaleString(), className, onItemClick }: TremorBarListProps) => {
   if (data.length === 0) {
     return <p className={cn("py-6 text-center text-xs text-muted-foreground", className)}>No data available</p>;
   }
@@ -22,7 +24,11 @@ export const TremorBarList = ({ data, valueFormatter = (value) => value.toLocale
   return (
     <div className={cn("space-y-3", className)}>
       {data.map((item, index) => (
-        <div key={`${item.name}-${index}`} className="flex items-center gap-3">
+        <div
+          key={`${item.name}-${index}`}
+          className={cn("flex items-center gap-3 rounded-app", onItemClick && "cursor-pointer hover:bg-muted-surface")}
+          onClick={onItemClick ? () => onItemClick(item) : undefined}
+        >
           <span className="w-28 shrink-0 truncate text-xs font-medium text-foreground sm:w-40" title={item.name}>
             {item.name}
           </span>

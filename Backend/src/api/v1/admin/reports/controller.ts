@@ -13,6 +13,7 @@ import {
   grossProfitQuerySchema,
   itemWiseSalesQuerySchema,
   listExportJobsQuerySchema,
+  nonMovingDetailQuerySchema,
   purchaseDetailQuerySchema,
   purchaseSummaryQuerySchema,
   reportFiltersSchema,
@@ -21,7 +22,6 @@ import {
 } from "./schema.js"
 import {
   branchSales,
-  cashInHand,
   companies,
   createExport,
   dailyCollection,
@@ -32,16 +32,21 @@ import {
   grossProfitByItem,
   itemWiseSales,
   listExports,
+  nonMovingDetail,
   nonMovingItems,
-  outstanding,
   purchaseDetail,
   purchaseSummary,
+  purchaseValueByCompany,
   salesDetail,
+  salesValueByCompany,
   stockReport,
   stockSummary,
   stockValueByCompany,
   supplierGroups,
   suppliers,
+  topGrossProfitPercentItems,
+  topReturnsByItem,
+  topStockItemsByValue,
   zeroOrderAlerts,
 } from "./service.js"
 
@@ -104,6 +109,21 @@ export async function grossProfitHandler(request: FastifyRequest, reply: Fastify
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
+export async function topGrossProfitPercentHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  sendSuccess(reply, await topGrossProfitPercentItems(filters))
+}
+
+export async function topReturnsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  sendSuccess(reply, await topReturnsByItem(filters))
+}
+
+export async function salesByCompanyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  sendSuccess(reply, await salesValueByCompany(filters))
+}
+
 export async function purchaseSummaryHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(purchaseSummaryQuerySchema, request.query)
   const filters = scopeToUserBranch(request, rest)
@@ -116,6 +136,11 @@ export async function purchaseDetailHandler(request: FastifyRequest, reply: Fast
   const filters = scopeToUserBranch(request, rest)
   const { rows, ...page } = await purchaseDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
+}
+
+export async function purchaseByCompanyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  sendSuccess(reply, await purchaseValueByCompany(filters))
 }
 
 export async function stockReportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -135,6 +160,11 @@ export async function stockValueByCompanyHandler(request: FastifyRequest, reply:
   sendSuccess(reply, await stockValueByCompany(filters))
 }
 
+export async function topStockByValueHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  sendSuccess(reply, await topStockItemsByValue(filters))
+}
+
 export async function zeroOrderAlertsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await zeroOrderAlerts(filters))
@@ -151,6 +181,13 @@ export async function nonMovingHandler(request: FastifyRequest, reply: FastifyRe
   sendSuccess(reply, await nonMovingItems(filters))
 }
 
+export async function nonMovingDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { cursor, pageSize, ...rest } = validateSchema(nonMovingDetailQuerySchema, request.query)
+  const filters = scopeToUserBranch(request, rest)
+  const { rows, ...page } = await nonMovingDetail(filters, { cursor, pageSize })
+  sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
+}
+
 export async function dailyCollectionHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await dailyCollection(filters))
@@ -161,16 +198,6 @@ export async function daySalesDetailHandler(request: FastifyRequest, reply: Fast
   const filters = scopeToUserBranch(request, rest)
   const { rows, ...page } = await daySalesDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
-}
-
-export async function cashInHandHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
-  sendSuccess(reply, await cashInHand(filters))
-}
-
-export async function outstandingHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
-  sendSuccess(reply, await outstanding(filters))
 }
 
 export async function dashboardSummaryHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {

@@ -146,6 +146,17 @@ export type NonMovingRow = {
   value: number | null
 }
 
+export type NonMovingDetailRow = {
+  id: string
+  itemName: string
+  currentStock: number
+  value: number | null
+  company: string | null
+  batch: string | null
+  branchId: string
+  branchName: string
+}
+
 export type DailyCollectionRow = {
   date: string
   billValue: number
@@ -165,25 +176,11 @@ export type DaySalesDetailRow = {
   branchName: string
 }
 
-export type CashInHandRow = {
-  branchId: string
-  branchName: string
-  cashTotal: number
-}
-
-export type OutstandingRow = {
-  branchId: string
-  branchName: string
-  outstandingTotal: number
-}
-
 export type DashboardSummary = {
   totalSales: number
   totalPurchase: number
   totalStockValue: number
   totalCollection: number
-  cashInHand: number
-  outstanding: number
   nearExpiryCount: number
   nonMovingCount: number
 }

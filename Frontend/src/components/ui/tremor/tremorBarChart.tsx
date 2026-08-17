@@ -29,6 +29,8 @@ type TremorBarChartProps = {
   height?: number;
   isLoading?: boolean;
   className?: string;
+  /** Fires when a bar is clicked — the full data point it was drawn from, plus which category (series) it belongs to. Bars get a pointer cursor whenever this is passed. */
+  onBarClick?: (dataPoint: Record<string, unknown>, category: string) => void;
 };
 
 export const TremorBarChart = ({
@@ -41,6 +43,7 @@ export const TremorBarChart = ({
   height = 260,
   isLoading,
   className,
+  onBarClick,
 }: TremorBarChartProps) => {
   if (isLoading) {
     return (
@@ -72,7 +75,15 @@ export const TremorBarChart = ({
             cursor={{ fill: "var(--muted-surface)" }}
           />
           {categories.map((category, i) => (
-            <Bar key={category} dataKey={category} fill={colors[i % colors.length]} radius={[4, 4, 0, 0]} maxBarSize={40}>
+            <Bar
+              key={category}
+              dataKey={category}
+              fill={colors[i % colors.length]}
+              radius={[4, 4, 0, 0]}
+              maxBarSize={40}
+              className={onBarClick ? "cursor-pointer" : undefined}
+              onClick={onBarClick ? (point) => onBarClick(point as unknown as Record<string, unknown>, category) : undefined}
+            >
               {barColors && data.map((_, di) => <Cell key={di} fill={barColors[di % barColors.length]} />)}
             </Bar>
           ))}

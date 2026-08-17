@@ -8,13 +8,15 @@ import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency } from "@/utils/formatting"
 import { ExportReportButton } from "../components/export-report-button"
 import { ReportFilterPanel } from "../components/filters"
+import { useInitialFiltersFromUrl } from "../hooks/use-filters-from-url"
 import { useDaySalesDetail } from "../hooks/use-reports"
 import type { DaySalesDetailRow, ReportFilters } from "../types"
 
 export function DaySalesReportPage() {
   const t = useTranslations("Reports.daySales")
   const tCommon = useTranslations("Common")
-  const [filters, setFilters] = useState<ReportFilters>({})
+  const initialFilters = useInitialFiltersFromUrl()
+  const [filters, setFilters] = useState<ReportFilters>(initialFilters)
   const pagination = useCursorPagination()
   const { data, isLoading, isError } = useDaySalesDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
 

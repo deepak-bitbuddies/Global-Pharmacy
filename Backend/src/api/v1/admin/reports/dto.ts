@@ -147,6 +147,17 @@ export type NonMovingRowDto = {
   lastSoldDate: null // no per-line date available in the item-wise sales register; see caveat in service.ts
 }
 
+export type NonMovingDetailRowDto = {
+  id: string
+  itemName: string
+  currentStock: number
+  value: number | null
+  company: string | null
+  batch: string | null
+  branchId: string
+  branchName: string
+}
+
 export type DailyCollectionRowDto = {
   date: string
   billValue: number
@@ -166,25 +177,11 @@ export type DaySalesDetailRowDto = {
   branchName: string
 }
 
-export type CashInHandRowDto = {
-  branchId: string
-  branchName: string
-  cashTotal: number
-}
-
-export type OutstandingRowDto = {
-  branchId: string
-  branchName: string
-  outstandingTotal: number
-}
-
 export type DashboardSummaryDto = {
   totalSales: number
   totalPurchase: number
   totalStockValue: number
   totalCollection: number
-  cashInHand: number
-  outstanding: number
   nearExpiryCount: number
   nonMovingCount: number
 }
@@ -198,6 +195,26 @@ export type StockSummaryDto = {
 
 export type StockByCompanyRowDto = {
   company: string
+  total: number
+}
+
+export type SalesByCompanyRowDto = {
+  company: string
+  total: number
+}
+
+export type PurchaseByCompanyRowDto = {
+  company: string
+  total: number
+}
+
+export type TopReturnRowDto = {
+  itemNameRaw: string
+  returnAmount: number
+}
+
+export type TopStockValueRowDto = {
+  itemName: string
   total: number
 }
 

@@ -130,6 +130,55 @@ export async function getItemWiseSales(filters: ReportFilters, pagination: Curso
   return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
 }
 
+/** Top 8 items by return amount — same grouping/filters as `getItemWiseSales`, just ranked by `return_amount` instead of `total_amount`, and not paginated (a "top N" chart source, not a listing). */
+export async function getTopReturnsByItem(filters: ReportFilters): Promise<{ itemNameRaw: string; returnAmount: number }[]> {
+  const filterWhere = and(
+    branchFilter(salesLines.branchId, filters),
+    itemFilter(salesLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
+    ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
+  )
+
+  const rows = await db
+    .select({
+      itemNameRaw: salesLines.itemNameRaw,
+      returnAmount: sql<string>`coalesce(abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0)), 0)`,
+    })
+    .from(salesLines)
+    .leftJoin(items, eq(items.id, salesLines.itemId))
+    .where(filterWhere)
+    .groupBy(salesLines.itemNameRaw)
+    .having(sql`abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0)) > 0`)
+    .orderBy(desc(sql`abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0))`))
+    .limit(8)
+
+  return rows.map((row) => ({ itemNameRaw: row.itemNameRaw, returnAmount: Number(row.returnAmount) }))
+}
+
+/** Top 8 companies by sales amount — mirrors `getStockValueByCompany`'s shape, sourced through the same best-effort item→company link `getItemWiseSales` uses. Positive amounts only (matching `getItemWiseSales`'s convention) so returns don't distort it. */
+export async function getSalesValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
+  const filterWhere = and(
+    branchFilter(salesLines.branchId, filters),
+    itemFilter(salesLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
+    ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
+  )
+
+  const rows = await db
+    .select({
+      company: items.company,
+      total: sql<string>`coalesce(sum(${salesLines.amount}) filter (where ${salesLines.amount} > 0), 0)`,
+    })
+    .from(salesLines)
+    .innerJoin(items, eq(items.id, salesLines.itemId))
+    .where(and(filterWhere, sql`${items.company} is not null`))
+    .groupBy(items.company)
+    .orderBy(desc(sql`sum(${salesLines.amount}) filter (where ${salesLines.amount} > 0)`))
+    .limit(8)
+
+  return rows.filter((row): row is { company: string; total: string } => row.company !== null).map((row) => ({ company: row.company, total: Number(row.total) }))
+}
+
 export async function getBranchSales(filters: ReportFilters) {
   const where = and(branchFilter(salesLines.branchId, filters), ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters))
 
@@ -343,6 +392,31 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
   return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
 }
 
+/** Top 8 companies by purchase amount — mirrors `getStockValueByCompany`'s shape, sourced through the same best-effort item→company link `getPurchaseDetail` uses. */
+export async function getPurchaseValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
+  const filterWhere = and(
+    branchFilter(purchaseLines.branchId, filters),
+    itemFilter(purchaseLines.itemNameRaw, filters),
+    filters.company ? eq(items.company, filters.company) : undefined,
+    schemeTierFilter(filters),
+    filters.supplierGroup ? eq(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
+    filters.amountFrom !== undefined ? gte(purchaseLines.amount, filters.amountFrom) : undefined,
+    filters.amountTo !== undefined ? lte(purchaseLines.amount, filters.amountTo) : undefined,
+    ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
+  )
+
+  const rows = await db
+    .select({ company: items.company, total: sql<string>`coalesce(sum(${purchaseLines.amount}), 0)` })
+    .from(purchaseLines)
+    .innerJoin(items, eq(items.id, purchaseLines.itemId))
+    .where(and(filterWhere, sql`${items.company} is not null`))
+    .groupBy(items.company)
+    .orderBy(desc(sql`sum(${purchaseLines.amount})`))
+    .limit(8)
+
+  return rows.filter((row): row is { company: string; total: string } => row.company !== null).map((row) => ({ company: row.company, total: Number(row.total) }))
+}
+
 type StockReportCursor = { itemName: string; id: string }
 
 export async function getStockReport(filters: ReportFilters, pagination: CursorPaginationParams) {
@@ -484,6 +558,59 @@ export async function getNonMovingItems(filters: ReportFilters) {
     .orderBy(desc(stockSnapshots.value))
 }
 
+type NonMovingDetailCursor = { value: number; id: string }
+
+/**
+ * Paginated sibling of `getNonMovingItems` for the standalone Non-Moving Items report page —
+ * `getNonMovingItems` itself stays exactly as-is (unpaginated) since the Overview KPI count and
+ * the Stock tab's client-side top-10 slice both depend on getting the full list back. Reuses
+ * `stockFilterClauses` (defined below) for full search/branch/company/etc. filter support, unlike
+ * `getNonMovingItems`'s narrower branch-only filtering.
+ */
+export async function getNonMovingItemsDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  const filterWhere = and(
+    ...stockFilterClauses(filters),
+    sql`${stockSnapshots.itemId} is not null`,
+    notExists(
+      db
+        .select({ one: sql`1` })
+        .from(salesLines)
+        .where(eq(salesLines.itemId, stockSnapshots.itemId)),
+    ),
+  )
+
+  const cursor = decodeCursor<NonMovingDetailCursor>(pagination.cursor)
+  // Both sides of this tuple descend together (value DESC, id DESC as a tiebreaker) so the
+  // uniform `<` below stays correct even when many items share the same (or null) value.
+  const dataWhere = cursor
+    ? and(filterWhere, sql`(coalesce(${stockSnapshots.value}, 0), ${stockSnapshots.id}) < (${cursor.value}, ${cursor.id})`)
+    : filterWhere
+
+  const [rows, countRows] = await Promise.all([
+    db
+      .select({
+        id: stockSnapshots.id,
+        itemName: stockSnapshots.itemName,
+        currentStock: stockSnapshots.currentStock,
+        value: stockSnapshots.value,
+        company: stockSnapshots.company,
+        batch: stockSnapshots.batch,
+        branchId: stockSnapshots.branchId,
+        branchName: branches.name,
+      })
+      .from(stockSnapshots)
+      .innerJoin(branches, eq(branches.id, stockSnapshots.branchId))
+      .where(dataWhere)
+      .orderBy(desc(stockSnapshots.value), desc(stockSnapshots.id))
+      .limit(pagination.pageSize + 1),
+    db.select({ count: sql<string>`count(*)` }).from(stockSnapshots).where(filterWhere),
+  ])
+
+  const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ value: Number(r.value ?? 0), id: r.id }))
+
+  return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
+}
+
 export async function getDailyCollection(filters: ReportFilters) {
   const clauses = [branchFilter(dailySalesSummary.branchId, filters)]
   if (filters.dateFrom) clauses.push(gte(dailySalesSummary.date, filters.dateFrom))
@@ -538,47 +665,6 @@ export async function getDaySalesDetail(filters: ReportFilters, pagination: Curs
   const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ date: r.date, id: r.id }))
 
   return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
-}
-
-export async function getCashInHand(filters: ReportFilters) {
-  const where = and(
-    branchFilter(salesLines.branchId, filters),
-    eq(salesLines.partyGroup, "CASH"),
-    ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
-  )
-
-  return db
-    .select({
-      branchId: salesLines.branchId,
-      branchName: branches.name,
-      cashTotal: sql<string>`coalesce(sum(${salesLines.amount}), 0)`,
-    })
-    .from(salesLines)
-    .innerJoin(branches, eq(branches.id, salesLines.branchId))
-    .where(where)
-    .groupBy(salesLines.branchId, branches.name)
-}
-
-export async function getOutstanding(filters: ReportFilters) {
-  // "DUE BILLS" is the real party group Marg's Sales register uses for credit dues — this
-  // previously matched "CREDIT DUE BILL", a string that never actually occurs in the data, so
-  // Outstanding silently always came back as 0 regardless of what was actually owed.
-  const where = and(
-    branchFilter(salesLines.branchId, filters),
-    eq(salesLines.partyGroup, "DUE BILLS"),
-    ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
-  )
-
-  return db
-    .select({
-      branchId: salesLines.branchId,
-      branchName: branches.name,
-      outstandingTotal: sql<string>`coalesce(sum(${salesLines.amount}), 0)`,
-    })
-    .from(salesLines)
-    .innerJoin(branches, eq(branches.id, salesLines.branchId))
-    .where(where)
-    .groupBy(salesLines.branchId, branches.name)
 }
 
 export async function getTotalStockValue(filters: ReportFilters): Promise<number> {
@@ -683,6 +769,21 @@ export async function getStockValueByCompany(filters: ReportFilters): Promise<{ 
     .limit(8)
 
   return rows.filter((row): row is { company: string; total: string } => row.company !== null).map((row) => ({ company: row.company, total: Number(row.total) }))
+}
+
+/** Top 10 items by stock value — same filters as every other Stock chart (`stockFilterClauses`), grouped by item name across batches/branches. */
+export async function getTopStockItemsByValue(filters: ReportFilters): Promise<{ itemName: string; total: number }[]> {
+  const where = and(...stockFilterClauses(filters))
+
+  const rows = await db
+    .select({ itemName: stockSnapshots.itemName, total: sql<string>`coalesce(sum(${stockSnapshots.value}), 0)` })
+    .from(stockSnapshots)
+    .where(where)
+    .groupBy(stockSnapshots.itemName)
+    .orderBy(desc(sql`sum(${stockSnapshots.value})`))
+    .limit(10)
+
+  return rows.map((row) => ({ itemName: row.itemName, total: Number(row.total) }))
 }
 
 /** Grand total across all suppliers — for the dashboard summary tile, which needs the true total, not one page of `getPurchaseSummary`. */

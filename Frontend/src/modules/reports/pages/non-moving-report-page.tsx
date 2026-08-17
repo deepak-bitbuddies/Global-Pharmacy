@@ -6,19 +6,18 @@ import { useTranslations } from "next-intl"
 import { CustomPageHeader, CustomTable } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
-import { ExportReportButton } from "../components/export-report-button"
 import { ReportFilterPanel } from "../components/filters"
 import { useInitialFiltersFromUrl } from "../hooks/use-filters-from-url"
-import { usePurchaseDetail } from "../hooks/use-reports"
-import type { PurchaseDetailRow, ReportFilters } from "../types"
+import { useNonMovingDetail } from "../hooks/use-reports"
+import type { NonMovingDetailRow, ReportFilters } from "../types"
 
-export function PurchaseReportPage() {
-  const t = useTranslations("Reports.purchase")
+export function NonMovingReportPage() {
+  const t = useTranslations("Reports.nonMoving")
   const tCommon = useTranslations("Common")
   const initialFilters = useInitialFiltersFromUrl()
   const [filters, setFilters] = useState<ReportFilters>(initialFilters)
   const pagination = useCursorPagination()
-  const { data, isLoading, isError } = usePurchaseDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
+  const { data, isLoading, isError } = useNonMovingDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
 
   const updateFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
     setFilters(updater)
@@ -28,28 +27,25 @@ export function PurchaseReportPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="shrink-0 space-y-2">
-        <CustomPageHeader title={t("title")} description={t("description")} actions={<ExportReportButton reportType="purchase" filters={filters} />} />
+        <CustomPageHeader title={t("title")} description={t("description")} />
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}
-          show={{ search: true, branch: true, company: true, schemeTier: true, dateRange: true, supplierGroup: true, amountRange: true }}
+          show={{ search: true, branch: true, company: true }}
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </div>
 
-      <CustomTable<PurchaseDetailRow>
+      <CustomTable<NonMovingDetailRow>
         fillHeight
         isError={isError}
         columns={[
-          { key: "date", label: tCommon("date"), sortable: true },
           { key: "branchName", label: tCommon("branch") },
-          { key: "itemNameRaw", label: tCommon("item"), sortable: true },
-          { key: "supplierGroup", label: t("supplier"), sortable: true },
+          { key: "itemName", label: tCommon("item"), sortable: true },
+          { key: "currentStock", label: t("stockColumn"), sortable: true },
+          { key: "value", label: t("value"), sortable: true },
           { key: "company", label: tCommon("company") },
-          { key: "qty", label: tCommon("qty") },
-          { key: "freeQty", label: t("freeQty") },
-          { key: "rate", label: tCommon("rate") },
-          { key: "amount", label: tCommon("amount"), sortable: true },
-          { key: "schemePct", label: t("schemePct") },
+          { key: "batch", label: t("batch") },
         ]}
         data={data?.data ?? []}
         loading={isLoading}
@@ -67,11 +63,9 @@ export function PurchaseReportPage() {
           onPrevious: pagination.goPrevious,
         }}
         renderCustomCell={(row, key) => {
-          if (key === "rate" || key === "amount") return row[key] === null ? "-" : formatCurrency(row[key] as number)
-          if (key === "qty" || key === "freeQty") return row[key] === null ? "-" : formatNumber(row[key] as number)
-          if (key === "schemePct") return row.schemePct === null ? "-" : `${row.schemePct.toFixed(2)}%`
-          if (key === "company") return row.company ?? "-"
-          return row[key]
+          if (key === "currentStock") return formatNumber(row.currentStock)
+          if (key === "value") return row.value === null ? "-" : formatCurrency(row.value)
+          return row[key] ?? "-"
         }}
       />
     </div>

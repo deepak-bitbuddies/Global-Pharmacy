@@ -2,7 +2,6 @@ import { api } from "@/lib/axios"
 import type { CursorPaginationParams, PaginatedResponse } from "@/types/pagination"
 import type {
   Branch,
-  CashInHandRow,
   DailyCollectionRow,
   DashboardSummary,
   DaySalesDetailRow,
@@ -11,8 +10,8 @@ import type {
   ExportJobAck,
   GrossProfitRow,
   ItemWiseSalesRow,
+  NonMovingDetailRow,
   NonMovingRow,
-  OutstandingRow,
   PurchaseDetailRow,
   PurchaseSummaryRow,
   ReportFilters,
@@ -69,6 +68,21 @@ export async function getGrossProfit(filters: ReportFilters, pagination: CursorP
   return data
 }
 
+export async function getTopGrossProfitPercent(filters: ReportFilters): Promise<GrossProfitRow[]> {
+  const { data } = await api.get<{ data: GrossProfitRow[] }>(`${BASE}/sales/gross-profit/top-by-pct`, { params: filters })
+  return data.data
+}
+
+export async function getTopReturns(filters: ReportFilters): Promise<{ itemNameRaw: string; returnAmount: number }[]> {
+  const { data } = await api.get(`${BASE}/sales/top-returns`, { params: filters })
+  return data.data
+}
+
+export async function getSalesValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
+  const { data } = await api.get(`${BASE}/sales/by-company`, { params: filters })
+  return data.data
+}
+
 export async function getPurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<PurchaseSummaryRow>> {
   const { data } = await api.get<PaginatedResponse<PurchaseSummaryRow>>(`${BASE}/purchase`, { params: { ...filters, ...pagination } })
   return data
@@ -77,6 +91,11 @@ export async function getPurchaseSummary(filters: ReportFilters, pagination: Cur
 export async function getPurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<PurchaseDetailRow>> {
   const { data } = await api.get<PaginatedResponse<PurchaseDetailRow>>(`${BASE}/purchase/detail`, { params: { ...filters, ...pagination } })
   return data
+}
+
+export async function getPurchaseValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
+  const { data } = await api.get(`${BASE}/purchase/by-company`, { params: filters })
+  return data.data
 }
 
 export async function getStockReport(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<StockRow>> {
@@ -91,6 +110,11 @@ export async function getStockSummary(filters: ReportFilters): Promise<{ totalVa
 
 export async function getStockValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
   const { data } = await api.get(`${BASE}/stock/by-company`, { params: filters })
+  return data.data
+}
+
+export async function getTopStockByValue(filters: ReportFilters): Promise<{ itemName: string; total: number }[]> {
+  const { data } = await api.get(`${BASE}/stock/top-by-value`, { params: filters })
   return data.data
 }
 
@@ -109,6 +133,11 @@ export async function getNonMovingItems(filters: ReportFilters): Promise<NonMovi
   return data.data
 }
 
+export async function getNonMovingDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<NonMovingDetailRow>> {
+  const { data } = await api.get<PaginatedResponse<NonMovingDetailRow>>(`${BASE}/stock/non-moving/detail`, { params: { ...filters, ...pagination } })
+  return data
+}
+
 export async function getDailyCollection(filters: ReportFilters): Promise<DailyCollectionRow[]> {
   const { data } = await api.get<{ data: DailyCollectionRow[] }>(`${BASE}/collection/daily`, { params: filters })
   return data.data
@@ -117,16 +146,6 @@ export async function getDailyCollection(filters: ReportFilters): Promise<DailyC
 export async function getDaySalesDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<DaySalesDetailRow>> {
   const { data } = await api.get<PaginatedResponse<DaySalesDetailRow>>(`${BASE}/collection/detail`, { params: { ...filters, ...pagination } })
   return data
-}
-
-export async function getCashInHand(filters: ReportFilters): Promise<CashInHandRow[]> {
-  const { data } = await api.get<{ data: CashInHandRow[] }>(`${BASE}/finance/cash-in-hand`, { params: filters })
-  return data.data
-}
-
-export async function getOutstanding(filters: ReportFilters): Promise<OutstandingRow[]> {
-  const { data } = await api.get<{ data: OutstandingRow[] }>(`${BASE}/finance/outstanding`, { params: filters })
-  return data.data
 }
 
 /** Kicks off a background export job — instant ack (status "processing"), the file itself shows up later via socket + `downloadExportJob`. */

@@ -1,81 +1,91 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { ChartLineUpIcon } from "@phosphor-icons/react"
+import { useMemo } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { ArrowsCounterClockwiseIcon, BuildingsIcon, ChartLineUpIcon } from "@phosphor-icons/react"
 import { useTranslations } from "next-intl"
 
-import { CustomInfoTooltip, CustomTable } from "@/components/ui"
-import { TremorBarList, TremorCard } from "@/components/ui/tremor"
-import { useCursorPagination } from "@/hooks/use-cursor-pagination"
-import { formatCurrency, formatNumber } from "@/utils/formatting"
-import { ReportFilterPanel } from "../filters"
-import { useItemWiseSales } from "../../hooks/use-reports"
-import type { ItemWiseSalesRow, ReportFilters } from "../../types"
+import { CustomInfoTooltip } from "@/components/ui"
+import { TremorBarList, TremorCard, TremorDonutChart } from "@/components/ui/tremor"
+import { formatCurrency } from "@/utils/formatting"
+import { useItemWiseSales, useSalesValueByCompany, useTopReturns } from "../../hooks/use-reports"
+import { buildReportUrl } from "../../utils/report-links"
+import { SectionHeading } from "./section-heading"
+import type { ReportFilters } from "../../types"
 
 export function SalesTab({ filters }: { filters: ReportFilters }) {
   const t = useTranslations("Dashboard.sales")
   const tCommon = useTranslations("Common")
-  // Only `item` is ever set here — kept as a full `ReportFilters` shape (all fields optional)
-  // purely so it drops straight into `ReportFilterPanel` without a cast.
-  const [localFilters, setLocalFilters] = useState<ReportFilters>({})
-  const pagination = useCursorPagination()
-  const combinedFilters = useMemo<ReportFilters>(() => ({ ...filters, ...localFilters }), [filters, localFilters])
+  const tTabs = useTranslations("Dashboard.tabs")
+  const router = useRouter()
 
-  const updateLocalFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
-    setLocalFilters(updater)
-    pagination.reset()
-  }
-
-  // Independent of the table's own pagination — page 1 of the same
-  // amount-DESC sort is already the true top 10, no separate endpoint needed.
-  const { data: topData } = useItemWiseSales(combinedFilters, { pageSize: 10 })
-  const { data, isLoading } = useItemWiseSales(combinedFilters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
+  // Independent top-10/top-8 lookups, not a paginated listing — this section is chart-only.
+  const { data: topData, isLoading: isTopItemsLoading } = useItemWiseSales(filters, { pageSize: 10 })
+  const { data: topReturns, isLoading: isReturnsLoading } = useTopReturns(filters)
+  const { data: byCompany, isLoading: isByCompanyLoading } = useSalesValueByCompany(filters)
 
   const topItems = useMemo(() => (topData?.data ?? []).map((row) => ({ name: row.itemNameRaw, value: row.totalAmount })), [topData])
+  const returnItems = useMemo(() => (topReturns ?? []).map((row) => ({ name: row.itemNameRaw, value: row.returnAmount })), [topReturns])
+  const companyItems = useMemo(() => (byCompany ?? []).map((row) => ({ name: row.company, value: row.total })), [byCompany])
 
   return (
-    <div className="space-y-4">
+    <section id="sales" className="scroll-mt-20 space-y-4">
+      <SectionHeading icon={ChartLineUpIcon}>{tTabs("sales")}</SectionHeading>
+
       <TremorCard className="space-y-3">
         <div className="flex items-center gap-2">
           <ChartLineUpIcon className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">{t("topItemsBySales")}</p>
           <CustomInfoTooltip content={t("topItemsBySalesDesc")} />
+          <Link href={buildReportUrl("/reports/sales", filters)} className="ml-auto shrink-0 text-xs font-medium text-primary hover:underline">
+            {tCommon("viewDetails")} →
+          </Link>
         </div>
-        <TremorBarList data={topItems} valueFormatter={(value) => formatCurrency(value)} />
+        {isTopItemsLoading ? (
+          <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
+        ) : (
+          <TremorBarList
+            data={topItems}
+            valueFormatter={(value) => formatCurrency(value)}
+            onItemClick={(item) => router.push(buildReportUrl("/reports/sales", { ...filters, item: item.name }))}
+          />
+        )}
       </TremorCard>
 
-      <div className="space-y-2">
-        <ReportFilterPanel filters={localFilters} onFiltersChange={updateLocalFilters} show={{ search: true }} />
-        <CustomTable<ItemWiseSalesRow>
-          columns={[
-            { key: "itemNameRaw", label: tCommon("item"), sortable: true },
-            { key: "totalQty", label: t("qtySold"), sortable: true },
-            { key: "totalAmount", label: tCommon("amount"), sortable: true },
-            { key: "returnQty", label: t("returnQty") },
-            { key: "returnAmount", label: t("returnAmount") },
-          ]}
-          data={data?.data ?? []}
-          loading={isLoading}
-          rowKey="itemNameRaw"
-          itemId="itemNameRaw"
-          totalItems={data?.meta?.total ?? 0}
-          emptyText={t("emptyText")}
-          onRowsPerPageChange={pagination.setPageSize}
-          cursorPagination={{
-            page: pagination.page,
-            totalPages: data?.meta?.totalPages,
-            hasNextPage: data?.meta?.hasNextPage ?? false,
-            hasPreviousPage: pagination.page > 1,
-            onNext: () => pagination.goNext(data?.meta?.nextCursor ?? null),
-            onPrevious: pagination.goPrevious,
-          }}
-          renderCustomCell={(row, key) => {
-            if (key === "totalAmount" || key === "returnAmount") return formatCurrency(row[key])
-            if (key === "totalQty" || key === "returnQty") return formatNumber(row[key])
-            return row[key]
-          }}
-        />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TremorCard className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ArrowsCounterClockwiseIcon className="size-4 text-muted-foreground" />
+            <p className="text-sm font-semibold text-foreground">{t("topReturns")}</p>
+            <CustomInfoTooltip content={t("topReturnsDesc")} />
+          </div>
+          {isReturnsLoading ? (
+            <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
+          ) : (
+            <TremorBarList
+              data={returnItems}
+              valueFormatter={(value) => formatCurrency(value)}
+              onItemClick={(item) => router.push(buildReportUrl("/reports/sales", { ...filters, item: item.name }))}
+            />
+          )}
+        </TremorCard>
+
+        <TremorCard className="space-y-3">
+          <div className="flex items-center gap-2">
+            <BuildingsIcon className="size-4 text-muted-foreground" />
+            <p className="text-sm font-semibold text-foreground">{t("salesByCompany")}</p>
+            <CustomInfoTooltip content={t("salesByCompanyDesc")} />
+          </div>
+          <TremorDonutChart
+            data={companyItems}
+            valueFormatter={(value) => formatCurrency(value)}
+            isLoading={isByCompanyLoading}
+            height={220}
+            onSliceClick={(slice) => router.push(buildReportUrl("/reports/sales", { ...filters, company: slice.name }))}
+          />
+        </TremorCard>
       </div>
-    </div>
+    </section>
   )
 }

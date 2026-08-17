@@ -1,6 +1,8 @@
 export { ReportsDashboardPage } from "./pages/dashboard-page"
 export { DaySalesReportPage } from "./pages/day-sales-report-page"
+export { GrossProfitReportPage } from "./pages/gross-profit-report-page"
 export { ImportPage } from "./pages/import-page"
+export { NonMovingReportPage } from "./pages/non-moving-report-page"
 export { PurchaseReportPage } from "./pages/purchase-report-page"
 export { SalesReportPage } from "./pages/sales-report-page"
 export { StockReportPage } from "./pages/stock-report-page"

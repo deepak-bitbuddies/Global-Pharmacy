@@ -32,6 +32,8 @@ export const stockReportQuerySchema = reportFiltersSchema.merge(cursorPagination
   stockFrom: z.coerce.number().optional(),
   stockTo: z.coerce.number().optional(),
 })
+// Same filter surface as Stock (it's built from the same `stockFilterClauses` helper).
+export const nonMovingDetailQuerySchema = stockReportQuerySchema
 export const purchaseSummaryQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 export const purchaseDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({
   schemeTier: z.enum(["none", "lt5", "5to10", "10to20", "20to30", "30to50", "50to100", "gte100"]).optional(),

@@ -9,7 +9,6 @@ import {
   createExportJob,
   getBranches,
   getBranchSales,
-  getCashInHand,
   getCompanies,
   getDailyCollection,
   getDashboardSummary,
@@ -18,16 +17,21 @@ import {
   getExportJobs,
   getGrossProfit,
   getItemWiseSales,
+  getNonMovingDetail,
   getNonMovingItems,
-  getOutstanding,
   getPurchaseDetail,
   getPurchaseSummary,
+  getPurchaseValueByCompany,
   getSalesDetail,
+  getSalesValueByCompany,
   getStockReport,
   getStockSummary,
   getStockValueByCompany,
   getSupplierGroups,
   getSuppliers,
+  getTopGrossProfitPercent,
+  getTopReturns,
+  getTopStockByValue,
   getZeroOrderAlerts,
 } from "../api/reports-api"
 
@@ -72,12 +76,28 @@ export function useGrossProfit(filters: ReportFilters, pagination: CursorPaginat
   return useQuery({ queryKey: reportsQueryKeys.grossProfit(filters, pagination), queryFn: () => getGrossProfit(filters, pagination), placeholderData: keepPreviousData })
 }
 
+export function useTopGrossProfitPercent(filters: ReportFilters) {
+  return useQuery({ queryKey: reportsQueryKeys.topGrossProfitPercent(filters), queryFn: () => getTopGrossProfitPercent(filters), placeholderData: keepPreviousData })
+}
+
+export function useTopReturns(filters: ReportFilters) {
+  return useQuery({ queryKey: reportsQueryKeys.topReturns(filters), queryFn: () => getTopReturns(filters), placeholderData: keepPreviousData })
+}
+
+export function useSalesValueByCompany(filters: ReportFilters) {
+  return useQuery({ queryKey: reportsQueryKeys.salesByCompany(filters), queryFn: () => getSalesValueByCompany(filters), placeholderData: keepPreviousData })
+}
+
 export function usePurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams) {
   return useQuery({ queryKey: reportsQueryKeys.purchaseSummary(filters, pagination), queryFn: () => getPurchaseSummary(filters, pagination), placeholderData: keepPreviousData })
 }
 
 export function usePurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
   return useQuery({ queryKey: reportsQueryKeys.purchaseDetail(filters, pagination), queryFn: () => getPurchaseDetail(filters, pagination), placeholderData: keepPreviousData })
+}
+
+export function usePurchaseValueByCompany(filters: ReportFilters) {
+  return useQuery({ queryKey: reportsQueryKeys.purchaseByCompany(filters), queryFn: () => getPurchaseValueByCompany(filters), placeholderData: keepPreviousData })
 }
 
 export function useStockReport(filters: ReportFilters, pagination: CursorPaginationParams) {
@@ -92,6 +112,10 @@ export function useStockValueByCompany(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.stockByCompany(filters), queryFn: () => getStockValueByCompany(filters), placeholderData: keepPreviousData })
 }
 
+export function useTopStockByValue(filters: ReportFilters) {
+  return useQuery({ queryKey: reportsQueryKeys.topStockByValue(filters), queryFn: () => getTopStockByValue(filters), placeholderData: keepPreviousData })
+}
+
 export function useZeroOrderAlerts(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.zeroOrderAlerts(filters), queryFn: () => getZeroOrderAlerts(filters), placeholderData: keepPreviousData })
 }
@@ -104,20 +128,20 @@ export function useNonMovingItems(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.nonMoving(filters), queryFn: () => getNonMovingItems(filters), placeholderData: keepPreviousData })
 }
 
+export function useNonMovingDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
+  return useQuery({
+    queryKey: reportsQueryKeys.nonMovingDetail(filters, pagination),
+    queryFn: () => getNonMovingDetail(filters, pagination),
+    placeholderData: keepPreviousData,
+  })
+}
+
 export function useDailyCollection(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.dailyCollection(filters), queryFn: () => getDailyCollection(filters), placeholderData: keepPreviousData })
 }
 
 export function useDaySalesDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
   return useQuery({ queryKey: reportsQueryKeys.daySalesDetail(filters, pagination), queryFn: () => getDaySalesDetail(filters, pagination), placeholderData: keepPreviousData })
-}
-
-export function useCashInHand(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.cashInHand(filters), queryFn: () => getCashInHand(filters), placeholderData: keepPreviousData })
-}
-
-export function useOutstanding(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.outstanding(filters), queryFn: () => getOutstanding(filters), placeholderData: keepPreviousData })
 }
 
 /** Recent export jobs for one report's inline history panel — kept live by `useImportSocket`'s `export-job:update` listener invalidating this same query key. */

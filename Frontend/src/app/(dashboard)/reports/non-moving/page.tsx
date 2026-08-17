@@ -1,12 +1,12 @@
 import { Suspense } from "react"
 
 import { CustomSpinner } from "@/components/ui"
-import { PurchaseReportPage } from "@/modules/reports"
+import { NonMovingReportPage } from "@/modules/reports"
 
 export default function Page() {
   return (
     <Suspense fallback={<CustomSpinner />}>
-      <PurchaseReportPage />
+      <NonMovingReportPage />
     </Suspense>
   )
 }

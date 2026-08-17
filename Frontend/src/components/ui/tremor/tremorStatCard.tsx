@@ -1,5 +1,6 @@
 "use client";
 import type { IconProps } from "@phosphor-icons/react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CustomAppIcon } from "../customAppIcon/customAppIcon";
 import { CustomInfoTooltip } from "../customTooltip/customInfoTooltip";
@@ -16,11 +17,13 @@ type TremorStatCardProps = {
   tone?: TremorTone;
   loading?: boolean;
   className?: string;
+  /** When set, the whole card becomes a link to the report page this figure is drawn from (already filtered to match). */
+  detailsHref?: string;
 };
 
-export const TremorStatCard = ({ label, value, description, icon: Icon, tone = TremorTone.primary, loading, className }: TremorStatCardProps) => {
-  return (
-    <TremorCard className={cn("flex items-start justify-between gap-3", className)}>
+export const TremorStatCard = ({ label, value, description, icon: Icon, tone = TremorTone.primary, loading, className, detailsHref }: TremorStatCardProps) => {
+  const card = (
+    <TremorCard className={cn("flex items-start justify-between gap-3", detailsHref && "transition-colors hover:border-primary/40", className)}>
       <div className="min-w-0 space-y-1.5">
         <div className="flex items-center gap-1">
           <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
@@ -38,5 +41,13 @@ export const TremorStatCard = ({ label, value, description, icon: Icon, tone = T
         </div>
       )}
     </TremorCard>
+  );
+
+  return detailsHref ? (
+    <Link href={detailsHref} className="block">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 };

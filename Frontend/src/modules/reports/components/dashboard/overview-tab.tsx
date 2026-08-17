@@ -1,14 +1,14 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { useTranslations } from "next-intl"
 import {
   ArrowsCounterClockwiseIcon,
   ChartLineUpIcon,
   ClockCountdownIcon,
-  CreditCardIcon,
   CurrencyInrIcon,
-  HandCoinsIcon,
   PackageIcon,
   ScalesIcon,
   ShoppingCartIcon,
@@ -20,6 +20,8 @@ import { TremorAreaChart, TremorBarChart, TremorCard, TremorStatCard, TremorTone
 import { useAuthStore } from "@/providers"
 import { formatCurrency } from "@/utils/formatting"
 import { useBranchSales, useDailyCollection, useDashboardSummary } from "../../hooks/use-reports"
+import { buildReportUrl } from "../../utils/report-links"
+import { SectionHeading } from "./section-heading"
 import type { ReportFilters } from "../../types"
 
 function SectionTitle({ children }: { children: ReactNode }) {
@@ -29,22 +31,30 @@ function SectionTitle({ children }: { children: ReactNode }) {
 function ChartPanel({
   title,
   description,
+  detailsHref,
   icon: Icon,
   className,
   children,
 }: {
   title: string
   description?: string
+  detailsHref?: string
   icon: React.ComponentType<{ className?: string }>
   className?: string
   children: ReactNode
 }) {
+  const tCommon = useTranslations("Common")
   return (
     <TremorCard className={`space-y-3 ${className ?? ""}`}>
       <div className="flex items-center gap-2">
         <Icon className="size-4 text-muted-foreground" />
         <p className="text-sm font-semibold text-foreground">{title}</p>
         {description && <CustomInfoTooltip content={description} />}
+        {detailsHref && (
+          <Link href={detailsHref} className="ml-auto shrink-0 text-xs font-medium text-primary hover:underline">
+            {tCommon("viewDetails")} →
+          </Link>
+        )}
       </div>
       {children}
     </TremorCard>
@@ -53,6 +63,8 @@ function ChartPanel({
 
 export function OverviewTab({ filters }: { filters: ReportFilters }) {
   const t = useTranslations("Dashboard.overview")
+  const tTabs = useTranslations("Dashboard.tabs")
+  const router = useRouter()
   // A branch_user only ever has one branch, so a "Branch Wise Sales" breakdown would just be a
   // redundant single-bar chart repeating totalSales above — it's only meaningful for admins.
   const role = useAuthStore((state) => state.user?.role)
@@ -61,8 +73,12 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
   const { data: dailyCollection, isLoading: isCollectionLoading } = useDailyCollection(filters)
   const { data: branchSales, isLoading: isBranchSalesLoading } = useBranchSales(filters)
 
+  const dateRange = { dateFrom: filters.dateFrom, dateTo: filters.dateTo }
+
   return (
-    <div className="space-y-4">
+    <section id="overview" className="scroll-mt-20 space-y-4">
+      <SectionHeading icon={CurrencyInrIcon}>{tTabs("overview")}</SectionHeading>
+
       <div className="space-y-2">
         <SectionTitle>{t("businessOverview")}</SectionTitle>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -73,6 +89,7 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             icon={CurrencyInrIcon}
             tone={TremorTone.primary}
             loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/sales", { branchId: filters.branchId, ...dateRange })}
           />
           <TremorStatCard
             label={t("totalPurchase")}
@@ -81,6 +98,7 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             icon={ShoppingCartIcon}
             tone={TremorTone.accent}
             loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/purchase", { branchId: filters.branchId, ...dateRange })}
           />
           <TremorStatCard
             label={t("stockValue")}
@@ -89,6 +107,7 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             icon={PackageIcon}
             tone={TremorTone.primary}
             loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId })}
           />
           <TremorStatCard
             label={t("collection")}
@@ -97,29 +116,14 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             icon={WalletIcon}
             tone={TremorTone.success}
             loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/day-wise-sales", { branchId: filters.branchId, ...dateRange })}
           />
         </div>
       </div>
 
       <div className="space-y-2">
         <SectionTitle>{t("financeAlerts")}</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <TremorStatCard
-            label={t("cashInHand")}
-            value={formatCurrency(summary?.cashInHand ?? 0)}
-            description={t("cashInHandDesc")}
-            icon={HandCoinsIcon}
-            tone={TremorTone.primary}
-            loading={isSummaryLoading}
-          />
-          <TremorStatCard
-            label={t("outstanding")}
-            value={formatCurrency(summary?.outstanding ?? 0)}
-            description={t("outstandingDesc")}
-            icon={CreditCardIcon}
-            tone={TremorTone.warning}
-            loading={isSummaryLoading}
-          />
+        <div className="grid grid-cols-2 gap-3">
           <TremorStatCard
             label={t("nearExpiryBatches")}
             value={summary?.nearExpiryCount ?? 0}
@@ -127,6 +131,7 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             icon={ClockCountdownIcon}
             tone={TremorTone.warning}
             loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId, expiryTier: "lte30" })}
           />
           <TremorStatCard
             label={t("nonMovingItems")}
@@ -135,12 +140,19 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             icon={ArrowsCounterClockwiseIcon}
             tone={TremorTone.danger}
             loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/non-moving", { branchId: filters.branchId })}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <ChartPanel title={t("dailyCollectionTrend")} description={t("dailyCollectionTrendDesc")} icon={ChartLineUpIcon} className="lg:col-span-2">
+        <ChartPanel
+          title={t("dailyCollectionTrend")}
+          description={t("dailyCollectionTrendDesc")}
+          detailsHref={buildReportUrl("/reports/day-wise-sales", { branchId: filters.branchId, ...dateRange })}
+          icon={ChartLineUpIcon}
+          className="lg:col-span-2"
+        >
           <TremorAreaChart
             data={(dailyCollection ?? []).map((row) => ({ date: row.date, billValue: row.billValue }))}
             index="date"
@@ -153,29 +165,38 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
         <ChartPanel title={t("salesVsPurchase")} description={t("salesVsPurchaseDesc")} icon={ScalesIcon}>
           <TremorBarChart
             data={[
-              { label: t("salesLabel"), value: summary?.totalSales ?? 0 },
-              { label: t("purchaseLabel"), value: summary?.totalPurchase ?? 0 },
+              { label: t("salesLabel"), value: summary?.totalSales ?? 0, type: "sales" },
+              { label: t("purchaseLabel"), value: summary?.totalPurchase ?? 0, type: "purchase" },
             ]}
             index="label"
             categories={["value"]}
             valueFormatter={(value) => formatCurrency(value)}
             isLoading={isSummaryLoading}
+            onBarClick={(point) =>
+              router.push(buildReportUrl(point.type === "purchase" ? "/reports/purchase" : "/reports/sales", { branchId: filters.branchId, ...dateRange }))
+            }
           />
         </ChartPanel>
       </div>
 
       {!isBranchScoped && (
-        <ChartPanel title={t("branchWiseSales")} description={t("branchWiseSalesDesc")} icon={PackageIcon}>
+        <ChartPanel
+          title={t("branchWiseSales")}
+          description={t("branchWiseSalesDesc")}
+          detailsHref={buildReportUrl("/reports/sales", dateRange)}
+          icon={PackageIcon}
+        >
           <TremorBarChart
-            data={(branchSales ?? []).map((row) => ({ branch: row.branchName, amount: row.totalAmount }))}
+            data={(branchSales ?? []).map((row) => ({ branch: row.branchName, amount: row.totalAmount, branchId: row.branchId }))}
             index="branch"
             categories={["amount"]}
             valueFormatter={(value) => formatCurrency(value)}
             isLoading={isBranchSalesLoading}
             height={260}
+            onBarClick={(point) => router.push(buildReportUrl("/reports/sales", { branchId: point.branchId as string, ...dateRange }))}
           />
         </ChartPanel>
       )}
-    </div>
+    </section>
   )
 }

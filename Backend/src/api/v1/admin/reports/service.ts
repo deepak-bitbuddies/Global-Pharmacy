@@ -8,7 +8,6 @@ import { findBranchById } from "../uploads/repository.js"
 import type { ExportJobDocument } from "./model.js"
 import type {
   BranchSalesRowDto,
-  CashInHandRowDto,
   CursorPaginationParams,
   DailyCollectionRowDto,
   DashboardSummaryDto,
@@ -17,16 +16,20 @@ import type {
   ExportJobDto,
   GrossProfitRowDto,
   ItemWiseSalesRowDto,
+  NonMovingDetailRowDto,
   NonMovingRowDto,
-  OutstandingRowDto,
   PaginatedResult,
+  PurchaseByCompanyRowDto,
   PurchaseDetailRowDto,
   PurchaseSummaryRowDto,
   ReportFilters,
+  SalesByCompanyRowDto,
   SalesDetailRowDto,
   StockByCompanyRowDto,
   StockRowDto,
   StockSummaryDto,
+  TopReturnRowDto,
+  TopStockValueRowDto,
   ZeroOrderAlertRowDto,
 } from "./dto.js"
 import {
@@ -37,20 +40,23 @@ import {
   exportStockReport,
   findExportJob,
   getBranchSales,
-  getCashInHand,
   getDailyCollection,
   getDaySalesDetail,
   getExpiryReport,
   getGrossProfitByItem,
   getItemWiseSales,
   getNonMovingItems,
-  getOutstanding,
+  getNonMovingItemsDetail,
   getPurchaseDetail,
   getPurchaseSummary,
+  getPurchaseValueByCompany,
   getSalesDetail,
+  getSalesValueByCompany,
   getStockReport,
   getStockSummary,
   getStockValueByCompany,
+  getTopReturnsByItem,
+  getTopStockItemsByValue,
   getTotalPurchaseValue,
   getTotalStockValue,
   getZeroOrderAlerts,
@@ -80,6 +86,15 @@ export async function itemWiseSales(filters: ReportFilters, pagination: CursorPa
   }
 }
 
+export async function topReturnsByItem(filters: ReportFilters): Promise<TopReturnRowDto[]> {
+  const rows = await getTopReturnsByItem(filters)
+  return rows.map((row) => ({ itemNameRaw: row.itemNameRaw, returnAmount: num(row.returnAmount) }))
+}
+
+export async function salesValueByCompany(filters: ReportFilters): Promise<SalesByCompanyRowDto[]> {
+  return getSalesValueByCompany(filters)
+}
+
 function toSalesDetailRowDto(row: Awaited<ReturnType<typeof getSalesDetail>>["rows"][number]): SalesDetailRowDto {
   return {
     id: row.id,
@@ -107,21 +122,34 @@ export async function branchSales(filters: ReportFilters): Promise<BranchSalesRo
   return rows.map((row) => ({ branchId: row.branchId, branchName: row.branchName, totalAmount: num(row.totalAmount) }))
 }
 
+function toGrossProfitRowDto(row: Awaited<ReturnType<typeof getGrossProfitByItem>>["rows"][number]): GrossProfitRowDto {
+  const salesQty = num(row.salesQty)
+  const salesAmount = num(row.salesAmount)
+  const avgCostPrice = row.avgCostPrice === null ? null : num(row.avgCostPrice)
+  const estimatedCost = avgCostPrice === null ? null : avgCostPrice * salesQty
+  const estimatedGp = estimatedCost === null ? null : salesAmount - estimatedCost
+  const estimatedGpPct = estimatedGp === null || salesAmount === 0 ? null : (estimatedGp / salesAmount) * 100
+
+  return { itemName: row.itemName, salesAmount, salesQty, avgCostPrice, estimatedCost, estimatedGp, estimatedGpPct }
+}
+
 export async function grossProfitByItem(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<GrossProfitRowDto>> {
   const { rows, ...page } = await getGrossProfitByItem(filters, pagination)
-  return {
-    ...page,
-    rows: rows.map((row) => {
-      const salesQty = num(row.salesQty)
-      const salesAmount = num(row.salesAmount)
-      const avgCostPrice = row.avgCostPrice === null ? null : num(row.avgCostPrice)
-      const estimatedCost = avgCostPrice === null ? null : avgCostPrice * salesQty
-      const estimatedGp = estimatedCost === null ? null : salesAmount - estimatedCost
-      const estimatedGpPct = estimatedGp === null || salesAmount === 0 ? null : (estimatedGp / salesAmount) * 100
+  return { ...page, rows: rows.map(toGrossProfitRowDto) }
+}
 
-      return { itemName: row.itemName, salesAmount, salesQty, avgCostPrice, estimatedCost, estimatedGp, estimatedGpPct }
-    }),
-  }
+/**
+ * Top 8 items by GP %, not GP amount — re-ranks the top 200 items by sales amount (the same
+ * data `grossProfitByItem` already fetches a page of) rather than scanning every item's %, so a
+ * near-zero-sales item with a distorted percentage can't dominate the list.
+ */
+export async function topGrossProfitPercentItems(filters: ReportFilters): Promise<GrossProfitRowDto[]> {
+  const { rows } = await getGrossProfitByItem(filters, { pageSize: 200 })
+  return rows
+    .map(toGrossProfitRowDto)
+    .filter((row) => row.estimatedGpPct !== null)
+    .sort((a, b) => (b.estimatedGpPct as number) - (a.estimatedGpPct as number))
+    .slice(0, 8)
 }
 
 export async function purchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<PurchaseSummaryRowDto>> {
@@ -158,6 +186,10 @@ function toPurchaseDetailRowDto(row: Awaited<ReturnType<typeof getPurchaseDetail
 export async function purchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<PurchaseDetailRowDto>> {
   const { rows, ...page } = await getPurchaseDetail(filters, pagination)
   return { ...page, rows: rows.map(toPurchaseDetailRowDto) }
+}
+
+export async function purchaseValueByCompany(filters: ReportFilters): Promise<PurchaseByCompanyRowDto[]> {
+  return getPurchaseValueByCompany(filters)
 }
 
 function toStockRowDto(row: Awaited<ReturnType<typeof getStockReport>>["rows"][number]): StockRowDto {
@@ -206,6 +238,10 @@ export async function stockValueByCompany(filters: ReportFilters): Promise<Stock
   return getStockValueByCompany(filters)
 }
 
+export async function topStockItemsByValue(filters: ReportFilters): Promise<TopStockValueRowDto[]> {
+  return getTopStockItemsByValue(filters)
+}
+
 export async function zeroOrderAlerts(filters: ReportFilters): Promise<ZeroOrderAlertRowDto[]> {
   const rows = await getZeroOrderAlerts(filters)
   return rows.map((row) => ({ itemName: row.itemName, currentStock: num(row.currentStock), soldQtyInPeriod: num(row.soldQtyInPeriod) }))
@@ -226,6 +262,23 @@ export async function expiryReport(filters: ReportFilters, withinDays: number): 
 export async function nonMovingItems(filters: ReportFilters): Promise<NonMovingRowDto[]> {
   const rows = await getNonMovingItems(filters)
   return rows.map((row) => ({ itemName: row.itemName, currentStock: num(row.currentStock), value: row.value === null ? null : num(row.value), lastSoldDate: null }))
+}
+
+export async function nonMovingDetail(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<NonMovingDetailRowDto>> {
+  const { rows, ...page } = await getNonMovingItemsDetail(filters, pagination)
+  return {
+    ...page,
+    rows: rows.map((row) => ({
+      id: row.id,
+      itemName: row.itemName,
+      currentStock: num(row.currentStock),
+      value: row.value === null ? null : num(row.value),
+      company: row.company,
+      batch: row.batch,
+      branchId: row.branchId,
+      branchName: row.branchName,
+    })),
+  }
 }
 
 export async function dailyCollection(filters: ReportFilters): Promise<DailyCollectionRowDto[]> {
@@ -254,24 +307,12 @@ export async function daySalesDetail(filters: ReportFilters, pagination: CursorP
   return { ...page, rows: rows.map(toDaySalesDetailRowDto) }
 }
 
-export async function cashInHand(filters: ReportFilters): Promise<CashInHandRowDto[]> {
-  const rows = await getCashInHand(filters)
-  return rows.map((row) => ({ branchId: row.branchId, branchName: row.branchName, cashTotal: num(row.cashTotal) }))
-}
-
-export async function outstanding(filters: ReportFilters): Promise<OutstandingRowDto[]> {
-  const rows = await getOutstanding(filters)
-  return rows.map((row) => ({ branchId: row.branchId, branchName: row.branchName, outstandingTotal: num(row.outstandingTotal) }))
-}
-
 export async function dashboardSummary(filters: ReportFilters): Promise<DashboardSummaryDto> {
-  const [sales, totalPurchase, stockValue, collection, cash, credit, expiry, nonMoving] = await Promise.all([
+  const [sales, totalPurchase, stockValue, collection, expiry, nonMoving] = await Promise.all([
     getBranchSales(filters),
     getTotalPurchaseValue(filters),
     getTotalStockValue(filters),
     getDailyCollection(filters),
-    getCashInHand(filters),
-    getOutstanding(filters),
     getExpiryReport(filters, 30),
     getNonMovingItems(filters),
   ])
@@ -281,8 +322,6 @@ export async function dashboardSummary(filters: ReportFilters): Promise<Dashboar
     totalPurchase,
     totalStockValue: stockValue,
     totalCollection: collection.reduce((sum, row) => sum + num(row.billValue), 0),
-    cashInHand: cash.reduce((sum, row) => sum + num(row.cashTotal), 0),
-    outstanding: credit.reduce((sum, row) => sum + num(row.outstandingTotal), 0),
     nearExpiryCount: expiry.length,
     nonMovingCount: nonMoving.length,
   }

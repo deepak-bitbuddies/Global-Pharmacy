@@ -1,6 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   ArrowsCounterClockwiseIcon,
   BuildingsIcon,
@@ -12,20 +14,20 @@ import {
 } from "@phosphor-icons/react"
 import { useTranslations } from "next-intl"
 
-import { CustomInfoTooltip, CustomTable } from "@/components/ui"
+import { CustomInfoTooltip } from "@/components/ui"
 import { TremorBarChart, TremorBarList, TremorCard, TremorDonutChart, TremorStatCard, TremorTone } from "@/components/ui/tremor"
-import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
-import { ReportFilterPanel } from "../filters"
 import {
   useExpiryReport,
   useNonMovingItems,
-  useStockReport,
   useStockSummary,
   useStockValueByCompany,
+  useTopStockByValue,
   useZeroOrderAlerts,
 } from "../../hooks/use-reports"
-import type { ReportFilters, StockRow } from "../../types"
+import { buildReportUrl } from "../../utils/report-links"
+import { SectionHeading } from "./section-heading"
+import type { ReportFilters } from "../../types"
 
 // Fixed status/severity colors — deliberately hardcoded, not the app theme's
 // --danger/--warning/--success tokens, so risk color-coding on these charts
@@ -37,14 +39,33 @@ const STATUS_WARNING = "#fab219"
 const STATUS_GOOD = "#0ca30c"
 const STATUS_NEUTRAL = "#898781"
 
+function addDaysIso(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
 // Deliberately not translated: these labels are also used as matching keys against the
 // backend's fixed English bucket strings (getStockSummary's SQL CASE) — translating them
 // would break that lookup. Chart axis labels stay English regardless of app language.
+// `filter` drives each bucket's "click a bar to drill into just this slice" destination — the
+// `expiryTier` filter's own tiers (30/60/90/gt90 day boundaries) don't line up with these chart
+// buckets (0/30/90/180), so the two middle buckets use a custom expiry-date range instead.
 const EXPIRY_BUCKETS = [
-  { label: "Expired", maxDays: 0, color: STATUS_CRITICAL },
-  { label: "≤ 30 days", maxDays: 30, color: STATUS_SERIOUS },
-  { label: "31–90 days", maxDays: 90, color: STATUS_WARNING },
-  { label: "91–180 days", maxDays: 180, color: STATUS_GOOD },
+  { label: "Expired", maxDays: 0, color: STATUS_CRITICAL, filter: { expiryTier: "expired" as const } },
+  { label: "≤ 30 days", maxDays: 30, color: STATUS_SERIOUS, filter: { expiryTier: "lte30" as const } },
+  {
+    label: "31–90 days",
+    maxDays: 90,
+    color: STATUS_WARNING,
+    filter: { expiryTier: "custom" as const, expiryDateFrom: addDaysIso(31), expiryDateTo: addDaysIso(90) },
+  },
+  {
+    label: "91–180 days",
+    maxDays: 180,
+    color: STATUS_GOOD,
+    filter: { expiryTier: "custom" as const, expiryDateFrom: addDaysIso(91), expiryDateTo: addDaysIso(180) },
+  },
 ]
 
 function expiryBucketIndex(daysToExpiry: number): number {
@@ -53,32 +74,40 @@ function expiryBucketIndex(daysToExpiry: number): number {
 
 // Must match the bucket labels the backend's getStockSummary computes via SQL CASE.
 const STOCK_LEVEL_BUCKETS = [
-  { label: "Zero Stock", color: STATUS_CRITICAL },
-  { label: "1–5 units", color: STATUS_SERIOUS },
-  { label: "6–20 units", color: STATUS_WARNING },
-  { label: "21–50 units", color: STATUS_NEUTRAL },
-  { label: "50+ units", color: STATUS_GOOD },
+  { label: "Zero Stock", color: STATUS_CRITICAL, filter: { stockTo: 0 } },
+  { label: "1–5 units", color: STATUS_SERIOUS, filter: { stockFrom: 1, stockTo: 5 } },
+  { label: "6–20 units", color: STATUS_WARNING, filter: { stockFrom: 6, stockTo: 20 } },
+  { label: "21–50 units", color: STATUS_NEUTRAL, filter: { stockFrom: 21, stockTo: 50 } },
+  { label: "50+ units", color: STATUS_GOOD, filter: { stockFrom: 51 } },
 ]
 
 function ChartCard({
   title,
   description,
+  detailsHref,
   icon: Icon,
   className,
   children,
 }: {
   title: string
   description?: string
+  detailsHref?: string
   icon: React.ComponentType<{ className?: string }>
   className?: string
   children: React.ReactNode
 }) {
+  const tCommon = useTranslations("Common")
   return (
     <TremorCard className={`space-y-3 ${className ?? ""}`}>
       <div className="flex items-center gap-2">
         <Icon className="size-4 text-muted-foreground" />
         <p className="text-sm font-semibold text-foreground">{title}</p>
         {description && <CustomInfoTooltip content={description} />}
+        {detailsHref && (
+          <Link href={detailsHref} className="ml-auto shrink-0 text-xs font-medium text-primary hover:underline">
+            {tCommon("viewDetails")} →
+          </Link>
+        )}
       </div>
       {children}
     </TremorCard>
@@ -88,20 +117,12 @@ function ChartCard({
 export function StockTab({ filters }: { filters: ReportFilters }) {
   const t = useTranslations("Dashboard.stock")
   const tCommon = useTranslations("Common")
-  // Only `item`/`company` are ever set here — kept as a full `ReportFilters` shape (all fields
-  // optional) purely so it drops straight into `ReportFilterPanel` without a cast.
-  const [localFilters, setLocalFilters] = useState<ReportFilters>({})
-  const pagination = useCursorPagination()
-  const stockFilters = useMemo<ReportFilters>(() => ({ ...filters, ...localFilters }), [filters, localFilters])
+  const tTabs = useTranslations("Dashboard.tabs")
+  const router = useRouter()
 
-  const updateLocalFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
-    setLocalFilters(updater)
-    pagination.reset()
-  }
-
-  const { data: stock, isLoading: isStockLoading } = useStockReport(stockFilters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
-  const { data: stockSummary, isLoading: isSummaryLoading } = useStockSummary(stockFilters)
-  const { data: stockByCompanyData, isLoading: isByCompanyLoading } = useStockValueByCompany(stockFilters)
+  const { data: stockSummary, isLoading: isSummaryLoading } = useStockSummary(filters)
+  const { data: stockByCompanyData, isLoading: isByCompanyLoading } = useStockValueByCompany(filters)
+  const { data: topByValueData, isLoading: isTopByValueLoading } = useTopStockByValue(filters)
   const { data: zeroOrder, isLoading: isZeroOrderLoading } = useZeroOrderAlerts(filters)
   const { data: expiry, isLoading: isExpiryLoading } = useExpiryReport({ ...filters, withinDays: 180 })
   const { data: nonMoving, isLoading: isNonMovingLoading } = useNonMovingItems(filters)
@@ -116,6 +137,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
   const isKpiLoading = isSummaryLoading || isExpiryLoading || isNonMovingLoading || isZeroOrderLoading
 
   const stockByCompany = useMemo(() => (stockByCompanyData ?? []).map((row) => ({ name: row.company, value: row.total })), [stockByCompanyData])
+  const topByValue = useMemo(() => (topByValueData ?? []).map((row) => ({ name: row.itemName, value: row.total })), [topByValueData])
 
   const stockLevelData = useMemo(() => {
     const countByBucket = new Map((stockSummary?.levelCounts ?? []).map((row) => [row.bucket, row.count]))
@@ -152,8 +174,8 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
   )
 
   return (
-    <div className="space-y-4">
-      <ReportFilterPanel filters={localFilters} onFiltersChange={updateLocalFilters} show={{ search: true, company: true }} />
+    <section id="stock" className="scroll-mt-20 space-y-4">
+      <SectionHeading icon={PackageIcon}>{tTabs("stock")}</SectionHeading>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <TremorStatCard
@@ -163,6 +185,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           icon={PackageIcon}
           tone={TremorTone.primary}
           loading={isKpiLoading}
+          detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId })}
         />
         <TremorStatCard
           label={t("uniqueItems")}
@@ -171,6 +194,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           icon={ListBulletsIcon}
           tone={TremorTone.accent}
           loading={isKpiLoading}
+          detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId })}
         />
         <TremorStatCard
           label={t("zeroOrderAlerts")}
@@ -179,6 +203,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           icon={WarningIcon}
           tone={TremorTone.danger}
           loading={isKpiLoading}
+          detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId, stockTo: 0 })}
         />
         <TremorStatCard
           label={t("expiringSoon")}
@@ -187,6 +212,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           icon={ClockCountdownIcon}
           tone={TremorTone.warning}
           loading={isKpiLoading}
+          detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId, expiryTier: "lte30" })}
         />
         <TremorStatCard
           label={t("nonMovingValue")}
@@ -195,12 +221,24 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           icon={ArrowsCounterClockwiseIcon}
           tone={TremorTone.danger}
           loading={isKpiLoading}
+          detailsHref={buildReportUrl("/reports/non-moving", { branchId: filters.branchId })}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title={t("stockValueByCompany")} description={t("stockValueByCompanyDesc")} icon={BuildingsIcon}>
-          <TremorDonutChart data={stockByCompany} valueFormatter={(value) => formatCurrency(value)} isLoading={isByCompanyLoading} height={240} />
+        <ChartCard
+          title={t("stockValueByCompany")}
+          description={t("stockValueByCompanyDesc")}
+          detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId })}
+          icon={BuildingsIcon}
+        >
+          <TremorDonutChart
+            data={stockByCompany}
+            valueFormatter={(value) => formatCurrency(value)}
+            isLoading={isByCompanyLoading}
+            height={240}
+            onSliceClick={(slice) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, company: slice.name }))}
+          />
         </ChartCard>
 
         <ChartCard title={t("stockHealth")} description={t("stockHealthDesc")} icon={GaugeIcon}>
@@ -212,13 +250,30 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
             valueFormatter={(value) => formatNumber(value)}
             isLoading={isSummaryLoading}
             height={240}
+            onBarClick={(point) => {
+              const bucket = STOCK_LEVEL_BUCKETS.find((b) => b.label === point.label)
+              if (bucket) router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, ...bucket.filter }))
+            }}
           />
         </ChartCard>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title={t("zeroOrderReorder")} description={t("zeroOrderReorderDesc")} icon={WarningIcon}>
-          {isZeroOrderLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={zeroOrderItems} valueFormatter={(value) => formatNumber(value)} />}
+        <ChartCard
+          title={t("zeroOrderReorder")}
+          description={t("zeroOrderReorderDesc")}
+          detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId, stockTo: 0 })}
+          icon={WarningIcon}
+        >
+          {isZeroOrderLoading ? (
+            <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
+          ) : (
+            <TremorBarList
+              data={zeroOrderItems}
+              valueFormatter={(value) => formatNumber(value)}
+              onItemClick={(item) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, stockTo: 0, item: item.name }))}
+            />
+          )}
         </ChartCard>
 
         <ChartCard title={t("expiryValueAtRisk")} description={t("expiryValueAtRiskDesc")} icon={ClockCountdownIcon}>
@@ -230,51 +285,47 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
             valueFormatter={(value) => formatCurrency(value)}
             isLoading={isExpiryLoading}
             height={220}
+            onBarClick={(point) => {
+              const bucket = EXPIRY_BUCKETS.find((b) => b.label === point.label)
+              if (bucket) router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, ...bucket.filter }))
+            }}
           />
         </ChartCard>
       </div>
 
-      <ChartCard title={t("nonMovingByValue")} description={t("nonMovingByValueDesc")} icon={ArrowsCounterClockwiseIcon}>
-        {isNonMovingLoading ? <p className="text-xs text-muted-foreground">{tCommon("loading")}</p> : <TremorBarList data={nonMovingItems} valueFormatter={(value) => formatCurrency(value)} />}
+      <ChartCard
+        title={t("nonMovingByValue")}
+        description={t("nonMovingByValueDesc")}
+        detailsHref={buildReportUrl("/reports/non-moving", { branchId: filters.branchId })}
+        icon={ArrowsCounterClockwiseIcon}
+      >
+        {isNonMovingLoading ? (
+          <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
+        ) : (
+          <TremorBarList
+            data={nonMovingItems}
+            valueFormatter={(value) => formatCurrency(value)}
+            onItemClick={(item) => router.push(buildReportUrl("/reports/non-moving", { branchId: filters.branchId, item: item.name }))}
+          />
+        )}
       </ChartCard>
 
-      <TremorCard className="space-y-3">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-foreground">{t("allStockDetail")}</p>
-          <CustomInfoTooltip content={t("allStockDetailDesc")} />
-        </div>
-        <CustomTable<StockRow>
-          columns={[
-            { key: "itemName", label: tCommon("item"), sortable: true },
-            { key: "currentStock", label: t("stockColumn"), sortable: true },
-            { key: "unit", label: tCommon("unit") },
-            { key: "value", label: t("value"), sortable: true },
-            { key: "expDate", label: t("expiry"), sortable: true },
-            { key: "company", label: tCommon("company") },
-            { key: "batch", label: t("batch") },
-          ]}
-          data={stock?.data ?? []}
-          loading={isStockLoading}
-          rowKey="id"
-          itemId="id"
-          totalItems={stock?.meta?.total ?? 0}
-          emptyText={t("emptyText")}
-          onRowsPerPageChange={pagination.setPageSize}
-          cursorPagination={{
-            page: pagination.page,
-            totalPages: stock?.meta?.totalPages,
-            hasNextPage: stock?.meta?.hasNextPage ?? false,
-            hasPreviousPage: pagination.page > 1,
-            onNext: () => pagination.goNext(stock?.meta?.nextCursor ?? null),
-            onPrevious: pagination.goPrevious,
-          }}
-          renderCustomCell={(row, key) => {
-            if (key === "value") return row.value === null ? "-" : formatCurrency(row.value)
-            if (key === "currentStock") return formatNumber(row.currentStock)
-            return row[key] ?? "-"
-          }}
-        />
-      </TremorCard>
-    </div>
+      <ChartCard
+        title={t("topByValue")}
+        description={t("topByValueDesc")}
+        detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId })}
+        icon={PackageIcon}
+      >
+        {isTopByValueLoading ? (
+          <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
+        ) : (
+          <TremorBarList
+            data={topByValue}
+            valueFormatter={(value) => formatCurrency(value)}
+            onItemClick={(item) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, item: item.name }))}
+          />
+        )}
+      </ChartCard>
+    </section>
   )
 }
