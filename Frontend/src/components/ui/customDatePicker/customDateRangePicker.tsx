@@ -43,7 +43,7 @@ export const CustomDateRangePicker = ({
         trigger={
           <CustomButton
             variant={ButtonVariant.outline}
-            className="min-w-56 justify-start border-default bg-muted-surface/30 font-normal transition-colors hover:bg-muted-surface/60"
+            className="min-w-56 justify-start border-default bg-card font-normal shadow-field transition-colors hover:bg-card"
           >
             {displayText}
           </CustomButton>

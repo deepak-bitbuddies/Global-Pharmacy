@@ -1,8 +1,8 @@
 import type { FastifyReply, FastifyRequest } from "fastify"
 
 import { sendSuccess } from "../../../../shared/helpers/http-response.js"
+import { scopeToUserBranch } from "../../../../shared/helpers/scope-to-user-branch.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
-import { ForbiddenError } from "../../../../shared/errors/index.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
 import { listBranches } from "../uploads/index.js"
 import {
@@ -49,13 +49,6 @@ import {
   topStockItemsByValue,
   zeroOrderAlerts,
 } from "./service.js"
-
-/** A `branch_user` can only ever see their own branch's data — whatever `branchId` they passed (or omitted) is overwritten server-side, never merely validated. */
-function scopeToUserBranch<T extends { branchId?: string }>(request: FastifyRequest, filters: T): T {
-  if (request.user.role !== SystemRoleCode.BRANCH_USER) return filters
-  if (!request.user.branchId) throw new ForbiddenError("This account isn't linked to a branch")
-  return { ...filters, branchId: request.user.branchId }
-}
 
 /** Builds the `meta` envelope for a cursor-paginated response — "Page X of Y" is derived client-side from `totalPages`, this just needs to report the totals and the seek state. */
 function paginationMeta(page: { hasNextPage: boolean; nextCursor: string | null; total: number }, pageSize: number) {

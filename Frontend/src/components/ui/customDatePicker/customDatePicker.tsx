@@ -32,17 +32,9 @@ type CustomDatePickerProps = {
 };
 
 export const CustomDatePicker = ({ ...props }: CustomDatePickerProps) => {
-  // Convert DD/MM/YYYY to YYYY-MM-DD for parseDate
-  const convertDateToISO = (dateStr: string): string | undefined => {
-    if (!dateStr) return undefined;
-    const [day, month, year] = dateStr.split("/");
-    if (day && month && year) {
-      return `${year}-${month}-${day}`;
-    }
-    return undefined;
-  };
-
-  const isoDate = convertDateToISO(props.date || "");
+  // `date`/`onChange` both use YYYY-MM-DD (ReturnFormat below), matching every other date value
+  // in the app (see CustomDateRangePicker) — no conversion needed, just pass it straight through.
+  const isoDate = props.date || undefined;
 
   return (
     <DatePicker
@@ -66,7 +58,7 @@ export const CustomDatePicker = ({ ...props }: CustomDatePickerProps) => {
       {props.label && <Label>{props.label}</Label>}
       <DateField.Group
         fullWidth
-        className={"border-default rounded-app min-h-10 border-2"}
+        className={"border-default bg-card rounded-app min-h-10 border-2"}
       >
         <DateField.Input>
           {(segment) => <DateField.Segment segment={segment} />}
