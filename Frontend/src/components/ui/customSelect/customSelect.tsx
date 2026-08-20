@@ -105,13 +105,16 @@ export const CustomSelect = <T,>({
     props.onChange([]);
   };
 
-  const selectedKeyArray: Key[] | Key = useMemo(() => {
-    if (!props.value) return [];
+  // Single-select mode must clear to `null`, not `[]` — an empty array isn't a valid single `Key`,
+  // so the underlying Select silently ignores it and keeps showing the last real selection. Only
+  // multiple-select mode uses `[]` to mean "nothing selected".
+  const selectedKeyArray: Key[] | Key | null = useMemo(() => {
+    if (!props.value) return isMultiple ? [] : null;
     const sValue = Array.isArray(props.value)
       ? props.value.map((item) => String(item[idKey]))
       : String(props.value[idKey]);
     return sValue;
-  }, [props.value, idKey]);
+  }, [props.value, idKey, isMultiple]);
 
   return (
     <div className={`relative ${props.fullWidth ? "w-full" : "w-fit"}`}>

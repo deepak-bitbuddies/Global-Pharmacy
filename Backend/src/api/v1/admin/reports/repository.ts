@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lte, notExists, or, sql, type AnyColumn, type SQL } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, lte, notExists, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm"
 
 import { db } from "../../../../core/database/db.js"
 import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
@@ -11,15 +11,18 @@ import {
   salesLines,
   stockSnapshots,
 } from "../uploads/model.js"
+import { CASH_PARTY_GROUPS, PAYTM_ONLINE_PARTY_GROUPS, SalesCollectionMode } from "./enums.js"
 import { exportJobs, type ExportJobDocument } from "./model.js"
 import type { CursorPaginationParams, PaginatedResult, ReportFilters } from "./dto.js"
 
 function branchFilter(column: AnyColumn, filters: ReportFilters): SQL | undefined {
-  return filters.branchId ? eq(column, filters.branchId) : undefined
+  return filters.branchId?.length ? inArray(column, filters.branchId) : undefined
 }
 
+// `filters.item` holds exact item names picked from the items list (see `listItems`), not free
+// text — an exact `inArray` match against the raw text column, not a substring `ilike`.
 function itemFilter(column: AnyColumn, filters: ReportFilters): SQL | undefined {
-  return filters.item ? sql`${column} ilike ${"%" + filters.item + "%"}` : undefined
+  return filters.item?.length ? inArray(column, filters.item) : undefined
 }
 
 function dateRangeOverlap(fromCol: AnyColumn, toCol: AnyColumn, filters: ReportFilters): SQL[] {
@@ -27,6 +30,27 @@ function dateRangeOverlap(fromCol: AnyColumn, toCol: AnyColumn, filters: ReportF
   if (filters.dateFrom) clauses.push(lte(fromCol, filters.dateTo ?? filters.dateFrom))
   if (filters.dateTo) clauses.push(gte(toCol, filters.dateFrom ?? filters.dateTo))
   return clauses
+}
+
+/** Mirrors `classifyPartyGroup` (enums.ts) as a SQL predicate — `credit_due` is "not a known Cash/Paytm-online label", the same open-ended catch-all the JS classifier falls through to. */
+function collectionModeFilter(filters: ReportFilters): SQL | undefined {
+  if (!filters.collectionMode?.length) return undefined
+
+  const normalizedPartyGroup = sql`upper(trim(${salesLines.partyGroup}))`
+  const knownGroups = [...CASH_PARTY_GROUPS, ...PAYTM_ONLINE_PARTY_GROUPS]
+
+  const clauses = filters.collectionMode.map((mode) => {
+    switch (mode) {
+      case SalesCollectionMode.Cash:
+        return inArray(normalizedPartyGroup, [...CASH_PARTY_GROUPS])
+      case SalesCollectionMode.PaytmOnline:
+        return inArray(normalizedPartyGroup, [...PAYTM_ONLINE_PARTY_GROUPS])
+      case SalesCollectionMode.CreditDue:
+        return notInArray(normalizedPartyGroup, knownGroups)
+    }
+  })
+
+  return or(...clauses)
 }
 
 // Bucket boundaries must match the tier labels the frontend's SCHEME_TIER_OPTIONS shows.
@@ -95,7 +119,7 @@ export async function getItemWiseSales(filters: ReportFilters, pagination: Curso
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -135,7 +159,7 @@ export async function getTopReturnsByItem(filters: ReportFilters): Promise<{ ite
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -160,7 +184,7 @@ export async function getSalesValueByCompany(filters: ReportFilters): Promise<{ 
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -177,6 +201,22 @@ export async function getSalesValueByCompany(filters: ReportFilters): Promise<{ 
     .limit(8)
 
   return rows.filter((row): row is { company: string; total: string } => row.company !== null).map((row) => ({ company: row.company, total: Number(row.total) }))
+}
+
+/** Every party group's summed amount for the period — powers the Collection KPI cards' cash/Paytm-online/credit-due split (see `classifyPartyGroup` in `enums.ts`). Unfiltered sum (returns included), matching `getBranchSales`'s convention. */
+export async function getSalesByPartyGroup(filters: ReportFilters): Promise<{ partyGroup: string; total: number }[]> {
+  const where = and(branchFilter(salesLines.branchId, filters), ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters))
+
+  const rows = await db
+    .select({
+      partyGroup: salesLines.partyGroup,
+      total: sql<string>`coalesce(sum(${salesLines.amount}), 0)`,
+    })
+    .from(salesLines)
+    .where(where)
+    .groupBy(salesLines.partyGroup)
+
+  return rows.map((row) => ({ partyGroup: row.partyGroup, total: Number(row.total) }))
 }
 
 export async function getBranchSales(filters: ReportFilters) {
@@ -215,7 +255,7 @@ export async function getGrossProfitByItem(filters: ReportFilters, pagination: C
       avgCostPrice: sql<string>`avg(${stockSnapshots.costPrice})`.as("avg_cost_price"),
     })
     .from(stockSnapshots)
-    .where(filters.branchId ? eq(stockSnapshots.branchId, filters.branchId) : undefined)
+    .where(filters.branchId?.length ? inArray(stockSnapshots.branchId, filters.branchId) : undefined)
     .groupBy(stockSnapshots.itemId)
     .as("cost_by_item")
 
@@ -286,9 +326,10 @@ export async function getSalesDetail(filters: ReportFilters, pagination: CursorP
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     filters.amountFrom !== undefined ? gte(salesLines.amount, filters.amountFrom) : undefined,
     filters.amountTo !== undefined ? lte(salesLines.amount, filters.amountTo) : undefined,
+    collectionModeFilter(filters),
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -342,9 +383,9 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
   const filterWhere = and(
     branchFilter(purchaseLines.branchId, filters),
     itemFilter(purchaseLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     schemeTierFilter(filters),
-    filters.supplierGroup ? eq(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
+    filters.supplierGroup?.length ? inArray(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
     filters.amountFrom !== undefined ? gte(purchaseLines.amount, filters.amountFrom) : undefined,
     filters.amountTo !== undefined ? lte(purchaseLines.amount, filters.amountTo) : undefined,
     ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
@@ -397,9 +438,9 @@ export async function getPurchaseValueByCompany(filters: ReportFilters): Promise
   const filterWhere = and(
     branchFilter(purchaseLines.branchId, filters),
     itemFilter(purchaseLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     schemeTierFilter(filters),
-    filters.supplierGroup ? eq(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
+    filters.supplierGroup?.length ? inArray(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
     filters.amountFrom !== undefined ? gte(purchaseLines.amount, filters.amountFrom) : undefined,
     filters.amountTo !== undefined ? lte(purchaseLines.amount, filters.amountTo) : undefined,
     ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
@@ -495,7 +536,7 @@ export async function getZeroOrderAlerts(filters: ReportFilters) {
       currentStock: sql<string>`sum(${stockSnapshots.currentStock})`.as("current_stock"),
     })
     .from(stockSnapshots)
-    .where(and(filters.branchId ? eq(stockSnapshots.branchId, filters.branchId) : undefined, latestStockDateClause()))
+    .where(and(filters.branchId?.length ? inArray(stockSnapshots.branchId, filters.branchId) : undefined, latestStockDateClause()))
     .groupBy(stockSnapshots.itemId)
     .as("stock_by_item")
 
@@ -675,16 +716,10 @@ export async function getTotalStockValue(filters: ReportFilters): Promise<number
   return Number(row?.total ?? 0)
 }
 
-/** Stock's item search matches name, code, batch, or rack no — Batch/Rack No used to be their own filter fields but folded into the one search box so users don't have to know which box to type a rack/batch number into. */
+/** Item is now an exact multi-select of real item names (see `listItems`) rather than a free-text
+ * search box, so this no longer also matches batch/rack no by substring — just an exact name match. */
 function stockItemFilter(filters: ReportFilters): SQL | undefined {
-  if (!filters.item) return undefined
-  const pattern = `%${filters.item}%`
-  return or(
-    ilike(stockSnapshots.itemName, pattern),
-    ilike(stockSnapshots.itemCode, pattern),
-    ilike(stockSnapshots.batch, pattern),
-    ilike(stockSnapshots.rackNo, pattern),
-  )
+  return filters.item?.length ? inArray(stockSnapshots.itemName, filters.item) : undefined
 }
 
 /**
@@ -711,8 +746,8 @@ function stockFilterClauses(filters: ReportFilters): SQL[] {
   const clauses = [branchFilter(stockSnapshots.branchId, filters), stockItemFilter(filters), expiryTierFilter(filters)].filter(
     (c): c is SQL => c !== undefined,
   )
-  if (filters.company) clauses.push(eq(stockSnapshots.company, filters.company))
-  if (filters.supplier) clauses.push(eq(stockSnapshots.supplier, filters.supplier))
+  if (filters.company?.length) clauses.push(inArray(stockSnapshots.company, filters.company))
+  if (filters.supplier?.length) clauses.push(inArray(stockSnapshots.supplier, filters.supplier))
   if (filters.stockFrom !== undefined) clauses.push(gte(stockSnapshots.currentStock, filters.stockFrom))
   if (filters.stockTo !== undefined) clauses.push(lte(stockSnapshots.currentStock, filters.stockTo))
   if (filters.dateFrom) clauses.push(gte(stockSnapshots.asOfDate, filters.dateFrom))
@@ -797,6 +832,11 @@ export async function getTotalPurchaseValue(filters: ReportFilters): Promise<num
   return Number(row?.total ?? 0)
 }
 
+/** Powers the item multi-select filter — distinct (name, company) pairs so items that share a name across different companies/manufacturers stay distinguishable in the dropdown. Unpaginated, same precedent as `listCompanies`/`listSuppliers` below (client-side-filtered autocomplete, not a paginated list). */
+export async function listItems(): Promise<{ name: string; company: string | null }[]> {
+  return db.selectDistinct({ name: items.name, company: items.company }).from(items).orderBy(items.name)
+}
+
 export async function listCompanies(): Promise<string[]> {
   const rows = await db
     .selectDistinct({ company: items.company })
@@ -872,9 +912,9 @@ export async function exportPurchaseDetail(filters: ReportFilters) {
   const filterWhere = and(
     branchFilter(purchaseLines.branchId, filters),
     itemFilter(purchaseLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     schemeTierFilter(filters),
-    filters.supplierGroup ? eq(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
+    filters.supplierGroup?.length ? inArray(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
     filters.amountFrom !== undefined ? gte(purchaseLines.amount, filters.amountFrom) : undefined,
     filters.amountTo !== undefined ? lte(purchaseLines.amount, filters.amountTo) : undefined,
     ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
@@ -907,7 +947,7 @@ export async function exportSalesDetail(filters: ReportFilters) {
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
-    filters.company ? eq(items.company, filters.company) : undefined,
+    filters.company?.length ? inArray(items.company, filters.company) : undefined,
     filters.amountFrom !== undefined ? gte(salesLines.amount, filters.amountFrom) : undefined,
     filters.amountTo !== undefined ? lte(salesLines.amount, filters.amountTo) : undefined,
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),

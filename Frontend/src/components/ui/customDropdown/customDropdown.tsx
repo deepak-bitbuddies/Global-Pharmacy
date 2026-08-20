@@ -58,6 +58,10 @@ type CustomDropdownProps<T extends object> = {
    * Optional per-item icon, rendered before the label.
    */
   itemIcon?: (item: T) => ReactNode;
+  /**
+   * Optional per-item className override, e.g. to color a destructive action's text red.
+   */
+  itemClassName?: (item: T) => string | undefined;
   className?: string;
 };
 
@@ -110,7 +114,7 @@ export const CustomDropdown = <T extends object>({
                 key={itemKeyValue}
                 id={itemKeyValue}
                 textValue={itemLabelValue}
-                className="capitalize"
+                className={`capitalize ${props.itemClassName?.(item) ?? ""}`}
               >
                 <Dropdown.ItemIndicator />
                 {props.itemIcon?.(item)}

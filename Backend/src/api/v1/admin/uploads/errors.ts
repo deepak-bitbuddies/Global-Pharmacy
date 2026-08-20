@@ -38,3 +38,10 @@ export class WrongFileTypeError extends ValidationError {
     super(`This file looks like a ${REPORT_KIND_LABEL[detectedKind]}, not a ${REPORT_KIND_LABEL[expectedKind]} — please upload it under the correct section.`)
   }
 }
+
+/** Thrown when reverting a Stock batch whose date already has a completed Purchase and/or Sales batch — those depend on Stock existing for that date, so they'd be left referencing a date with no Stock on record. */
+export class RevertBlockedError extends ValidationError {
+  constructor(blockingLabel: string, date: string) {
+    super(`${blockingLabel} for ${date} still depends on this Stock import — revert ${blockingLabel} for that date first.`)
+  }
+}

@@ -5,6 +5,7 @@ import { emitExportJobProgress, emitExportJobUpdate } from "../../../../core/rea
 import { readExportFile, saveExportFile } from "../../../../core/storage/export-storage.js"
 import { FileType, type FileTypeValue } from "../uploads/enums.js"
 import { findBranchById } from "../uploads/repository.js"
+import { classifyPartyGroup, SalesCollectionMode } from "./enums.js"
 import type { ExportJobDocument } from "./model.js"
 import type {
   BranchSalesRowDto,
@@ -15,6 +16,7 @@ import type {
   ExpiryRowDto,
   ExportJobDto,
   GrossProfitRowDto,
+  ItemOptionDto,
   ItemWiseSalesRowDto,
   NonMovingDetailRowDto,
   NonMovingRowDto,
@@ -50,6 +52,7 @@ import {
   getPurchaseDetail,
   getPurchaseSummary,
   getPurchaseValueByCompany,
+  getSalesByPartyGroup,
   getSalesDetail,
   getSalesValueByCompany,
   getStockReport,
@@ -62,6 +65,7 @@ import {
   getZeroOrderAlerts,
   listCompanies,
   listExportJobs,
+  listItems,
   listSupplierGroups,
   listSuppliers,
   updateExportJobStatus,
@@ -99,6 +103,7 @@ function toSalesDetailRowDto(row: Awaited<ReturnType<typeof getSalesDetail>>["ro
   return {
     id: row.id,
     partyGroup: row.partyGroup,
+    collectionMode: classifyPartyGroup(row.partyGroup),
     itemNameRaw: row.itemNameRaw,
     packSizeRaw: row.packSizeRaw,
     qty: row.qty === null ? null : num(row.qty),
@@ -308,20 +313,25 @@ export async function daySalesDetail(filters: ReportFilters, pagination: CursorP
 }
 
 export async function dashboardSummary(filters: ReportFilters): Promise<DashboardSummaryDto> {
-  const [sales, totalPurchase, stockValue, collection, expiry, nonMoving] = await Promise.all([
+  const [sales, totalPurchase, stockValue, salesByPartyGroup, expiry, nonMoving] = await Promise.all([
     getBranchSales(filters),
     getTotalPurchaseValue(filters),
     getTotalStockValue(filters),
-    getDailyCollection(filters),
+    getSalesByPartyGroup(filters),
     getExpiryReport(filters, 30),
     getNonMovingItems(filters),
   ])
+
+  const collectionByMode = { [SalesCollectionMode.Cash]: 0, [SalesCollectionMode.PaytmOnline]: 0, [SalesCollectionMode.CreditDue]: 0 }
+  for (const row of salesByPartyGroup) collectionByMode[classifyPartyGroup(row.partyGroup)] += row.total
 
   return {
     totalSales: sales.reduce((sum, row) => sum + num(row.totalAmount), 0),
     totalPurchase,
     totalStockValue: stockValue,
-    totalCollection: collection.reduce((sum, row) => sum + num(row.billValue), 0),
+    cashCollection: collectionByMode[SalesCollectionMode.Cash],
+    paytmOnlineCollection: collectionByMode[SalesCollectionMode.PaytmOnline],
+    creditDueCollection: collectionByMode[SalesCollectionMode.CreditDue],
     nearExpiryCount: expiry.length,
     nonMovingCount: nonMoving.length,
   }
@@ -436,14 +446,14 @@ function rangeLabel(from: number | undefined, to: number | undefined): string {
 }
 
 /** Human-readable one-line summary of which filters produced an export — mirrors the frontend's `formatFilterSummary` (export-report-button.tsx), rebuilt server-side since exports have no access to the UI's i18n/branch-list state. */
-function describeFilters(filters: ReportFilters, branchName: string | null): string {
+function describeFilters(filters: ReportFilters, branchNames: string[]): string {
   const parts: string[] = []
-  if (filters.branchId) parts.push(branchName ?? filters.branchId)
+  if (filters.branchId?.length) parts.push(branchNames.length > 0 ? branchNames.join(", ") : filters.branchId.join(", "))
   if (filters.dateFrom && filters.dateTo) parts.push(`${filters.dateFrom} – ${filters.dateTo}`)
-  if (filters.item) parts.push(`"${filters.item}"`)
-  if (filters.company) parts.push(filters.company)
-  if (filters.supplier) parts.push(filters.supplier)
-  if (filters.supplierGroup) parts.push(filters.supplierGroup)
+  if (filters.item?.length) parts.push(filters.item.map((name) => `"${name}"`).join(", "))
+  if (filters.company?.length) parts.push(filters.company.join(", "))
+  if (filters.supplier?.length) parts.push(filters.supplier.join(", "))
+  if (filters.supplierGroup?.length) parts.push(filters.supplierGroup.join(", "))
   if (filters.schemeTier) parts.push(SCHEME_TIER_LABEL[filters.schemeTier] ?? filters.schemeTier)
   if (filters.expiryTier) parts.push(EXPIRY_TIER_LABEL[filters.expiryTier] ?? filters.expiryTier)
   if (filters.stockFrom !== undefined || filters.stockTo !== undefined) parts.push(`Stock ${rangeLabel(filters.stockFrom, filters.stockTo)}`)
@@ -556,8 +566,9 @@ async function runExportPipeline(job: ExportJobDto, reportType: FileTypeValue, f
         break
     }
 
-    const branch = filters.branchId ? await findBranchById(filters.branchId) : null
-    const filterSummary = describeFilters(filters, branch?.name ?? null)
+    const branches = filters.branchId?.length ? await Promise.all(filters.branchId.map(findBranchById)) : []
+    const branchNames = branches.filter((branch): branch is NonNullable<typeof branch> => branch !== null).map((branch) => branch.name)
+    const filterSummary = describeFilters(filters, branchNames)
     const buffer = await buildStyledXlsxBuffer(REPORT_LABEL[reportType], filterSummary, EXPORT_COLUMNS[reportType], mappedRows)
     const fileName = `${reportType}-report-${new Date().toISOString().slice(0, 10)}.xlsx`
     const { storageKey } = await saveExportFile(job.id, buffer)
@@ -599,6 +610,10 @@ export async function getExportFileForDownload(id: string): Promise<{ buffer: Bu
     throw new NotFoundError("Export not found, or it isn't ready to download yet")
   }
   return { buffer: await readExportFile(job.storageKey), fileName: job.fileName }
+}
+
+export async function items(): Promise<ItemOptionDto[]> {
+  return listItems()
 }
 
 export async function companies(): Promise<string[]> {

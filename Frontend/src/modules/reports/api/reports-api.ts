@@ -9,6 +9,7 @@ import type {
   ExportJob,
   ExportJobAck,
   GrossProfitRow,
+  ItemOption,
   ItemWiseSalesRow,
   NonMovingDetailRow,
   NonMovingRow,
@@ -25,6 +26,11 @@ const BASE = "/admin/reports"
 
 export async function getBranches(): Promise<Branch[]> {
   const { data } = await api.get<{ data: Branch[] }>(`${BASE}/branches`)
+  return data.data
+}
+
+export async function getItems(): Promise<ItemOption[]> {
+  const { data } = await api.get<{ data: ItemOption[] }>(`${BASE}/items`)
   return data.data
 }
 

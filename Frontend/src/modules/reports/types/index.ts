@@ -5,26 +5,42 @@ export type SchemeTier = "none" | "lt5" | "5to10" | "10to20" | "20to30" | "30to5
 // Stock-only filter (expiry only exists on stock rows) — same precedent as `schemeTier` above.
 export type ExpiryTier = "expired" | "lte30" | "31to60" | "61to90" | "gt90" | "none" | "custom"
 
+// Sales-only filter — buckets `SalesDetailRow.partyGroup` into how the money was actually
+// collected. Must match the backend's `SalesCollectionMode` (reports/enums.ts) value-for-value.
+export enum SalesCollectionMode {
+  Cash = "cash",
+  PaytmOnline = "paytm_online",
+  CreditDue = "credit_due",
+}
+
 export type ReportFilters = {
-  branchId?: string
+  branchId?: string[]
   dateFrom?: string
   dateTo?: string
-  company?: string
-  item?: string
+  company?: string[]
+  // Selected exact item names (from the `items` table), not free text — see `useItems`.
+  item?: string[]
   schemeTier?: SchemeTier
   expiryTier?: ExpiryTier
   /** Only used when `expiryTier === "custom"` — a separate expiry-date range from `dateFrom`/`dateTo` (which filter the report's own date, not expiry). */
   expiryDateFrom?: string
   expiryDateTo?: string
   // Stock-only filters.
-  supplier?: string
+  supplier?: string[]
   stockFrom?: number
   stockTo?: number
   // Purchase-only filter — Purchase's equivalent of Sales' party grouping.
-  supplierGroup?: string
+  supplierGroup?: string[]
   // Purchase/Sales amount range.
   amountFrom?: number
   amountTo?: number
+  // Sales-only filter.
+  collectionMode?: SalesCollectionMode[]
+}
+
+export type ItemOption = {
+  name: string
+  company: string | null
 }
 
 export type { Branch } from "@/modules/branches"
@@ -113,6 +129,7 @@ export type StockRow = {
 export type SalesDetailRow = {
   id: string
   partyGroup: string
+  collectionMode: SalesCollectionMode
   itemNameRaw: string
   packSizeRaw: string | null
   qty: number | null
@@ -180,7 +197,9 @@ export type DashboardSummary = {
   totalSales: number
   totalPurchase: number
   totalStockValue: number
-  totalCollection: number
+  cashCollection: number
+  paytmOnlineCollection: number
+  creditDueCollection: number
   nearExpiryCount: number
   nonMovingCount: number
 }

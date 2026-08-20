@@ -49,17 +49,17 @@ function rangeLabel(from: number | undefined, to: number | undefined): string {
 /** Turns a job's saved filter snapshot into a short, readable line — so a past export is identifiable at a glance instead of just a timestamp. */
 function formatFilterSummary(
   filters: ReportFilters,
-  branchName: string | undefined,
+  branchNames: string[],
   schemeTierOptions: { id: string; label: string }[],
   expiryTierOptions: { id: string; label: string }[],
 ): string[] {
   const parts: string[] = []
-  if (filters.branchId) parts.push(branchName ?? filters.branchId)
+  if (filters.branchId?.length) parts.push(branchNames.length > 0 ? branchNames.join(", ") : filters.branchId.join(", "))
   if (filters.dateFrom && filters.dateTo) parts.push(`${filters.dateFrom} – ${filters.dateTo}`)
-  if (filters.item) parts.push(`"${filters.item}"`)
-  if (filters.company) parts.push(filters.company)
-  if (filters.supplier) parts.push(filters.supplier)
-  if (filters.supplierGroup) parts.push(filters.supplierGroup)
+  if (filters.item?.length) parts.push(filters.item.map((name) => `"${name}"`).join(", "))
+  if (filters.company?.length) parts.push(filters.company.join(", "))
+  if (filters.supplier?.length) parts.push(filters.supplier.join(", "))
+  if (filters.supplierGroup?.length) parts.push(filters.supplierGroup.join(", "))
   if (filters.schemeTier) parts.push(schemeTierOptions.find((option) => option.id === filters.schemeTier)?.label ?? filters.schemeTier)
   if (filters.expiryTier) parts.push(expiryTierOptions.find((option) => option.id === filters.expiryTier)?.label ?? filters.expiryTier)
   if (filters.stockFrom !== undefined || filters.stockTo !== undefined) parts.push(rangeLabel(filters.stockFrom, filters.stockTo))
@@ -80,7 +80,9 @@ export function ExportReportButton({ reportType, filters }: ExportReportButtonPr
   const role = useAuthStore((state) => state.user?.role)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const { mutate, isPending } = useCreateExportJob()
-  const { data: jobs } = useExportJobs(reportType, filters.branchId)
+  // `export_jobs.branch_id` is a single nullable column server-side (see `createExportHandler`) —
+  // only meaningful to filter the history panel by when exactly one branch is selected.
+  const { data: jobs } = useExportJobs(reportType, filters.branchId?.length === 1 ? filters.branchId[0] : undefined)
   const { data: branches } = useBranches()
   const schemeTierOptions = useSchemeTierOptions()
   const expiryTierOptions = useExpiryTierOptions()
@@ -139,8 +141,8 @@ export function ExportReportButton({ reportType, filters }: ExportReportButtonPr
             <div className="max-h-72 space-y-1.5 overflow-y-auto">
               {jobs.map((job) => {
                 const progress = progressByJob[job.id]
-                const branchName = branches?.find((branch) => branch.id === job.filters.branchId)?.name
-                const summary = formatFilterSummary(job.filters, branchName, schemeTierOptions, expiryTierOptions)
+                const branchNames = (branches ?? []).filter((branch) => job.filters.branchId?.includes(branch.id)).map((branch) => branch.name)
+                const summary = formatFilterSummary(job.filters, branchNames, schemeTierOptions, expiryTierOptions)
 
                 return (
                   <div key={job.id} className="space-y-1 rounded-app border border-default px-2 py-1.5">

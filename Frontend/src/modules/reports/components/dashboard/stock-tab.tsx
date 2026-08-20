@@ -237,7 +237,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
             valueFormatter={(value) => formatCurrency(value)}
             isLoading={isByCompanyLoading}
             height={240}
-            onSliceClick={(slice) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, company: slice.name }))}
+            onSliceClick={(slice) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, company: [slice.name] }))}
           />
         </ChartCard>
 
@@ -271,7 +271,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
             <TremorBarList
               data={zeroOrderItems}
               valueFormatter={(value) => formatNumber(value)}
-              onItemClick={(item) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, stockTo: 0, item: item.name }))}
+              onItemClick={(item) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, stockTo: 0, item: [item.name] }))}
             />
           )}
         </ChartCard>
@@ -305,7 +305,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           <TremorBarList
             data={nonMovingItems}
             valueFormatter={(value) => formatCurrency(value)}
-            onItemClick={(item) => router.push(buildReportUrl("/reports/non-moving", { branchId: filters.branchId, item: item.name }))}
+            onItemClick={(item) => router.push(buildReportUrl("/reports/non-moving", { branchId: filters.branchId, item: [item.name] }))}
           />
         )}
       </ChartCard>
@@ -322,7 +322,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
           <TremorBarList
             data={topByValue}
             valueFormatter={(value) => formatCurrency(value)}
-            onItemClick={(item) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, item: item.name }))}
+            onItemClick={(item) => router.push(buildReportUrl("/reports/stock", { branchId: filters.branchId, item: [item.name] }))}
           />
         )}
       </ChartCard>

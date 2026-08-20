@@ -16,6 +16,7 @@ import {
   getExpiryReport,
   getExportJobs,
   getGrossProfit,
+  getItems,
   getItemWiseSales,
   getNonMovingDetail,
   getNonMovingItems,
@@ -37,6 +38,10 @@ import {
 
 export function useBranches() {
   return useQuery({ queryKey: reportsQueryKeys.branches, queryFn: getBranches })
+}
+
+export function useItems() {
+  return useQuery({ queryKey: reportsQueryKeys.items, queryFn: getItems })
 }
 
 export function useCompanies() {
@@ -162,7 +167,10 @@ export function useCreateExportJob() {
     // already done — this way the row is there the instant the ack comes back, no race. A later
     // `export-job:update` (completed/failed) still invalidates normally and overwrites this.
     onSuccess: (job, { reportType, filters }) => {
-      queryClient.setQueryData<ExportJob[]>(reportsQueryKeys.exportJobs(reportType, filters.branchId), (existing) => [job, ...(existing ?? [])])
+      // `export_jobs.branch_id` (and this query key) stays single-branch — see `ExportReportButton`'s
+      // identical fallback for why only an exactly-one-branch selection maps onto it.
+      const branchId = filters.branchId?.length === 1 ? filters.branchId[0] : undefined
+      queryClient.setQueryData<ExportJob[]>(reportsQueryKeys.exportJobs(reportType, branchId), (existing) => [job, ...(existing ?? [])])
     },
   })
 }

@@ -1,5 +1,29 @@
 import axios, { type AxiosError } from "axios"
 
+/**
+ * Axios's own default array serialization writes `key[]=a&key[]=b` — the backend's Zod
+ * `stringArrayFilter` preprocessing (and Fastify's querystring parser under it) only recognizes a
+ * repeated bare key, `key=a&key=b` (same format `buildReportUrl`'s manual `URLSearchParams` already
+ * uses for dashboard drill-down links). Without this, every array-valued filter sent through `api`
+ * (branchId, company, item, supplier, supplierGroup, collectionMode, ...) silently arrives as
+ * `undefined` server-side — the request succeeds, just unfiltered.
+ */
+function serializeParams(params: Record<string, unknown>): string {
+  const searchParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        if (entry === undefined || entry === null) continue
+        searchParams.append(key, String(entry))
+      }
+      continue
+    }
+    searchParams.append(key, String(value))
+  }
+  return searchParams.toString()
+}
+
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api",
   timeout: 15_000,
@@ -7,6 +31,7 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  paramsSerializer: serializeParams,
 })
 
 export interface ApiErrorPayload {

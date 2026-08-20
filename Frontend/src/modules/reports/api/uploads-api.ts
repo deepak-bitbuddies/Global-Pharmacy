@@ -47,3 +47,8 @@ export async function getUploadCycleStatus(branchId: string): Promise<UploadCycl
   const { data } = await api.get<{ data: UploadCycleStatus }>("/admin/uploads/cycle-status", { params: { branchId } })
   return data.data
 }
+
+/** super_admin only (enforced server-side) — deletes an import batch and every row it inserted. */
+export async function revertImportBatch(batchId: string): Promise<void> {
+  await api.delete(`/admin/uploads/${batchId}`)
+}

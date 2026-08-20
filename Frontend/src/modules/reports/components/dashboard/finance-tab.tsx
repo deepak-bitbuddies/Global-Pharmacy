@@ -53,7 +53,7 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
             <TremorBarList
               data={topGp}
               valueFormatter={(value) => formatCurrency(value)}
-              onItemClick={(item) => router.push(buildReportUrl("/reports/gross-profit", { ...filters, item: item.name }))}
+              onItemClick={(item) => router.push(buildReportUrl("/reports/gross-profit", { ...filters, item: [item.name] }))}
             />
           )}
         </TremorCard>
@@ -70,7 +70,7 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
             <TremorBarList
               data={topGpPct}
               valueFormatter={(value) => `${value.toFixed(1)}%`}
-              onItemClick={(item) => router.push(buildReportUrl("/reports/gross-profit", { ...filters, item: item.name }))}
+              onItemClick={(item) => router.push(buildReportUrl("/reports/gross-profit", { ...filters, item: [item.name] }))}
             />
           )}
         </TremorCard>

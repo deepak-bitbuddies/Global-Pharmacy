@@ -31,7 +31,7 @@ export function ReportsDashboardPage() {
   return (
     <div className="space-y-4">
       <CustomPageHeader title={t("title")} description={t("description")} />
-      <ReportFilterPanel filters={filters} onFiltersChange={setFilters} show={{ branch: role !== "branch_user", dateRange: true }} />
+      <ReportFilterPanel filters={filters} onFiltersChange={setFilters} show={{ item: true, branch: role !== "branch_user", dateRange: true }} />
 
       <DashboardSectionNav
         labels={{

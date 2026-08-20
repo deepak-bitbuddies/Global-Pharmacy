@@ -3,6 +3,7 @@ import type { ReportFilters } from "../types"
 
 export const reportsQueryKeys = {
   branches: ["reports", "branches"] as const,
+  items: ["reports", "items"] as const,
   companies: ["reports", "companies"] as const,
   suppliers: ["reports", "suppliers"] as const,
   supplierGroups: ["reports", "supplier-groups"] as const,

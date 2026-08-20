@@ -19,3 +19,7 @@ export const cycleStatusQuerySchema = z.object({
 export const bulkUploadBranchSchema = z.object({
   branchId: z.string().uuid("A branch must be selected"),
 })
+
+export const importBatchIdParamSchema = z.object({
+  id: z.string().uuid("Invalid import batch id"),
+})

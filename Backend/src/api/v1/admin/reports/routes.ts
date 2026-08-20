@@ -12,6 +12,7 @@ import {
   downloadExportHandler,
   expiryReportHandler,
   grossProfitHandler,
+  itemsHandler,
   itemWiseSalesHandler,
   listExportsHandler,
   nonMovingDetailHandler,
@@ -36,6 +37,7 @@ export async function reportsRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.addHook("preHandler", requireAuth)
 
   fastify.get("/branches", branchesHandler)
+  fastify.get("/items", itemsHandler)
   fastify.get("/companies", companiesHandler)
   fastify.get("/suppliers", suppliersHandler)
   fastify.get("/supplier-groups", supplierGroupsHandler)

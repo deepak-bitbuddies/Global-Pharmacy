@@ -33,7 +33,7 @@ export function StockReportPage() {
           filters={filters}
           onFiltersChange={updateFilters}
           show={{
-            search: true,
+            item: true,
             branch: true,
             company: true,
             expiryTier: true,
@@ -41,7 +41,6 @@ export function StockReportPage() {
             supplier: true,
             stockRange: true,
           }}
-          searchPlaceholder={t("searchPlaceholder")}
         />
       </div>
 

@@ -48,7 +48,7 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
           <TremorBarList
             data={topItems}
             valueFormatter={(value) => formatCurrency(value)}
-            onItemClick={(item) => router.push(buildReportUrl("/reports/sales", { ...filters, item: item.name }))}
+            onItemClick={(item) => router.push(buildReportUrl("/reports/sales", { ...filters, item: [item.name] }))}
           />
         )}
       </TremorCard>
@@ -66,7 +66,7 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
             <TremorBarList
               data={returnItems}
               valueFormatter={(value) => formatCurrency(value)}
-              onItemClick={(item) => router.push(buildReportUrl("/reports/sales", { ...filters, item: item.name }))}
+              onItemClick={(item) => router.push(buildReportUrl("/reports/sales", { ...filters, item: [item.name] }))}
             />
           )}
         </TremorCard>
@@ -82,7 +82,7 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
             valueFormatter={(value) => formatCurrency(value)}
             isLoading={isByCompanyLoading}
             height={220}
-            onSliceClick={(slice) => router.push(buildReportUrl("/reports/sales", { ...filters, company: slice.name }))}
+            onSliceClick={(slice) => router.push(buildReportUrl("/reports/sales", { ...filters, company: [slice.name] }))}
           />
         </TremorCard>
       </div>

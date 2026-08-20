@@ -5,9 +5,9 @@ import { sendSuccess } from "../../../../shared/helpers/http-response.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
 import { ForbiddenError } from "../../../../shared/errors/index.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
-import { bulkUploadBranchSchema, cycleStatusQuerySchema, listImportBatchesQuerySchema, uploadFileTypeSchema } from "./schema.js"
+import { bulkUploadBranchSchema, cycleStatusQuerySchema, importBatchIdParamSchema, listImportBatchesQuerySchema, uploadFileTypeSchema } from "./schema.js"
 import { MissingFileError } from "./errors.js"
-import { bulkImportFiles, getImportBatches, getUploadCycleStatus, importFile } from "./service.js"
+import { bulkImportFiles, getImportBatches, getUploadCycleStatus, importFile, revertImportBatch } from "./service.js"
 
 function readMultipartField(file: MultipartFile, name: string): string | undefined {
   const field = file.fields[name]
@@ -66,4 +66,11 @@ export async function uploadCycleStatusHandler(request: FastifyRequest, reply: F
   const { branchId: requestedBranchId } = validateSchema(cycleStatusQuerySchema, request.query)
   const branchId = resolveBranchScope(request, requestedBranchId)
   sendSuccess(reply, await getUploadCycleStatus(branchId!))
+}
+
+/** super_admin only (enforced in `routes.ts`) — deletes an import batch and every row it inserted. */
+export async function revertImportBatchHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { id } = validateSchema(importBatchIdParamSchema, request.params)
+  await revertImportBatch(id)
+  sendSuccess(reply, null, "Import reverted")
 }

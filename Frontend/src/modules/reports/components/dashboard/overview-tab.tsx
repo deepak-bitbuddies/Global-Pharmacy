@@ -22,7 +22,7 @@ import { formatCurrency } from "@/utils/formatting"
 import { useBranchSales, useDailyCollection, useDashboardSummary } from "../../hooks/use-reports"
 import { buildReportUrl } from "../../utils/report-links"
 import { SectionHeading } from "./section-heading"
-import type { ReportFilters } from "../../types"
+import { SalesCollectionMode, type ReportFilters } from "../../types"
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{children}</p>
@@ -81,7 +81,7 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
 
       <div className="space-y-2">
         <SectionTitle>{t("businessOverview")}</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <TremorStatCard
             label={t("totalSales")}
             value={formatCurrency(summary?.totalSales ?? 0)}
@@ -109,14 +109,46 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             loading={isSummaryLoading}
             detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId })}
           />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <SectionTitle>{t("collection")}</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <TremorStatCard
-            label={t("collection")}
-            value={formatCurrency(summary?.totalCollection ?? 0)}
-            description={t("collectionDesc")}
+            label={t("cashCollection")}
+            value={formatCurrency(summary?.cashCollection ?? 0)}
+            description={t("cashCollectionDesc")}
             icon={WalletIcon}
             tone={TremorTone.success}
             loading={isSummaryLoading}
-            detailsHref={buildReportUrl("/reports/day-wise-sales", { branchId: filters.branchId, ...dateRange })}
+            detailsHref={buildReportUrl("/reports/sales", { branchId: filters.branchId, ...dateRange, collectionMode: [SalesCollectionMode.Cash] })}
+          />
+          <TremorStatCard
+            label={t("paytmOnlineCollection")}
+            value={formatCurrency(summary?.paytmOnlineCollection ?? 0)}
+            description={t("paytmOnlineCollectionDesc")}
+            icon={WalletIcon}
+            tone={TremorTone.success}
+            loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/sales", {
+              branchId: filters.branchId,
+              ...dateRange,
+              collectionMode: [SalesCollectionMode.PaytmOnline],
+            })}
+          />
+          <TremorStatCard
+            label={t("creditDueCollection")}
+            value={formatCurrency(summary?.creditDueCollection ?? 0)}
+            description={t("creditDueCollectionDesc")}
+            icon={WalletIcon}
+            tone={TremorTone.warning}
+            loading={isSummaryLoading}
+            detailsHref={buildReportUrl("/reports/sales", {
+              branchId: filters.branchId,
+              ...dateRange,
+              collectionMode: [SalesCollectionMode.CreditDue],
+            })}
           />
         </div>
       </div>
@@ -193,7 +225,7 @@ export function OverviewTab({ filters }: { filters: ReportFilters }) {
             valueFormatter={(value) => formatCurrency(value)}
             isLoading={isBranchSalesLoading}
             height={260}
-            onBarClick={(point) => router.push(buildReportUrl("/reports/sales", { branchId: point.branchId as string, ...dateRange }))}
+            onBarClick={(point) => router.push(buildReportUrl("/reports/sales", { branchId: [point.branchId as string], ...dateRange }))}
           />
         </ChartPanel>
       )}

@@ -3,7 +3,7 @@ import { SystemRoleCode } from "../../../../shared/enums/index.js"
 import { db, type DbOrTransaction } from "../../../../core/database/db.js"
 import { emitImportBatchProgress, emitImportBatchUpdate } from "../../../../core/realtime/socket.js"
 import { FileType, type FileTypeValue } from "./enums.js"
-import { EmptyImportError, MissingDateError, MultiDayFileError, OutOfSequenceError, WrongFileTypeError } from "./errors.js"
+import { EmptyImportError, MissingDateError, MultiDayFileError, OutOfSequenceError, RevertBlockedError, WrongFileTypeError } from "./errors.js"
 import type {
   BulkUploadAckDto,
   BulkUploadFileInputDto,
@@ -28,6 +28,7 @@ import {
   findBranchById,
   findImportBatch,
   findImportBatchByDate,
+  findImportBatchById,
   findLatestBatchDate,
   hasBatchForDate,
   insertDailySalesSummary,
@@ -538,6 +539,46 @@ export async function getImportBatches(branchId?: string, fileType?: FileTypeVal
     errorMessage: batch.errorMessage,
     importedAt: batch.importedAt,
   }))
+}
+
+/**
+ * Deletes an import batch and every row it inserted — super_admin only (enforced at the route).
+ * Reuses the exact same per-type `deleteXByBatch` primitives the replace-on-reupload flow already
+ * calls (see `replaceExistingBatchByDate`/`replaceExistingBatchByFilename` above), just from a new
+ * entry point instead of as part of a re-upload. A Stock batch whose date already has a completed
+ * Purchase and/or Sales batch is blocked — those depend on Stock existing for that date, and
+ * reverting Stock out from under them would leave them referencing a date with no Stock on record.
+ */
+export async function revertImportBatch(batchId: string): Promise<void> {
+  const batch = await findImportBatchById(batchId)
+  if (!batch) throw new NotFoundError("Import batch not found")
+
+  if (batch.fileType === FileType.Stock && batch.date) {
+    const [purchaseDone, salesDone] = await Promise.all([
+      hasBatchForDate(batch.branchId, FileType.Purchase, batch.date),
+      hasBatchForDate(batch.branchId, FileType.Sales, batch.date),
+    ])
+    const blockingLabel = [purchaseDone && "Purchase", salesDone && "Sales"].filter(Boolean).join(" and ")
+    if (blockingLabel) throw new RevertBlockedError(blockingLabel, batch.date)
+  }
+
+  await db.transaction(async (tx) => {
+    switch (batch.fileType) {
+      case FileType.Stock:
+        await deleteStockSnapshotsByBatch(batch.id, tx)
+        break
+      case FileType.Sales:
+        await deleteSalesLinesByBatch(batch.id, tx)
+        break
+      case FileType.Purchase:
+        await deletePurchaseLinesByBatch(batch.id, tx)
+        break
+      case FileType.DayWiseSale:
+        await deleteDailySalesSummaryByBatch(batch.id, tx)
+        break
+    }
+    await deleteImportBatch(batch.id, tx)
+  })
 }
 
 /**

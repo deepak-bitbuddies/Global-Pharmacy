@@ -47,10 +47,7 @@ export function SchemeTierFilter({ value, onChange }: SchemeTierFilterProps) {
       ariaLabel={t("schemePct")}
       data={schemeTierOptions}
       value={selected}
-      onChange={(next) => {
-        const option = Array.isArray(next) ? next[0] : next
-        onChange(option?.id)
-      }}
+      onChange={(next) => onChange(next[0]?.id)}
       displayKey="label"
       idKey="id"
       placeholder={t("schemePctPlaceholder")}

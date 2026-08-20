@@ -9,6 +9,12 @@ export function buildReportUrl(path: string, filters: Partial<ReportFilters>): s
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(filters)) {
     if (value === undefined || value === null || value === "") continue
+    // Array filters (branchId/company/item/supplier/supplierGroup) become a repeated key —
+    // matches the backend's default querystring parsing and `useInitialFiltersFromUrl`'s `getAll`.
+    if (Array.isArray(value)) {
+      for (const entry of value) params.append(key, String(entry))
+      continue
+    }
     params.set(key, String(value))
   }
   const query = params.toString()

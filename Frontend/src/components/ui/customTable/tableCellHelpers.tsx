@@ -24,10 +24,14 @@ export function renderStatusCell<S extends string>(
 export type RowAction<T> = {
   key: string;
   label: string;
+  /** Rendered before the label, e.g. `<PencilSimpleIcon className="size-4" />`. */
+  icon?: ReactNode;
+  /** Colors both icon and label for destructive actions (delete, reject, ...). Default: "default". */
+  tone?: "default" | "danger";
   onSelect: (item: T) => void;
 };
 
-/** Renders a row-level action dropdown, for use inside `renderCustomCell`. */
+/** Renders a row-level action dropdown (three-dot trigger, icon + text per item), for use inside `renderCustomCell`. */
 export function renderActionsCell<T extends object>(
   item: T,
   actions: RowAction<T>[],
@@ -37,6 +41,8 @@ export function renderActionsCell<T extends object>(
       data={actions.map((action) => ({ id: action.key, label: action.label }))}
       itemKey="id"
       itemLabel="label"
+      itemIcon={(row) => actions.find((a) => a.key === row.id)?.icon ?? null}
+      itemClassName={(row) => (actions.find((a) => a.key === row.id)?.tone === "danger" ? "text-danger" : undefined)}
       onSelectionChange={(keys) => {
         if (keys === "all") return;
         const key = Array.from(keys)[0];

@@ -31,8 +31,7 @@ export function NonMovingReportPage() {
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}
-          show={{ search: true, branch: true, company: true }}
-          searchPlaceholder={t("searchPlaceholder")}
+          show={{ item: true, branch: true, company: true }}
         />
       </div>
 

@@ -48,10 +48,7 @@ export function ExpiryTierFilter({ value, onChange }: ExpiryTierFilterProps) {
       ariaLabel={t("expiry")}
       data={expiryTierOptions}
       value={selected}
-      onChange={(next) => {
-        const option = Array.isArray(next) ? next[0] : next
-        onChange(option?.id)
-      }}
+      onChange={(next) => onChange(next[0]?.id)}
       displayKey="label"
       idKey="id"
       placeholder={t("expiryTierPlaceholder")}

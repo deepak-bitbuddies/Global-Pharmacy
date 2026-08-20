@@ -1,30 +1,29 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { ChartLineUpIcon, HandCoinsIcon, ReceiptIcon } from "@phosphor-icons/react"
+import { BankIcon, HandCoinsIcon, HourglassMediumIcon, ScalesIcon, TrendDownIcon, TrendUpIcon } from "@phosphor-icons/react"
 
 import { TremorStatCard, TremorTone } from "@/components/ui/tremor"
+import { useAuthStore } from "@/providers"
 import { formatCurrency } from "@/utils/formatting"
 import { useExpenseSummary } from "../hooks/use-expenses"
 import type { ExpenseFilters } from "../types"
 
-const todayIso = () => new Date().toISOString().slice(0, 10)
-
 export function ExpenseSummary({ filters }: { filters: ExpenseFilters }) {
   const t = useTranslations("ExpenseTracker")
+  const role = useAuthStore((state) => state.user?.role)
   const { data: summary, isLoading } = useExpenseSummary(filters)
 
-  // Deliberately ignores the page's dateFrom/dateTo — "Today's Total" is meant to always answer
-  // "how much today", so it shouldn't go blank just because someone filtered the table to a
-  // different date range. Branch/search still apply, since those narrow *what* counts, not *when*.
-  const today = todayIso()
-  const { data: todaySummary, isLoading: isTodayLoading } = useExpenseSummary({ branchId: filters.branchId, search: filters.search, dateFrom: today, dateTo: today })
-
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <TremorStatCard label={t("totalExpenses")} value={formatCurrency(summary?.total ?? 0)} icon={HandCoinsIcon} tone={TremorTone.primary} loading={isLoading} />
-      <TremorStatCard label={t("entryCount")} value={summary?.count ?? 0} icon={ReceiptIcon} tone={TremorTone.accent} loading={isLoading} />
-      <TremorStatCard label={t("todayTotal")} value={formatCurrency(todaySummary?.total ?? 0)} icon={ChartLineUpIcon} tone={TremorTone.success} loading={isTodayLoading} />
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <TremorStatCard label={t("totalCollection")} value={formatCurrency(summary?.totalCollection ?? 0)} icon={TrendUpIcon} tone={TremorTone.success} loading={isLoading} />
+      <TremorStatCard label={t("totalExpenses")} value={formatCurrency(summary?.totalExpenses ?? 0)} icon={TrendDownIcon} tone={TremorTone.danger} loading={isLoading} />
+      <TremorStatCard label={t("currentBalance")} value={formatCurrency(summary?.balance ?? 0)} icon={ScalesIcon} tone={TremorTone.primary} loading={isLoading} />
+      <TremorStatCard label={t("handedOverCash")} value={formatCurrency(summary?.totalHandoverCash ?? 0)} icon={HandCoinsIcon} tone={TremorTone.warning} loading={isLoading} />
+      <TremorStatCard label={t("handedOverBank")} value={formatCurrency(summary?.totalHandoverBank ?? 0)} icon={BankIcon} tone={TremorTone.warning} loading={isLoading} />
+      {role === "super_admin" && (
+        <TremorStatCard label={t("pendingApprovals")} value={summary?.pendingApprovalCount ?? 0} icon={HourglassMediumIcon} tone={TremorTone.accent} loading={isLoading} />
+      )}
     </div>
   )
 }

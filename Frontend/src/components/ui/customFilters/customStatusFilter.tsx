@@ -35,10 +35,7 @@ export const CustomStatusFilter = ({
       label={label}
       data={STATUS_OPTIONS}
       value={selected}
-      onChange={(next) => {
-        const item = Array.isArray(next) ? next[0] : next;
-        onChange(item?.id);
-      }}
+      onChange={(next) => onChange(next[0]?.id)}
       displayKey="label"
       idKey="id"
       placeholder="All statuses"

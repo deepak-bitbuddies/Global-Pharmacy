@@ -1,5 +1,7 @@
 export { BranchFilter } from "./branch-filter"
+export { CollectionModeFilter, useCollectionModeOptions } from "./collection-mode-filter"
 export { CompanyFilter } from "./company-filter"
+export { ItemFilter } from "./item-filter"
 export { SupplierFilter } from "./supplier-filter"
 export { SupplierGroupFilter } from "./supplier-group-filter"
 export { ExpiryTierFilter } from "./expiry-tier-filter"

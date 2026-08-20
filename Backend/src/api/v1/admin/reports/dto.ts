@@ -1,3 +1,5 @@
+import type { SalesCollectionModeValue } from "./enums.js"
+
 // Purchase-only filter (schemePct only exists on purchase_lines) — kept on the shared
 // ReportFilters type regardless, same precedent as `company` above (Sales/Stock just ignore it).
 export type SchemeTier = "none" | "lt5" | "5to10" | "10to20" | "20to30" | "30to50" | "50to100" | "gte100"
@@ -6,28 +8,36 @@ export type SchemeTier = "none" | "lt5" | "5to10" | "10to20" | "20to30" | "30to5
 export type ExpiryTier = "expired" | "lte30" | "31to60" | "61to90" | "gt90" | "none" | "custom"
 
 export type ReportFilters = {
-  branchId?: string
+  branchId?: string[]
   dateFrom?: string
   dateTo?: string
-  company?: string
-  item?: string
+  company?: string[]
+  // Selected exact item names (from the `items` table), not free text — see `listItems`/`ItemOptionDto`.
+  item?: string[]
   schemeTier?: SchemeTier
   expiryTier?: ExpiryTier
   /** Only used when `expiryTier === "custom"` — a caller-chosen expiry-date range distinct from `dateFrom`/`dateTo` (which filter the report's own date, not expiry). */
   expiryDateFrom?: string
   expiryDateTo?: string
   // Stock-only filters — stockSnapshots columns, ignored by every other report.
-  supplier?: string
+  supplier?: string[]
   stockFrom?: number
   stockTo?: number
   // Purchase-only filter — purchaseLines.supplierGroup, the Purchase register's equivalent of Sales' partyGroup.
-  supplierGroup?: string
+  supplierGroup?: string[]
   // Purchase/Sales amount range — purchaseLines.amount / salesLines.amount.
   amountFrom?: number
   amountTo?: number
+  // Sales-only filter — buckets salesLines.partyGroup via `classifyPartyGroup` (see enums.ts).
+  collectionMode?: SalesCollectionModeValue[]
 }
 
 export type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"
+
+export type ItemOptionDto = {
+  name: string
+  company: string | null
+}
 
 export type ItemWiseSalesRowDto = {
   itemNameRaw: string
@@ -66,6 +76,7 @@ export type PurchaseSummaryRowDto = {
 export type SalesDetailRowDto = {
   id: string
   partyGroup: string
+  collectionMode: SalesCollectionModeValue
   itemNameRaw: string
   packSizeRaw: string | null
   qty: number | null
@@ -181,7 +192,11 @@ export type DashboardSummaryDto = {
   totalSales: number
   totalPurchase: number
   totalStockValue: number
-  totalCollection: number
+  // Sales Register amount split by collection mode (see `classifyPartyGroup` in `enums.ts`) —
+  // replaces the old single Day-Wise-Sale-sourced `totalCollection` figure.
+  cashCollection: number
+  paytmOnlineCollection: number
+  creditDueCollection: number
   nearExpiryCount: number
   nonMovingCount: number
 }

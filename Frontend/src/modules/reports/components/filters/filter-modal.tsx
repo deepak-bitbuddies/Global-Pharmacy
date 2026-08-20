@@ -1,14 +1,14 @@
 "use client"
 
-import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { FunnelIcon } from "@phosphor-icons/react"
 
-import { ButtonVariant, CustomButton, CustomModal } from "@/components/ui"
+import { CustomFilterField, CustomFilterModal } from "@/components/ui"
 import type { ReportFilters } from "../../types"
 import type { ReportFilterFlags } from "./report-filter-panel"
 import { BranchFilter } from "./branch-filter"
+import { CollectionModeFilter } from "./collection-mode-filter"
 import { CompanyFilter } from "./company-filter"
+import { ItemFilter } from "./item-filter"
 import { SupplierFilter } from "./supplier-filter"
 import { SupplierGroupFilter } from "./supplier-group-filter"
 import { ReportDateRangeFilter } from "./date-range-filter"
@@ -23,104 +23,72 @@ type FilterModalProps = {
   activeCount: number
 }
 
-function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-sm font-medium text-foreground">{label}</p>
-      {children}
-    </div>
-  )
-}
-
 /**
  * Every filter except search (that stays on the page, always visible via `ReportFilterPanel`)
- * lives here: a "Filters" button that opens a modal, edited as a local draft and only committed
- * on Apply — Cancel discards it. The draft is re-seeded from the live `filters` right in the
- * button's click handler (not a `useEffect` sync), so reopening always starts from what's
- * actually applied.
+ * lives here, laid out via the shared `CustomFilterModal` shell (staged draft, Apply/Cancel).
  */
 export function FilterModal({ filters, onFiltersChange, show, activeCount }: FilterModalProps) {
-  const t = useTranslations()
   const tCommon = useTranslations("Common")
   const tPurchase = useTranslations("Reports.purchase")
   const tStock = useTranslations("Reports.stock")
-  const [isOpen, setIsOpen] = useState(false)
-  const [draft, setDraft] = useState<ReportFilters>(filters)
+  const tSales = useTranslations("Reports.sales")
 
   return (
-    <>
-      <CustomButton
-        variant={ButtonVariant.primary}
-        startContent={<FunnelIcon className="size-4" />}
-        onClick={() => {
-          setDraft(filters)
-          setIsOpen(true)
-        }}
-      >
-        {t("Filters")}
-        {activeCount > 0 ? ` (${activeCount})` : ""}
-      </CustomButton>
-
-      <CustomModal
-        isOpen={isOpen}
-        setIsOpen={setIsOpen}
-        title={t("Filters")}
-        negativeText={t("Cancel")}
-        onNegativePress={() => setIsOpen(false)}
-        positiveText={t("Apply")}
-        onPositivePress={() => {
-          onFiltersChange(() => draft)
-          setIsOpen(false)
-        }}
-      >
-        <div className="space-y-4">
+    <CustomFilterModal<ReportFilters> filters={filters} activeCount={activeCount} onApply={(next) => onFiltersChange(() => next)}>
+      {(draft, setDraft) => (
+        <>
+          {show.item && (
+            <CustomFilterField label={tCommon("item")}>
+              <ItemFilter value={draft.item} onChange={(item) => setDraft((prev) => ({ ...prev, item }))} />
+            </CustomFilterField>
+          )}
           {show.branch && (
-            <FilterField label={tCommon("branch")}>
+            <CustomFilterField label={tCommon("branch")}>
               <BranchFilter value={draft.branchId} onChange={(branchId) => setDraft((prev) => ({ ...prev, branchId }))} />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.company && (
-            <FilterField label={tCommon("company")}>
+            <CustomFilterField label={tCommon("company")}>
               <CompanyFilter value={draft.company} onChange={(company) => setDraft((prev) => ({ ...prev, company }))} />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.schemeTier && (
-            <FilterField label={tPurchase("schemePct")}>
+            <CustomFilterField label={tPurchase("schemePct")}>
               <SchemeTierFilter value={draft.schemeTier} onChange={(schemeTier) => setDraft((prev) => ({ ...prev, schemeTier }))} />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.expiryTier && (
-            <FilterField label={tStock("expiry")}>
+            <CustomFilterField label={tStock("expiry")}>
               <ExpiryTierFilter value={draft.expiryTier} onChange={(expiryTier) => setDraft((prev) => ({ ...prev, expiryTier }))} />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.expiryTier && draft.expiryTier === "custom" && (
-            <FilterField label={tStock("expiryTierCustom")}>
+            <CustomFilterField label={tStock("expiryTierCustom")}>
               <ReportDateRangeFilter
                 label=""
                 dateFrom={draft.expiryDateFrom}
                 dateTo={draft.expiryDateTo}
                 onChange={({ dateFrom, dateTo }) => setDraft((prev) => ({ ...prev, expiryDateFrom: dateFrom, expiryDateTo: dateTo }))}
               />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.dateRange && (
-            <FilterField label={tCommon("dateRange")}>
+            <CustomFilterField label={tCommon("dateRange")}>
               <ReportDateRangeFilter
                 label=""
                 dateFrom={draft.dateFrom}
                 dateTo={draft.dateTo}
                 onChange={({ dateFrom, dateTo }) => setDraft((prev) => ({ ...prev, dateFrom, dateTo }))}
               />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.supplier && (
-            <FilterField label={tStock("supplier")}>
+            <CustomFilterField label={tStock("supplier")}>
               <SupplierFilter value={draft.supplier} onChange={(supplier) => setDraft((prev) => ({ ...prev, supplier }))} />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.stockRange && (
-            <FilterField label={tStock("stockRange")}>
+            <CustomFilterField label={tStock("stockRange")}>
               <NumberRangeFilter
                 from={draft.stockFrom}
                 to={draft.stockTo}
@@ -128,15 +96,15 @@ export function FilterModal({ filters, onFiltersChange, show, activeCount }: Fil
                 fromLabel={tStock("minStock")}
                 toLabel={tStock("maxStock")}
               />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.supplierGroup && (
-            <FilterField label={tPurchase("supplier")}>
+            <CustomFilterField label={tPurchase("supplier")}>
               <SupplierGroupFilter value={draft.supplierGroup} onChange={(supplierGroup) => setDraft((prev) => ({ ...prev, supplierGroup }))} />
-            </FilterField>
+            </CustomFilterField>
           )}
           {show.amountRange && (
-            <FilterField label={tCommon("amountRange")}>
+            <CustomFilterField label={tCommon("amountRange")}>
               <NumberRangeFilter
                 from={draft.amountFrom}
                 to={draft.amountTo}
@@ -144,10 +112,15 @@ export function FilterModal({ filters, onFiltersChange, show, activeCount }: Fil
                 fromLabel={tCommon("minAmount")}
                 toLabel={tCommon("maxAmount")}
               />
-            </FilterField>
+            </CustomFilterField>
           )}
-        </div>
-      </CustomModal>
-    </>
+          {show.collectionMode && (
+            <CustomFilterField label={tSales("mode")}>
+              <CollectionModeFilter value={draft.collectionMode} onChange={(collectionMode) => setDraft((prev) => ({ ...prev, collectionMode }))} />
+            </CustomFilterField>
+          )}
+        </>
+      )}
+    </CustomFilterModal>
   )
 }

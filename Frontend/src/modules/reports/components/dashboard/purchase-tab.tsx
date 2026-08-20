@@ -47,7 +47,7 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
           <TremorBarList
             data={topSuppliers}
             valueFormatter={(value) => formatCurrency(value)}
-            onItemClick={(item) => router.push(buildReportUrl("/reports/purchase", { ...filters, supplierGroup: item.name }))}
+            onItemClick={(item) => router.push(buildReportUrl("/reports/purchase", { ...filters, supplierGroup: [item.name] }))}
           />
         )}
       </TremorCard>
@@ -65,7 +65,7 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
             <TremorBarList
               data={freeQtyBySupplier}
               valueFormatter={(value) => formatNumber(value)}
-              onItemClick={(item) => router.push(buildReportUrl("/reports/purchase", { ...filters, supplierGroup: item.name }))}
+              onItemClick={(item) => router.push(buildReportUrl("/reports/purchase", { ...filters, supplierGroup: [item.name] }))}
             />
           )}
         </TremorCard>
@@ -81,7 +81,7 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
             valueFormatter={(value) => formatCurrency(value)}
             isLoading={isByCompanyLoading}
             height={220}
-            onSliceClick={(slice) => router.push(buildReportUrl("/reports/purchase", { ...filters, company: slice.name }))}
+            onSliceClick={(slice) => router.push(buildReportUrl("/reports/purchase", { ...filters, company: [slice.name] }))}
           />
         </TremorCard>
       </div>

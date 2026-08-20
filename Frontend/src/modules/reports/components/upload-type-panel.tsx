@@ -1,11 +1,26 @@
 "use client"
 
 import { useTranslations } from "next-intl"
+import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react"
 
 import { CustomColor } from "@/lib/types"
-import { CustomProgress, CustomSection, CustomTable, CustomTooltip, renderStatusCell, type StatusColorMap } from "@/components/ui"
+import {
+  ButtonVariant,
+  ConfirmVariant,
+  CustomButton,
+  CustomProgress,
+  CustomSection,
+  CustomTable,
+  CustomTooltip,
+  customToast,
+  renderStatusCell,
+  useConfirm,
+  type StatusColorMap,
+} from "@/components/ui"
+import type { ApiErrorPayload } from "@/lib/axios"
+import { useAuthStore } from "@/providers"
 import { FileUploadSlot } from "./file-upload-slot"
-import { useImportBatches } from "../hooks/use-uploads"
+import { useImportBatches, useRevertImportBatch } from "../hooks/use-uploads"
 import { useImportProgressStore } from "../hooks/use-import-progress-store"
 import type { ImportBatch, ImportFileType } from "../types"
 
@@ -27,8 +42,29 @@ type UploadTypePanelProps = {
 /** One tab's content on the Import page: the upload slot for this file type, plus its own history — never mixed with the other file types' history. */
 export function UploadTypePanel({ fileType, title, description, branchId }: UploadTypePanelProps) {
   const t = useTranslations("Import")
+  const role = useAuthStore((state) => state.user?.role)
+  const isSuperAdmin = role === "super_admin"
   const { data: batches, isLoading } = useImportBatches(branchId, fileType)
   const progressByBatch = useImportProgressStore((state) => state.progress)
+  const { mutateAsync: revertBatch, isPending: isReverting } = useRevertImportBatch()
+  const confirm = useConfirm()
+
+  const handleRevert = async (batch: ImportBatch) => {
+    const confirmed = await confirm({
+      title: t("revertTitle", { fileName: batch.fileName }),
+      description: t("revertDescription"),
+      variant: ConfirmVariant.danger,
+      confirmLabel: t("revert"),
+    })
+    if (!confirmed) return
+
+    try {
+      await revertBatch(batch.id)
+      customToast.success(t("reverted"))
+    } catch (error) {
+      customToast.danger((error as ApiErrorPayload).message || t("revertFailed"))
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -41,6 +77,7 @@ export function UploadTypePanel({ fileType, title, description, branchId }: Uplo
             { key: "rowCount", label: t("rows") },
             { key: "status", label: t("status") },
             { key: "importedAt", label: t("importedAt") },
+            ...(isSuperAdmin ? [{ key: "id", label: t("actions") }] : []),
           ]}
           data={batches ?? []}
           loading={isLoading}
@@ -74,6 +111,18 @@ export function UploadTypePanel({ fileType, title, description, branchId }: Uplo
               return (
                 <CustomTooltip trigger={chip}>
                   <p className="max-w-64 text-xs">{batch.errorMessage}</p>
+                </CustomTooltip>
+              )
+            }
+            if (key === "id") {
+              if (batch.status !== "completed") return null
+              return (
+                <CustomTooltip trigger={
+                  <CustomButton variant={ButtonVariant.ghost} isIconOnly loading={isReverting} onClick={() => handleRevert(batch)}>
+                    <ArrowCounterClockwiseIcon className="size-4 text-danger" />
+                  </CustomButton>
+                }>
+                  <p className="text-xs">{t("revert")}</p>
                 </CustomTooltip>
               )
             }

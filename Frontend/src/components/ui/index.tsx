@@ -30,6 +30,7 @@ export * from "./customDropdown/customDropdown";
 export * from "./customEmptyState/customEmptyState";
 export * from "./customFilters/customDateRangeFilter";
 export * from "./customFilters/customFilterBar";
+export * from "./customFilters/customFilterModal";
 export * from "./customFilters/customSearchFilter";
 export * from "./customFilters/customSelectFilter";
 export * from "./customFilters/customStatusFilter";

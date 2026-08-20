@@ -7,6 +7,8 @@ import {
   isServer,
 } from "@tanstack/react-query"
 
+import { QueryLoadingBar } from "./query-loading-bar"
+
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -47,6 +49,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <QueryLoadingBar />
       {children}
     </QueryClientProvider>
   )

@@ -284,3 +284,14 @@
     cursor: text;
   }
 }
+
+/* Global fetch/mutation indicator (see providers/query-loading-bar.tsx) — an indeterminate bar
+   sliding across the viewport width, same idea as GitHub/YouTube's top-of-page loading bar. */
+@keyframes loading-bar-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}

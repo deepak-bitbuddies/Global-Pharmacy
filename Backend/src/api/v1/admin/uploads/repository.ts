@@ -182,6 +182,11 @@ export async function findImportBatch(
   return batch ?? null
 }
 
+export async function findImportBatchById(batchId: string): Promise<ImportBatchDocument | null> {
+  const [batch] = await db.select().from(importBatches).where(eq(importBatches.id, batchId)).limit(1)
+  return batch ?? null
+}
+
 /**
  * Stock/Sales/Purchase are now single-day-per-upload, so "the batch for this date" (regardless of
  * filename) is what re-upload/replace and the sequence gate key off. `dbClient` accepts a

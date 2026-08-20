@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify"
 
 import { sendSuccess } from "../../../../shared/helpers/http-response.js"
-import { scopeToUserBranch } from "../../../../shared/helpers/scope-to-user-branch.js"
+import { scopeToUserBranch, scopeToUserBranchList } from "../../../../shared/helpers/scope-to-user-branch.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
 import { listBranches } from "../uploads/index.js"
@@ -31,6 +31,7 @@ import {
   getExportFileForDownload,
   grossProfitByItem,
   itemWiseSales,
+  items,
   listExports,
   nonMovingDetail,
   nonMovingItems,
@@ -64,6 +65,10 @@ export async function branchesHandler(request: FastifyRequest, reply: FastifyRep
   sendSuccess(reply, branches)
 }
 
+export async function itemsHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  sendSuccess(reply, await items())
+}
+
 export async function companiesHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
   sendSuccess(reply, await companies())
 }
@@ -78,130 +83,132 @@ export async function supplierGroupsHandler(_request: FastifyRequest, reply: Fas
 
 export async function itemWiseSalesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(itemWiseSalesQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await itemWiseSales(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function salesDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(salesDetailQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await salesDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function branchSalesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await branchSales(filters))
 }
 
 export async function grossProfitHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(grossProfitQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await grossProfitByItem(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function topGrossProfitPercentHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await topGrossProfitPercentItems(filters))
 }
 
 export async function topReturnsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await topReturnsByItem(filters))
 }
 
 export async function salesByCompanyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await salesValueByCompany(filters))
 }
 
 export async function purchaseSummaryHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(purchaseSummaryQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await purchaseSummary(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function purchaseDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(purchaseDetailQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await purchaseDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function purchaseByCompanyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await purchaseValueByCompany(filters))
 }
 
 export async function stockReportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(stockReportQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await stockReport(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function stockSummaryHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await stockSummary(filters))
 }
 
 export async function stockValueByCompanyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await stockValueByCompany(filters))
 }
 
 export async function topStockByValueHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await topStockItemsByValue(filters))
 }
 
 export async function zeroOrderAlertsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await zeroOrderAlerts(filters))
 }
 
 export async function expiryReportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { withinDays, ...rest } = validateSchema(expiryQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   sendSuccess(reply, await expiryReport(filters, withinDays))
 }
 
 export async function nonMovingHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await nonMovingItems(filters))
 }
 
 export async function nonMovingDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(nonMovingDetailQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await nonMovingDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function dailyCollectionHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await dailyCollection(filters))
 }
 
 export async function daySalesDetailHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, ...rest } = validateSchema(daySalesDetailQuerySchema, request.query)
-  const filters = scopeToUserBranch(request, rest)
+  const filters = scopeToUserBranchList(request, rest)
   const { rows, ...page } = await daySalesDetail(filters, { cursor, pageSize })
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function dashboardSummaryHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranch(request, validateSchema(reportFiltersSchema, request.query))
+  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
   sendSuccess(reply, await dashboardSummary(filters))
 }
 
 export async function createExportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { reportType, ...rest } = validateSchema(createExportSchema, request.body)
-  const filters = scopeToUserBranch(request, rest)
-  const job = await createExport(reportType, filters, filters.branchId ?? null)
+  const filters = scopeToUserBranchList(request, rest)
+  // `export_jobs.branch_id` is a single nullable column (used only to filter the export-history
+  // panel by branch) — kept populated for the common single-branch case, null for zero/multiple.
+  const job = await createExport(reportType, filters, filters.branchId?.length === 1 ? filters.branchId[0] : null)
   sendSuccess(reply, job, "Export started — processing in background", 202)
 }
 

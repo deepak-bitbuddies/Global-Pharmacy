@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { ButtonVariant, CustomButton, CustomChip } from "@/components/ui"
 import { useBranches } from "../../hooks/use-reports"
 import type { ReportFilterFlags } from "./report-filter-panel"
+import { useCollectionModeOptions } from "./collection-mode-filter"
 import { useExpiryTierOptions } from "./expiry-tier-filter"
 import { useSchemeTierOptions } from "./scheme-tier-filter"
 import type { ReportFilters } from "../../types"
@@ -24,33 +25,45 @@ function rangeLabel(from: number | undefined, to: number | undefined): string {
   return `≤ ${to}`
 }
 
-/** Removable chips for every *active* filter except search (already visible/editable in its own box) — plus a "Clear all" that also resets search, matching the modal's Apply committing the same shape. */
+/** Removable chips for every *active* filter value — multi-select fields (Item/Branch/Company/Supplier/Supplier Group) get one chip per selected value — plus a "Clear all". */
 export function FilterChips({ filters, onFiltersChange, show }: FilterChipsProps) {
   const t = useTranslations()
   const tCommon = useTranslations("Common")
   const tPurchase = useTranslations("Reports.purchase")
   const tStock = useTranslations("Reports.stock")
+  const tSales = useTranslations("Reports.sales")
   const { data: branches } = useBranches()
   const schemeTierOptions = useSchemeTierOptions()
   const expiryTierOptions = useExpiryTierOptions()
+  const collectionModeOptions = useCollectionModeOptions()
 
   const chips: Chip[] = []
 
-  if (show.branch && filters.branchId) {
-    const branchName = branches?.find((branch) => branch.id === filters.branchId)?.name ?? filters.branchId
-    chips.push({
-      key: "branch",
-      label: `${tCommon("branch")}: ${branchName}`,
-      onRemove: () => onFiltersChange((prev) => ({ ...prev, branchId: undefined })),
+  /** Removes a single value from an array filter — clears the key entirely once the array empties, instead of leaving a stray `[]`. */
+  function removeFromArray(key: "branchId" | "company" | "supplier" | "supplierGroup" | "item", value: string) {
+    onFiltersChange((prev) => {
+      const next = (prev[key] ?? []).filter((v) => v !== value)
+      return { ...prev, [key]: next.length > 0 ? next : undefined }
     })
   }
 
-  if (show.company && filters.company) {
-    chips.push({
-      key: "company",
-      label: `${tCommon("company")}: ${filters.company}`,
-      onRemove: () => onFiltersChange((prev) => ({ ...prev, company: undefined })),
-    })
+  if (show.item) {
+    for (const item of filters.item ?? []) {
+      chips.push({ key: `item:${item}`, label: `${tCommon("item")}: ${item}`, onRemove: () => removeFromArray("item", item) })
+    }
+  }
+
+  if (show.branch) {
+    for (const branchId of filters.branchId ?? []) {
+      const branchName = branches?.find((branch) => branch.id === branchId)?.name ?? branchId
+      chips.push({ key: `branch:${branchId}`, label: `${tCommon("branch")}: ${branchName}`, onRemove: () => removeFromArray("branchId", branchId) })
+    }
+  }
+
+  if (show.company) {
+    for (const company of filters.company ?? []) {
+      chips.push({ key: `company:${company}`, label: `${tCommon("company")}: ${company}`, onRemove: () => removeFromArray("company", company) })
+    }
   }
 
   if (show.schemeTier && filters.schemeTier) {
@@ -82,12 +95,10 @@ export function FilterChips({ filters, onFiltersChange, show }: FilterChipsProps
     })
   }
 
-  if (show.supplier && filters.supplier) {
-    chips.push({
-      key: "supplier",
-      label: `${tStock("supplier")}: ${filters.supplier}`,
-      onRemove: () => onFiltersChange((prev) => ({ ...prev, supplier: undefined })),
-    })
+  if (show.supplier) {
+    for (const supplier of filters.supplier ?? []) {
+      chips.push({ key: `supplier:${supplier}`, label: `${tStock("supplier")}: ${supplier}`, onRemove: () => removeFromArray("supplier", supplier) })
+    }
   }
 
   if (show.stockRange && (filters.stockFrom !== undefined || filters.stockTo !== undefined)) {
@@ -98,12 +109,10 @@ export function FilterChips({ filters, onFiltersChange, show }: FilterChipsProps
     })
   }
 
-  if (show.supplierGroup && filters.supplierGroup) {
-    chips.push({
-      key: "supplierGroup",
-      label: `${tPurchase("supplier")}: ${filters.supplierGroup}`,
-      onRemove: () => onFiltersChange((prev) => ({ ...prev, supplierGroup: undefined })),
-    })
+  if (show.supplierGroup) {
+    for (const supplierGroup of filters.supplierGroup ?? []) {
+      chips.push({ key: `supplierGroup:${supplierGroup}`, label: `${tPurchase("supplier")}: ${supplierGroup}`, onRemove: () => removeFromArray("supplierGroup", supplierGroup) })
+    }
   }
 
   if (show.amountRange && (filters.amountFrom !== undefined || filters.amountTo !== undefined)) {
@@ -114,8 +123,22 @@ export function FilterChips({ filters, onFiltersChange, show }: FilterChipsProps
     })
   }
 
-  const hasAnyActiveFilter = chips.length > 0 || Boolean(filters.item)
-  if (!hasAnyActiveFilter) return null
+  if (show.collectionMode) {
+    for (const mode of filters.collectionMode ?? []) {
+      const label = collectionModeOptions.find((option) => option.id === mode)?.label ?? mode
+      chips.push({
+        key: `collectionMode:${mode}`,
+        label: `${tSales("mode")}: ${label}`,
+        onRemove: () =>
+          onFiltersChange((prev) => {
+            const next = (prev.collectionMode ?? []).filter((v) => v !== mode)
+            return { ...prev, collectionMode: next.length > 0 ? next : undefined }
+          }),
+      })
+    }
+  }
+
+  if (chips.length === 0) return null
 
   return (
     <div className="flex flex-wrap items-center gap-2">

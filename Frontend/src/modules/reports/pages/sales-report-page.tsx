@@ -4,13 +4,21 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 
 import { CustomPageHeader, CustomTable } from "@/components/ui"
+import { renderStatusCell, type StatusColorMap } from "@/components/ui/customTable/tableCellHelpers"
+import { CustomColor } from "@/lib/types"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { ExportReportButton } from "../components/export-report-button"
 import { ReportFilterPanel } from "../components/filters"
 import { useInitialFiltersFromUrl } from "../hooks/use-filters-from-url"
 import { useSalesDetail } from "../hooks/use-reports"
-import type { ReportFilters, SalesDetailRow } from "../types"
+import { SalesCollectionMode, type ReportFilters, type SalesDetailRow } from "../types"
+
+const COLLECTION_MODE_COLOR: StatusColorMap<SalesCollectionMode> = {
+  [SalesCollectionMode.Cash]: CustomColor.success,
+  [SalesCollectionMode.PaytmOnline]: CustomColor.accent,
+  [SalesCollectionMode.CreditDue]: CustomColor.warning,
+}
 
 export function SalesReportPage() {
   const t = useTranslations("Reports.sales")
@@ -19,6 +27,12 @@ export function SalesReportPage() {
   const [filters, setFilters] = useState<ReportFilters>(initialFilters)
   const pagination = useCursorPagination()
   const { data, isLoading, isError } = useSalesDetail(filters, { cursor: pagination.cursor, pageSize: pagination.pageSize })
+
+  const collectionModeLabel: Record<SalesCollectionMode, string> = {
+    [SalesCollectionMode.Cash]: t("modeCash"),
+    [SalesCollectionMode.PaytmOnline]: t("modePaytmOnline"),
+    [SalesCollectionMode.CreditDue]: t("modeCreditDue"),
+  }
 
   const updateFilters = (updater: (prev: ReportFilters) => ReportFilters) => {
     setFilters(updater)
@@ -32,7 +46,7 @@ export function SalesReportPage() {
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}
-          show={{ search: true, branch: true, company: true, dateRange: true, amountRange: true }}
+          show={{ item: true, branch: true, company: true, dateRange: true, amountRange: true, collectionMode: true }}
         />
       </div>
 
@@ -48,6 +62,7 @@ export function SalesReportPage() {
           { key: "unit", label: tCommon("unit") },
           { key: "rate", label: tCommon("rate") },
           { key: "amount", label: tCommon("amount"), sortable: true },
+          { key: "collectionMode", label: t("mode") },
         ]}
         data={data?.data ?? []}
         loading={isLoading}
@@ -68,6 +83,7 @@ export function SalesReportPage() {
           if (key === "rate" || key === "amount") return row[key] === null ? "-" : formatCurrency(row[key] as number)
           if (key === "qty") return row.qty === null ? "-" : formatNumber(row.qty)
           if (key === "company") return row.company ?? "-"
+          if (key === "collectionMode") return renderStatusCell(row.collectionMode, COLLECTION_MODE_COLOR, collectionModeLabel)
           return row[key] ?? "-"
         }}
       />
