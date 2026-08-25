@@ -1,11 +1,11 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
-import { SalesCollectionMode, type ExpiryTier, type ReportFilters, type SchemeTier } from "../types"
+import { SalesCollectionMode, TopNDirection, type ExpiryTier, type ReportFilters, type SchemeTier } from "../types"
 
 const STRING_KEYS = ["dateFrom", "dateTo"] as const satisfies (keyof ReportFilters)[]
 const ARRAY_KEYS = ["branchId", "company", "item", "supplier", "supplierGroup"] as const satisfies (keyof ReportFilters)[]
-const NUMBER_KEYS = ["stockFrom", "stockTo", "amountFrom", "amountTo"] as const satisfies (keyof ReportFilters)[]
+const NUMBER_KEYS = ["stockFrom", "stockTo", "amountFrom", "amountTo", "limit"] as const satisfies (keyof ReportFilters)[]
 
 /**
  * Reads the initial filter values a dashboard drill-down link left in the URL query string (see
@@ -42,6 +42,9 @@ export function useInitialFiltersFromUrl(): ReportFilters {
   const collectionModeValues = searchParams.getAll("collectionMode") as SalesCollectionMode[]
   const validCollectionModes = collectionModeValues.filter((value): value is SalesCollectionMode => Object.values(SalesCollectionMode).includes(value))
   if (validCollectionModes.length > 0) filters.collectionMode = validCollectionModes
+
+  const direction = searchParams.get("direction")
+  if (direction && Object.values(TopNDirection).includes(direction as TopNDirection)) filters.direction = direction as TopNDirection
 
   return filters
 }

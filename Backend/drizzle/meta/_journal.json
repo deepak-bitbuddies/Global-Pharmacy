@@ -85,6 +85,20 @@
       "when": 1787155147499,
       "tag": "0011_futuristic_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787588401829,
+      "tag": "0012_true_arclight",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787591092796,
+      "tag": "0013_silent_zarda",
+      "breakpoints": true
     }
   ]
 }

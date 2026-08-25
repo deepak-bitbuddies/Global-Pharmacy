@@ -27,6 +27,17 @@ export function parseMargDateFullYear(raw: string): string | null {
   return `${year}-${month}-${day}`
 }
 
+/** Parses Marg's "DD-Mon-YYYY" dates (e.g. "21-Jul-2026" → "2026-07-21") — the 4-digit-year sibling of `parseMargDateShortYear`, used by the Party/Item Wise Purchase Analysis export. Returns null if unparseable. */
+export function parseMargDateFullMonthYear(raw: string): string | null {
+  const trimmed = raw.trim()
+  const match = /^(\d{2})-([A-Za-z]{3})-(\d{4})$/.exec(trimmed)
+  if (!match) return null
+  const [, day, monRaw, year] = match
+  const mon = MONTHS[monRaw as keyof typeof MONTHS]
+  if (!mon) return null
+  return `${year}-${mon}-${day}`
+}
+
 /** Strips thousands separators and parses a decimal. Returns null for blank/dash placeholders. */
 export function parseMargNumber(raw: string): number | null {
   const trimmed = raw.trim().replace(/,/g, "")

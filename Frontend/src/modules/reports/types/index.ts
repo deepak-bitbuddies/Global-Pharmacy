@@ -13,6 +13,16 @@ export enum SalesCollectionMode {
   CreditDue = "credit_due",
 }
 
+// Every dashboard "Top N" widget's own selector — "which end of the list, how many" — kept
+// separate from `ReportFilters` since it's a widget/page display choice, not a data filter. Must
+// match the backend's `TopNDirection` (reports/enums.ts) value-for-value.
+export enum TopNDirection {
+  Top = "top",
+  Bottom = "bottom",
+}
+export type TopNSelection = { direction: TopNDirection; limit: number }
+export const DEFAULT_TOP_N: TopNSelection = { direction: TopNDirection.Top, limit: 10 }
+
 export type ReportFilters = {
   branchId?: string[]
   dateFrom?: string
@@ -36,6 +46,12 @@ export type ReportFilters = {
   amountTo?: number
   // Sales-only filter.
   collectionMode?: SalesCollectionMode[]
+  // Gross Profit's own "Top N" drill-through — only the one dashboard widget this maps 1:1 to a
+  // real report page for (see `gross-profit-report-page.tsx`). Not a filter on the data itself,
+  // just how many rows (and from which end) to show — so it lives here for `buildReportUrl`'s
+  // sake even though it isn't passed as a `sales_lines`/`purchase_lines` WHERE clause.
+  limit?: number
+  direction?: TopNDirection
 }
 
 export type ItemOption = {

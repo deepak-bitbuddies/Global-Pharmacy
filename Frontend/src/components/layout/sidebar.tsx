@@ -173,7 +173,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
         >
           {collapsed ? <CaretLineRightIcon className="size-3.5" /> : <CaretLineLeftIcon className="size-3.5" />}
         </button>
-        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
+        <nav className="sidebar-scroll flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
           {visibleNavGroups.map((group) => (
             <div key={group.headingKey} className="flex flex-col gap-1">
               <span className={cn("px-3 pb-1 text-[10px] font-bold tracking-wide text-sidebar-foreground/50 uppercase", collapsed && "xl:hidden")}>

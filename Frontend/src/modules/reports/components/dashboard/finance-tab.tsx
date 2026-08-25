@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { PercentIcon, ScalesIcon } from "@phosphor-icons/react"
@@ -12,7 +12,8 @@ import { formatCurrency } from "@/utils/formatting"
 import { useGrossProfit, useTopGrossProfitPercent } from "../../hooks/use-reports"
 import { buildReportUrl } from "../../utils/report-links"
 import { SectionHeading } from "./section-heading"
-import type { ReportFilters } from "../../types"
+import { TopNSelect } from "./top-n-select"
+import { DEFAULT_TOP_N, type ReportFilters } from "../../types"
 
 export function FinanceTab({ filters }: { filters: ReportFilters }) {
   const t = useTranslations("Dashboard.finance")
@@ -20,9 +21,11 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
   const tTabs = useTranslations("Dashboard.tabs")
   const router = useRouter()
 
-  // Independent top-10/top-8 lookups, not a paginated listing — this section is chart-only.
-  const { data: topGpData, isLoading: isTopGpLoading } = useGrossProfit(filters, { pageSize: 10 })
-  const { data: topGpPctData, isLoading: isTopGpPctLoading } = useTopGrossProfitPercent(filters)
+  const [topGpN, setTopGpN] = useState(DEFAULT_TOP_N)
+  const [topGpPctN, setTopGpPctN] = useState(DEFAULT_TOP_N)
+
+  const { data: topGpData, isLoading: isTopGpLoading } = useGrossProfit(filters, { pageSize: topGpN.limit }, topGpN.direction)
+  const { data: topGpPctData, isLoading: isTopGpPctLoading } = useTopGrossProfitPercent(filters, topGpPctN)
 
   const topGp = useMemo(
     () => (topGpData?.data ?? []).filter((row) => row.estimatedGp !== null).map((row) => ({ name: row.itemName, value: row.estimatedGp ?? 0 })),
@@ -43,9 +46,15 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
             <ScalesIcon className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold text-foreground">{t("topItemsByGp")}</p>
             <CustomInfoTooltip content={t("topItemsByGpDesc")} />
-            <Link href={buildReportUrl("/reports/gross-profit", filters)} className="ml-auto shrink-0 text-xs font-medium text-primary hover:underline">
-              {tCommon("viewDetails")} →
-            </Link>
+            <div className="ml-auto flex shrink-0 items-center gap-3">
+              <TopNSelect value={topGpN} onChange={setTopGpN} />
+              <Link
+                href={buildReportUrl("/reports/gross-profit", { ...filters, limit: topGpN.limit, direction: topGpN.direction })}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {tCommon("viewDetails")} →
+              </Link>
+            </div>
           </div>
           {isTopGpLoading ? (
             <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
@@ -63,6 +72,9 @@ export function FinanceTab({ filters }: { filters: ReportFilters }) {
             <PercentIcon className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold text-foreground">{t("topItemsByGpPct")}</p>
             <CustomInfoTooltip content={t("topItemsByGpPctDesc")} />
+            <div className="ml-auto shrink-0">
+              <TopNSelect value={topGpPctN} onChange={setTopGpPctN} />
+            </div>
           </div>
           {isTopGpPctLoading ? (
             <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>

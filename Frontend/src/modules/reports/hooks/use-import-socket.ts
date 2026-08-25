@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query"
 import { io } from "socket.io-client"
 
 import { customToast } from "@/components/ui"
+import { usePurchaseAnalysisImportStatusStore } from "@/modules/purchase-analysis/hooks/use-purchase-analysis-import-status-store"
+import type { PurchaseAnalysisBatchProgressEvent, PurchaseAnalysisBatchUpdateEvent } from "@/modules/purchase-analysis/types"
 import { useImportProgressStore } from "./use-import-progress-store"
 import { useImportStatusStore } from "./use-import-status-store"
 import type { ExportJobProgressEvent, ExportJobUpdateEvent, ImportBatchProgressEvent, ImportBatchUpdateEvent } from "../types"
@@ -31,12 +33,19 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000"
  *   progress store (keyed generically by job id either way, nothing import-specific about it) for
  *   background report exports. No filename-correlation needed here the way bulk import needs it —
  *   `useCreateExportJob`'s ack already returns the job's real id synchronously.
+ * - `purchase-analysis-batch:update` / `:progress` — same processing/completed/failed shape as the
+ *   import-batch pair, for the fully separate Purchase Analysis module's background import (see
+ *   `purchase-analysis/service.ts`). Its own status store (no `branchId`/`fileType` concept exists
+ *   there), but the same generic `useImportProgressStore` for progress ticks. This hook reaching
+ *   into that module is the one intentional exception to "modules stay independent" — it's the
+ *   single shared socket connection for every background job in the app, exports included.
  */
 export function useImportSocket(): void {
   const queryClient = useQueryClient()
   const setProgress = useImportProgressStore((state) => state.setProgress)
   const clearProgress = useImportProgressStore((state) => state.clearProgress)
   const setStatus = useImportStatusStore((state) => state.setStatus)
+  const setPurchaseAnalysisStatus = usePurchaseAnalysisImportStatusStore((state) => state.setStatus)
 
   useEffect(() => {
     let socket: ReturnType<typeof io> | undefined
@@ -71,11 +80,21 @@ export function useImportSocket(): void {
       socket.on("export-job:progress", (payload: ExportJobProgressEvent) => {
         setProgress(payload.id, { rowsProcessed: payload.rowsProcessed, totalRows: payload.totalRows })
       })
+
+      socket.on("purchase-analysis-batch:update", (payload: PurchaseAnalysisBatchUpdateEvent) => {
+        queryClient.invalidateQueries({ queryKey: ["purchase-analysis"] })
+        clearProgress(payload.batchId)
+        setPurchaseAnalysisStatus(payload.fileName, { batchId: payload.batchId, status: payload.status, errorMessage: payload.errorMessage })
+      })
+
+      socket.on("purchase-analysis-batch:progress", (payload: PurchaseAnalysisBatchProgressEvent) => {
+        setProgress(payload.batchId, { rowsProcessed: payload.rowsProcessed, totalRows: payload.totalRows })
+      })
     })()
 
     return () => {
       cancelled = true
       socket?.disconnect()
     }
-  }, [queryClient, setProgress, clearProgress, setStatus])
+  }, [queryClient, setProgress, clearProgress, setStatus, setPurchaseAnalysisStatus])
 }

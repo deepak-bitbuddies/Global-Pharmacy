@@ -42,6 +42,21 @@ export type ExportJobProgressPayload = {
   totalRows: number
 }
 
+/** Same processing/completed/failed shape as the two above, for the Purchase Analysis module's background import — its own event pair (not `import-batch:*`) since that module has no `branchId`/`fileType` concept at all (see `purchase-analysis/model.ts`). */
+export type PurchaseAnalysisBatchUpdatePayload = {
+  batchId: string
+  fileName: string
+  status: "processing" | "completed" | "failed"
+  rowCount?: number
+  errorMessage?: string
+}
+
+export type PurchaseAnalysisBatchProgressPayload = {
+  batchId: string
+  rowsProcessed: number
+  totalRows: number
+}
+
 /**
  * Real-time push for the bulk-upload background committer (see `uploads/service.ts`) — currently
  * the only consumer. Auth: the handshake carries a short-lived JWT (the frontend mints one via
@@ -86,4 +101,12 @@ export function emitExportJobUpdate(payload: ExportJobUpdatePayload): void {
 
 export function emitExportJobProgress(payload: ExportJobProgressPayload): void {
   io?.emit("export-job:progress", payload)
+}
+
+export function emitPurchaseAnalysisBatchUpdate(payload: PurchaseAnalysisBatchUpdatePayload): void {
+  io?.emit("purchase-analysis-batch:update", payload)
+}
+
+export function emitPurchaseAnalysisBatchProgress(payload: PurchaseAnalysisBatchProgressPayload): void {
+  io?.emit("purchase-analysis-batch:progress", payload)
 }

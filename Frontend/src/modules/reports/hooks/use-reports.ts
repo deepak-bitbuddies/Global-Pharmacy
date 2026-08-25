@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import type { CursorPaginationParams } from "@/types/pagination"
 import { reportsQueryKeys } from "../constants/query-keys"
-import type { ExportJob, ReportFilters, ReportType } from "../types"
+import type { ExportJob, ReportFilters, ReportType, TopNSelection } from "../types"
 import {
   createExportJob,
   getBranches,
@@ -65,8 +65,12 @@ export function useDashboardSummary(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.dashboardSummary(filters), queryFn: () => getDashboardSummary(filters), placeholderData: keepPreviousData })
 }
 
-export function useItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams) {
-  return useQuery({ queryKey: reportsQueryKeys.itemWiseSales(filters, pagination), queryFn: () => getItemWiseSales(filters, pagination), placeholderData: keepPreviousData })
+export function useItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams, direction?: TopNSelection["direction"]) {
+  return useQuery({
+    queryKey: reportsQueryKeys.itemWiseSales(filters, pagination, direction),
+    queryFn: () => getItemWiseSales(filters, pagination, direction),
+    placeholderData: keepPreviousData,
+  })
 }
 
 export function useSalesDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
@@ -77,32 +81,52 @@ export function useBranchSales(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.branchSales(filters), queryFn: () => getBranchSales(filters), placeholderData: keepPreviousData })
 }
 
-export function useGrossProfit(filters: ReportFilters, pagination: CursorPaginationParams) {
-  return useQuery({ queryKey: reportsQueryKeys.grossProfit(filters, pagination), queryFn: () => getGrossProfit(filters, pagination), placeholderData: keepPreviousData })
+export function useGrossProfit(filters: ReportFilters, pagination: CursorPaginationParams, direction?: TopNSelection["direction"]) {
+  return useQuery({
+    queryKey: reportsQueryKeys.grossProfit(filters, pagination, direction),
+    queryFn: () => getGrossProfit(filters, pagination, direction),
+    placeholderData: keepPreviousData,
+  })
 }
 
-export function useTopGrossProfitPercent(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.topGrossProfitPercent(filters), queryFn: () => getTopGrossProfitPercent(filters), placeholderData: keepPreviousData })
+export function useTopGrossProfitPercent(filters: ReportFilters, topN?: TopNSelection) {
+  return useQuery({
+    queryKey: reportsQueryKeys.topGrossProfitPercent(filters, topN),
+    queryFn: () => getTopGrossProfitPercent(filters, topN),
+    placeholderData: keepPreviousData,
+  })
 }
 
-export function useTopReturns(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.topReturns(filters), queryFn: () => getTopReturns(filters), placeholderData: keepPreviousData })
+export function useTopReturns(filters: ReportFilters, topN?: TopNSelection) {
+  return useQuery({ queryKey: reportsQueryKeys.topReturns(filters, topN), queryFn: () => getTopReturns(filters, topN), placeholderData: keepPreviousData })
 }
 
-export function useSalesValueByCompany(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.salesByCompany(filters), queryFn: () => getSalesValueByCompany(filters), placeholderData: keepPreviousData })
+export function useSalesValueByCompany(filters: ReportFilters, topN?: TopNSelection) {
+  return useQuery({
+    queryKey: reportsQueryKeys.salesByCompany(filters, topN),
+    queryFn: () => getSalesValueByCompany(filters, topN),
+    placeholderData: keepPreviousData,
+  })
 }
 
-export function usePurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams) {
-  return useQuery({ queryKey: reportsQueryKeys.purchaseSummary(filters, pagination), queryFn: () => getPurchaseSummary(filters, pagination), placeholderData: keepPreviousData })
+export function usePurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams, direction?: TopNSelection["direction"]) {
+  return useQuery({
+    queryKey: reportsQueryKeys.purchaseSummary(filters, pagination, direction),
+    queryFn: () => getPurchaseSummary(filters, pagination, direction),
+    placeholderData: keepPreviousData,
+  })
 }
 
 export function usePurchaseDetail(filters: ReportFilters, pagination: CursorPaginationParams) {
   return useQuery({ queryKey: reportsQueryKeys.purchaseDetail(filters, pagination), queryFn: () => getPurchaseDetail(filters, pagination), placeholderData: keepPreviousData })
 }
 
-export function usePurchaseValueByCompany(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.purchaseByCompany(filters), queryFn: () => getPurchaseValueByCompany(filters), placeholderData: keepPreviousData })
+export function usePurchaseValueByCompany(filters: ReportFilters, topN?: TopNSelection) {
+  return useQuery({
+    queryKey: reportsQueryKeys.purchaseByCompany(filters, topN),
+    queryFn: () => getPurchaseValueByCompany(filters, topN),
+    placeholderData: keepPreviousData,
+  })
 }
 
 export function useStockReport(filters: ReportFilters, pagination: CursorPaginationParams) {
@@ -117,8 +141,12 @@ export function useStockValueByCompany(filters: ReportFilters) {
   return useQuery({ queryKey: reportsQueryKeys.stockByCompany(filters), queryFn: () => getStockValueByCompany(filters), placeholderData: keepPreviousData })
 }
 
-export function useTopStockByValue(filters: ReportFilters) {
-  return useQuery({ queryKey: reportsQueryKeys.topStockByValue(filters), queryFn: () => getTopStockByValue(filters), placeholderData: keepPreviousData })
+export function useTopStockByValue(filters: ReportFilters, topN?: TopNSelection) {
+  return useQuery({
+    queryKey: reportsQueryKeys.topStockByValue(filters, topN),
+    queryFn: () => getTopStockByValue(filters, topN),
+    placeholderData: keepPreviousData,
+  })
 }
 
 export function useZeroOrderAlerts(filters: ReportFilters) {

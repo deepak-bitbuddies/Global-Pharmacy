@@ -19,6 +19,7 @@ import {
   reportFiltersSchema,
   salesDetailQuerySchema,
   stockReportQuerySchema,
+  topNQuerySchema,
 } from "./schema.js"
 import {
   branchSales,
@@ -82,9 +83,9 @@ export async function supplierGroupsHandler(_request: FastifyRequest, reply: Fas
 }
 
 export async function itemWiseSalesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const { cursor, pageSize, ...rest } = validateSchema(itemWiseSalesQuerySchema, request.query)
+  const { cursor, pageSize, direction, ...rest } = validateSchema(itemWiseSalesQuerySchema, request.query)
   const filters = scopeToUserBranchList(request, rest)
-  const { rows, ...page } = await itemWiseSales(filters, { cursor, pageSize })
+  const { rows, ...page } = await itemWiseSales(filters, { cursor, pageSize }, direction)
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
@@ -101,31 +102,34 @@ export async function branchSalesHandler(request: FastifyRequest, reply: Fastify
 }
 
 export async function grossProfitHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const { cursor, pageSize, ...rest } = validateSchema(grossProfitQuerySchema, request.query)
+  const { cursor, pageSize, direction, ...rest } = validateSchema(grossProfitQuerySchema, request.query)
   const filters = scopeToUserBranchList(request, rest)
-  const { rows, ...page } = await grossProfitByItem(filters, { cursor, pageSize })
+  const { rows, ...page } = await grossProfitByItem(filters, { cursor, pageSize }, direction)
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
 export async function topGrossProfitPercentHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
-  sendSuccess(reply, await topGrossProfitPercentItems(filters))
+  const { limit, direction, ...rest } = validateSchema(topNQuerySchema, request.query)
+  const filters = scopeToUserBranchList(request, rest)
+  sendSuccess(reply, await topGrossProfitPercentItems(filters, limit, direction))
 }
 
 export async function topReturnsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
-  sendSuccess(reply, await topReturnsByItem(filters))
+  const { limit, direction, ...rest } = validateSchema(topNQuerySchema, request.query)
+  const filters = scopeToUserBranchList(request, rest)
+  sendSuccess(reply, await topReturnsByItem(filters, limit, direction))
 }
 
 export async function salesByCompanyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
-  sendSuccess(reply, await salesValueByCompany(filters))
+  const { limit, direction, ...rest } = validateSchema(topNQuerySchema, request.query)
+  const filters = scopeToUserBranchList(request, rest)
+  sendSuccess(reply, await salesValueByCompany(filters, limit, direction))
 }
 
 export async function purchaseSummaryHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const { cursor, pageSize, ...rest } = validateSchema(purchaseSummaryQuerySchema, request.query)
+  const { cursor, pageSize, direction, ...rest } = validateSchema(purchaseSummaryQuerySchema, request.query)
   const filters = scopeToUserBranchList(request, rest)
-  const { rows, ...page } = await purchaseSummary(filters, { cursor, pageSize })
+  const { rows, ...page } = await purchaseSummary(filters, { cursor, pageSize }, direction)
   sendSuccess(reply, rows, "Success", 200, paginationMeta(page, pageSize))
 }
 
@@ -137,8 +141,9 @@ export async function purchaseDetailHandler(request: FastifyRequest, reply: Fast
 }
 
 export async function purchaseByCompanyHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
-  sendSuccess(reply, await purchaseValueByCompany(filters))
+  const { limit, direction, ...rest } = validateSchema(topNQuerySchema, request.query)
+  const filters = scopeToUserBranchList(request, rest)
+  sendSuccess(reply, await purchaseValueByCompany(filters, limit, direction))
 }
 
 export async function stockReportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -159,8 +164,9 @@ export async function stockValueByCompanyHandler(request: FastifyRequest, reply:
 }
 
 export async function topStockByValueHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const filters = scopeToUserBranchList(request, validateSchema(reportFiltersSchema, request.query))
-  sendSuccess(reply, await topStockItemsByValue(filters))
+  const { limit, direction, ...rest } = validateSchema(topNQuerySchema, request.query)
+  const filters = scopeToUserBranchList(request, rest)
+  sendSuccess(reply, await topStockItemsByValue(filters, limit, direction))
 }
 
 export async function zeroOrderAlertsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {

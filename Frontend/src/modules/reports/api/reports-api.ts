@@ -19,6 +19,7 @@ import type {
   ReportType,
   SalesDetailRow,
   StockRow,
+  TopNSelection,
   ZeroOrderAlertRow,
 } from "../types"
 
@@ -54,8 +55,12 @@ export async function getDashboardSummary(filters: ReportFilters): Promise<Dashb
   return data.data
 }
 
-export async function getItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<ItemWiseSalesRow>> {
-  const { data } = await api.get<PaginatedResponse<ItemWiseSalesRow>>(`${BASE}/sales/item-wise`, { params: { ...filters, ...pagination } })
+export async function getItemWiseSales(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction?: TopNSelection["direction"],
+): Promise<PaginatedResponse<ItemWiseSalesRow>> {
+  const { data } = await api.get<PaginatedResponse<ItemWiseSalesRow>>(`${BASE}/sales/item-wise`, { params: { ...filters, ...pagination, direction } })
   return data
 }
 
@@ -69,28 +74,36 @@ export async function getBranchSales(filters: ReportFilters): Promise<{ branchId
   return data.data
 }
 
-export async function getGrossProfit(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<GrossProfitRow>> {
-  const { data } = await api.get<PaginatedResponse<GrossProfitRow>>(`${BASE}/sales/gross-profit`, { params: { ...filters, ...pagination } })
+export async function getGrossProfit(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction?: TopNSelection["direction"],
+): Promise<PaginatedResponse<GrossProfitRow>> {
+  const { data } = await api.get<PaginatedResponse<GrossProfitRow>>(`${BASE}/sales/gross-profit`, { params: { ...filters, ...pagination, direction } })
   return data
 }
 
-export async function getTopGrossProfitPercent(filters: ReportFilters): Promise<GrossProfitRow[]> {
-  const { data } = await api.get<{ data: GrossProfitRow[] }>(`${BASE}/sales/gross-profit/top-by-pct`, { params: filters })
+export async function getTopGrossProfitPercent(filters: ReportFilters, topN?: TopNSelection): Promise<GrossProfitRow[]> {
+  const { data } = await api.get<{ data: GrossProfitRow[] }>(`${BASE}/sales/gross-profit/top-by-pct`, { params: { ...filters, limit: topN?.limit, direction: topN?.direction } })
   return data.data
 }
 
-export async function getTopReturns(filters: ReportFilters): Promise<{ itemNameRaw: string; returnAmount: number }[]> {
-  const { data } = await api.get(`${BASE}/sales/top-returns`, { params: filters })
+export async function getTopReturns(filters: ReportFilters, topN?: TopNSelection): Promise<{ itemNameRaw: string; returnAmount: number }[]> {
+  const { data } = await api.get(`${BASE}/sales/top-returns`, { params: { ...filters, limit: topN?.limit, direction: topN?.direction } })
   return data.data
 }
 
-export async function getSalesValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
-  const { data } = await api.get(`${BASE}/sales/by-company`, { params: filters })
+export async function getSalesValueByCompany(filters: ReportFilters, topN?: TopNSelection): Promise<{ company: string; total: number }[]> {
+  const { data } = await api.get(`${BASE}/sales/by-company`, { params: { ...filters, limit: topN?.limit, direction: topN?.direction } })
   return data.data
 }
 
-export async function getPurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResponse<PurchaseSummaryRow>> {
-  const { data } = await api.get<PaginatedResponse<PurchaseSummaryRow>>(`${BASE}/purchase`, { params: { ...filters, ...pagination } })
+export async function getPurchaseSummary(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction?: TopNSelection["direction"],
+): Promise<PaginatedResponse<PurchaseSummaryRow>> {
+  const { data } = await api.get<PaginatedResponse<PurchaseSummaryRow>>(`${BASE}/purchase`, { params: { ...filters, ...pagination, direction } })
   return data
 }
 
@@ -99,8 +112,8 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
   return data
 }
 
-export async function getPurchaseValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
-  const { data } = await api.get(`${BASE}/purchase/by-company`, { params: filters })
+export async function getPurchaseValueByCompany(filters: ReportFilters, topN?: TopNSelection): Promise<{ company: string; total: number }[]> {
+  const { data } = await api.get(`${BASE}/purchase/by-company`, { params: { ...filters, limit: topN?.limit, direction: topN?.direction } })
   return data.data
 }
 
@@ -119,8 +132,8 @@ export async function getStockValueByCompany(filters: ReportFilters): Promise<{ 
   return data.data
 }
 
-export async function getTopStockByValue(filters: ReportFilters): Promise<{ itemName: string; total: number }[]> {
-  const { data } = await api.get(`${BASE}/stock/top-by-value`, { params: filters })
+export async function getTopStockByValue(filters: ReportFilters, topN?: TopNSelection): Promise<{ itemName: string; total: number }[]> {
+  const { data } = await api.get(`${BASE}/stock/top-by-value`, { params: { ...filters, limit: topN?.limit, direction: topN?.direction } })
   return data.data
 }
 

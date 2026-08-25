@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -27,7 +27,8 @@ import {
 } from "../../hooks/use-reports"
 import { buildReportUrl } from "../../utils/report-links"
 import { SectionHeading } from "./section-heading"
-import type { ReportFilters } from "../../types"
+import { TopNSelect } from "./top-n-select"
+import { DEFAULT_TOP_N, type ReportFilters } from "../../types"
 
 // Fixed status/severity colors — deliberately hardcoded, not the app theme's
 // --danger/--warning/--success tokens, so risk color-coding on these charts
@@ -87,6 +88,7 @@ function ChartCard({
   detailsHref,
   icon: Icon,
   className,
+  headerExtra,
   children,
 }: {
   title: string
@@ -94,6 +96,8 @@ function ChartCard({
   detailsHref?: string
   icon: React.ComponentType<{ className?: string }>
   className?: string
+  /** e.g. a `TopNSelect` — rendered before the "View details" link, inside the same right-aligned group. */
+  headerExtra?: React.ReactNode
   children: React.ReactNode
 }) {
   const tCommon = useTranslations("Common")
@@ -103,10 +107,15 @@ function ChartCard({
         <Icon className="size-4 text-muted-foreground" />
         <p className="text-sm font-semibold text-foreground">{title}</p>
         {description && <CustomInfoTooltip content={description} />}
-        {detailsHref && (
-          <Link href={detailsHref} className="ml-auto shrink-0 text-xs font-medium text-primary hover:underline">
-            {tCommon("viewDetails")} →
-          </Link>
+        {(headerExtra || detailsHref) && (
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            {headerExtra}
+            {detailsHref && (
+              <Link href={detailsHref} className="text-xs font-medium text-primary hover:underline">
+                {tCommon("viewDetails")} →
+              </Link>
+            )}
+          </div>
         )}
       </div>
       {children}
@@ -120,9 +129,11 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
   const tTabs = useTranslations("Dashboard.tabs")
   const router = useRouter()
 
+  const [topByValueN, setTopByValueN] = useState(DEFAULT_TOP_N)
+
   const { data: stockSummary, isLoading: isSummaryLoading } = useStockSummary(filters)
   const { data: stockByCompanyData, isLoading: isByCompanyLoading } = useStockValueByCompany(filters)
-  const { data: topByValueData, isLoading: isTopByValueLoading } = useTopStockByValue(filters)
+  const { data: topByValueData, isLoading: isTopByValueLoading } = useTopStockByValue(filters, topByValueN)
   const { data: zeroOrder, isLoading: isZeroOrderLoading } = useZeroOrderAlerts(filters)
   const { data: expiry, isLoading: isExpiryLoading } = useExpiryReport({ ...filters, withinDays: 180 })
   const { data: nonMoving, isLoading: isNonMovingLoading } = useNonMovingItems(filters)
@@ -315,6 +326,7 @@ export function StockTab({ filters }: { filters: ReportFilters }) {
         description={t("topByValueDesc")}
         detailsHref={buildReportUrl("/reports/stock", { branchId: filters.branchId })}
         icon={PackageIcon}
+        headerExtra={<TopNSelect value={topByValueN} onChange={setTopByValueN} />}
       >
         {isTopByValueLoading ? (
           <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>

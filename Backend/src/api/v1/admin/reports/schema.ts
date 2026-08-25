@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { FileType } from "../uploads/enums.js"
-import { SalesCollectionMode } from "./enums.js"
+import { SalesCollectionMode, TopNDirection } from "./enums.js"
 
 /**
  * Multi-select filter fields (branchId/company/item/supplier/supplierGroup) arrive as a repeated
@@ -29,7 +29,16 @@ export const cursorPaginationSchema = z.object({
   pageSize: z.coerce.number().int().positive().max(500).default(10),
 })
 
-export const itemWiseSalesQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+// A "Top N" chart widget's own selector — the direction to rank in (`limit` reuses `pageSize`
+// on the already-paginated endpoints, or its own field on the flat top-N-only endpoints below).
+const topNDirectionField = z.enum([TopNDirection.Top, TopNDirection.Bottom]).optional()
+// Same upper bound as `cursorPaginationSchema.pageSize` — the user can type any count they want,
+// this is just a sanity ceiling against an accidental/absurd value.
+const topNLimitField = z.coerce.number().int().min(1).max(500).optional()
+
+export const itemWiseSalesQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({ direction: topNDirectionField })
+/** Every dashboard widget that's just a flat "top/bottom N" list (not otherwise paginated) — Top Returns, Sales-by-Company, Purchase-by-Company, Top Stock by Value, Top GP%. */
+export const topNQuerySchema = reportFiltersSchema.extend({ limit: topNLimitField, direction: topNDirectionField })
 export const salesDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({
   amountFrom: z.coerce.number().optional(),
   amountTo: z.coerce.number().optional(),
@@ -48,14 +57,14 @@ export const stockReportQuerySchema = reportFiltersSchema.merge(cursorPagination
 })
 // Same filter surface as Stock (it's built from the same `stockFilterClauses` helper).
 export const nonMovingDetailQuerySchema = stockReportQuerySchema
-export const purchaseSummaryQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+export const purchaseSummaryQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({ direction: topNDirectionField })
 export const purchaseDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({
   schemeTier: z.enum(["none", "lt5", "5to10", "10to20", "20to30", "30to50", "50to100", "gte100"]).optional(),
   supplierGroup: stringArrayFilter(),
   amountFrom: z.coerce.number().optional(),
   amountTo: z.coerce.number().optional(),
 })
-export const grossProfitQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
+export const grossProfitQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema).extend({ direction: topNDirectionField })
 export const daySalesDetailQuerySchema = reportFiltersSchema.merge(cursorPaginationSchema)
 
 const reportTypeSchema = z.enum([FileType.Stock, FileType.Sales, FileType.Purchase, FileType.DayWiseSale])

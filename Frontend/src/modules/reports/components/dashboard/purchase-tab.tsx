@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { BuildingsIcon, PackageIcon, ShoppingCartIcon } from "@phosphor-icons/react"
@@ -12,7 +12,8 @@ import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { usePurchaseSummary, usePurchaseValueByCompany } from "../../hooks/use-reports"
 import { buildReportUrl } from "../../utils/report-links"
 import { SectionHeading } from "./section-heading"
-import type { ReportFilters } from "../../types"
+import { TopNSelect } from "./top-n-select"
+import { DEFAULT_TOP_N, type ReportFilters } from "../../types"
 
 export function PurchaseTab({ filters }: { filters: ReportFilters }) {
   const t = useTranslations("Dashboard.purchase")
@@ -20,9 +21,13 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
   const tTabs = useTranslations("Dashboard.tabs")
   const router = useRouter()
 
-  // Independent top-10/top-8 lookups, not a paginated listing — this section is chart-only.
-  const { data: topData, isLoading: isTopSuppliersLoading } = usePurchaseSummary(filters, { pageSize: 10 })
-  const { data: byCompany, isLoading: isByCompanyLoading } = usePurchaseValueByCompany(filters)
+  // Free Qty by Supplier reuses the same query as Top Suppliers (same rows, different value
+  // column charted), so they share one selection — Purchase by Company is a separate widget.
+  const [topSuppliersN, setTopSuppliersN] = useState(DEFAULT_TOP_N)
+  const [byCompanyN, setByCompanyN] = useState(DEFAULT_TOP_N)
+
+  const { data: topData, isLoading: isTopSuppliersLoading } = usePurchaseSummary(filters, { pageSize: topSuppliersN.limit }, topSuppliersN.direction)
+  const { data: byCompany, isLoading: isByCompanyLoading } = usePurchaseValueByCompany(filters, byCompanyN)
 
   const topSuppliers = useMemo(() => (topData?.data ?? []).map((row) => ({ name: row.supplierGroup, value: row.totalAmount })), [topData])
   const freeQtyBySupplier = useMemo(() => (topData?.data ?? []).map((row) => ({ name: row.supplierGroup, value: row.totalFreeQty })), [topData])
@@ -37,9 +42,12 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
           <ShoppingCartIcon className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">{t("topSuppliers")}</p>
           <CustomInfoTooltip content={t("topSuppliersDesc")} />
-          <Link href={buildReportUrl("/reports/purchase", filters)} className="ml-auto shrink-0 text-xs font-medium text-primary hover:underline">
-            {tCommon("viewDetails")} →
-          </Link>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <TopNSelect value={topSuppliersN} onChange={setTopSuppliersN} />
+            <Link href={buildReportUrl("/reports/purchase", filters)} className="text-xs font-medium text-primary hover:underline">
+              {tCommon("viewDetails")} →
+            </Link>
+          </div>
         </div>
         {isTopSuppliersLoading ? (
           <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
@@ -75,6 +83,9 @@ export function PurchaseTab({ filters }: { filters: ReportFilters }) {
             <BuildingsIcon className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold text-foreground">{t("purchaseByCompany")}</p>
             <CustomInfoTooltip content={t("purchaseByCompanyDesc")} />
+            <div className="ml-auto shrink-0">
+              <TopNSelect value={byCompanyN} onChange={setByCompanyN} />
+            </div>
           </div>
           <TremorDonutChart
             data={companyItems}

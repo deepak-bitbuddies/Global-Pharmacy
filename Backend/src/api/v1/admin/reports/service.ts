@@ -5,7 +5,7 @@ import { emitExportJobProgress, emitExportJobUpdate } from "../../../../core/rea
 import { readExportFile, saveExportFile } from "../../../../core/storage/export-storage.js"
 import { FileType, type FileTypeValue } from "../uploads/enums.js"
 import { findBranchById } from "../uploads/repository.js"
-import { classifyPartyGroup, SalesCollectionMode } from "./enums.js"
+import { classifyPartyGroup, SalesCollectionMode, TopNDirection, type TopNDirectionValue } from "./enums.js"
 import type { ExportJobDocument } from "./model.js"
 import type {
   BranchSalesRowDto,
@@ -73,8 +73,12 @@ import {
 
 const num = (value: string | number | null): number => Number(value ?? 0)
 
-export async function itemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<ItemWiseSalesRowDto>> {
-  const { rows, ...page } = await getItemWiseSales(filters, pagination)
+export async function itemWiseSales(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction?: TopNDirectionValue,
+): Promise<PaginatedResult<ItemWiseSalesRowDto>> {
+  const { rows, ...page } = await getItemWiseSales(filters, pagination, direction)
   return {
     ...page,
     rows: rows.map((row) => ({
@@ -90,13 +94,13 @@ export async function itemWiseSales(filters: ReportFilters, pagination: CursorPa
   }
 }
 
-export async function topReturnsByItem(filters: ReportFilters): Promise<TopReturnRowDto[]> {
-  const rows = await getTopReturnsByItem(filters)
+export async function topReturnsByItem(filters: ReportFilters, limit?: number, direction?: TopNDirectionValue): Promise<TopReturnRowDto[]> {
+  const rows = await getTopReturnsByItem(filters, limit, direction)
   return rows.map((row) => ({ itemNameRaw: row.itemNameRaw, returnAmount: num(row.returnAmount) }))
 }
 
-export async function salesValueByCompany(filters: ReportFilters): Promise<SalesByCompanyRowDto[]> {
-  return getSalesValueByCompany(filters)
+export async function salesValueByCompany(filters: ReportFilters, limit?: number, direction?: TopNDirectionValue): Promise<SalesByCompanyRowDto[]> {
+  return getSalesValueByCompany(filters, limit, direction)
 }
 
 function toSalesDetailRowDto(row: Awaited<ReturnType<typeof getSalesDetail>>["rows"][number]): SalesDetailRowDto {
@@ -138,27 +142,39 @@ function toGrossProfitRowDto(row: Awaited<ReturnType<typeof getGrossProfitByItem
   return { itemName: row.itemName, salesAmount, salesQty, avgCostPrice, estimatedCost, estimatedGp, estimatedGpPct }
 }
 
-export async function grossProfitByItem(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<GrossProfitRowDto>> {
-  const { rows, ...page } = await getGrossProfitByItem(filters, pagination)
+export async function grossProfitByItem(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction?: TopNDirectionValue,
+): Promise<PaginatedResult<GrossProfitRowDto>> {
+  const { rows, ...page } = await getGrossProfitByItem(filters, pagination, direction)
   return { ...page, rows: rows.map(toGrossProfitRowDto) }
 }
 
 /**
- * Top 8 items by GP %, not GP amount — re-ranks the top 200 items by sales amount (the same
+ * Items ranked by GP %, not GP amount — re-ranks the top 200 items by sales amount (the same
  * data `grossProfitByItem` already fetches a page of) rather than scanning every item's %, so a
  * near-zero-sales item with a distorted percentage can't dominate the list.
  */
-export async function topGrossProfitPercentItems(filters: ReportFilters): Promise<GrossProfitRowDto[]> {
+export async function topGrossProfitPercentItems(
+  filters: ReportFilters,
+  limit: number = 8,
+  direction: TopNDirectionValue = TopNDirection.Top,
+): Promise<GrossProfitRowDto[]> {
   const { rows } = await getGrossProfitByItem(filters, { pageSize: 200 })
-  return rows
+  const ranked = rows
     .map(toGrossProfitRowDto)
     .filter((row) => row.estimatedGpPct !== null)
     .sort((a, b) => (b.estimatedGpPct as number) - (a.estimatedGpPct as number))
-    .slice(0, 8)
+  return (direction === TopNDirection.Top ? ranked : ranked.slice().reverse()).slice(0, limit)
 }
 
-export async function purchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams): Promise<PaginatedResult<PurchaseSummaryRowDto>> {
-  const { rows, ...page } = await getPurchaseSummary(filters, pagination)
+export async function purchaseSummary(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction?: TopNDirectionValue,
+): Promise<PaginatedResult<PurchaseSummaryRowDto>> {
+  const { rows, ...page } = await getPurchaseSummary(filters, pagination, direction)
   return {
     ...page,
     rows: rows.map((row) => ({
@@ -193,8 +209,8 @@ export async function purchaseDetail(filters: ReportFilters, pagination: CursorP
   return { ...page, rows: rows.map(toPurchaseDetailRowDto) }
 }
 
-export async function purchaseValueByCompany(filters: ReportFilters): Promise<PurchaseByCompanyRowDto[]> {
-  return getPurchaseValueByCompany(filters)
+export async function purchaseValueByCompany(filters: ReportFilters, limit?: number, direction?: TopNDirectionValue): Promise<PurchaseByCompanyRowDto[]> {
+  return getPurchaseValueByCompany(filters, limit, direction)
 }
 
 function toStockRowDto(row: Awaited<ReturnType<typeof getStockReport>>["rows"][number]): StockRowDto {
@@ -243,8 +259,8 @@ export async function stockValueByCompany(filters: ReportFilters): Promise<Stock
   return getStockValueByCompany(filters)
 }
 
-export async function topStockItemsByValue(filters: ReportFilters): Promise<TopStockValueRowDto[]> {
-  return getTopStockItemsByValue(filters)
+export async function topStockItemsByValue(filters: ReportFilters, limit?: number, direction?: TopNDirectionValue): Promise<TopStockValueRowDto[]> {
+  return getTopStockItemsByValue(filters, limit, direction)
 }
 
 export async function zeroOrderAlerts(filters: ReportFilters): Promise<ZeroOrderAlertRowDto[]> {

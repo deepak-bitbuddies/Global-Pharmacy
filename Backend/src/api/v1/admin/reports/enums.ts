@@ -1,3 +1,11 @@
+export const TopNDirection = {
+  Top: "top",
+  Bottom: "bottom",
+} as const
+export type TopNDirectionValue = (typeof TopNDirection)[keyof typeof TopNDirection]
+
+export const DEFAULT_TOP_N_LIMIT = 10
+
 export const SalesCollectionMode = {
   Cash: "cash",
   PaytmOnline: "paytm_online",

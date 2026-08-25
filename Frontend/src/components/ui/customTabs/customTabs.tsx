@@ -23,7 +23,12 @@ type CustomTabsProps = {
 export const CustomTabs = ({ items, className, orientation }: CustomTabsProps) => {
   return (
     <SharedElementTransition>
-      <Tabs className={className} orientation={orientation}>
+      {/* `h-full min-h-0` on both the root and every panel — inert (resolves to `auto`) for
+          callers with no height-bearing ancestor, but lets a caller that DOES set one up (e.g. a
+          page wrapping this in `flex h-full min-h-0 flex-col`) have its tab content fill the
+          remaining space, so a `fillHeight` table inside a tab scrolls internally instead of the
+          whole page scrolling past it — same behavior every non-tabbed list page already has. */}
+      <Tabs className={`h-full min-h-0 ${className ?? ""}`} orientation={orientation}>
         <Tabs.ListContainer>
           <Tabs.List>
             {items.map((item) => (
@@ -42,7 +47,7 @@ export const CustomTabs = ({ items, className, orientation }: CustomTabsProps) =
           </Tabs.List>
         </Tabs.ListContainer>
         {items.map((item) => (
-          <Tabs.Panel key={item.key} id={item.key}>
+          <Tabs.Panel key={item.key} id={item.key} className="flex h-full min-h-0 flex-col">
             {item.content}
           </Tabs.Panel>
         ))}

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, notExists, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm"
+import { and, asc, desc, eq, gte, inArray, lte, notExists, notInArray, or, sql, type AnyColumn, type SQL } from "drizzle-orm"
 
 import { db } from "../../../../core/database/db.js"
 import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
@@ -11,7 +11,14 @@ import {
   salesLines,
   stockSnapshots,
 } from "../uploads/model.js"
-import { CASH_PARTY_GROUPS, PAYTM_ONLINE_PARTY_GROUPS, SalesCollectionMode } from "./enums.js"
+import {
+  CASH_PARTY_GROUPS,
+  DEFAULT_TOP_N_LIMIT,
+  PAYTM_ONLINE_PARTY_GROUPS,
+  SalesCollectionMode,
+  TopNDirection,
+  type TopNDirectionValue,
+} from "./enums.js"
 import { exportJobs, type ExportJobDocument } from "./model.js"
 import type { CursorPaginationParams, PaginatedResult, ReportFilters } from "./dto.js"
 
@@ -108,7 +115,11 @@ function expiryTierFilter(filters: ReportFilters): SQL | undefined {
 
 type ItemWiseSalesCursor = { totalAmount: number; itemNameRaw: string }
 
-export async function getItemWiseSales(filters: ReportFilters, pagination: CursorPaginationParams) {
+export async function getItemWiseSales(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction: TopNDirectionValue = TopNDirection.Top,
+) {
   // Sales register rows carry no company field of their own — same as Purchase, only reachable
   // via the (name-matched, best-effort) item link, so it's null wherever that item hasn't also
   // matched a Stock import. Left join so rows without a match still come back, just with
@@ -116,6 +127,7 @@ export async function getItemWiseSales(filters: ReportFilters, pagination: Curso
   // name always resolves to the same item (and therefore the same company).
   // Branch is now also part of the grouping key — without a branch filter, the same item sold
   // from multiple branches now returns one row per branch instead of a cross-branch total.
+  const isTop = direction === TopNDirection.Top
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
@@ -142,10 +154,16 @@ export async function getItemWiseSales(filters: ReportFilters, pagination: Curso
     .as("grouped")
 
   const cursor = decodeCursor<ItemWiseSalesCursor>(pagination.cursor)
-  const dataWhere = cursor ? sql`(${grouped.totalAmount}, ${grouped.itemNameRaw}) < (${cursor.totalAmount}, ${cursor.itemNameRaw})` : undefined
+  const cursorOp = isTop ? sql`<` : sql`>`
+  const dataWhere = cursor ? sql`(${grouped.totalAmount}, ${grouped.itemNameRaw}) ${cursorOp} (${cursor.totalAmount}, ${cursor.itemNameRaw})` : undefined
 
   const [rows, countRows] = await Promise.all([
-    db.select().from(grouped).where(dataWhere).orderBy(desc(grouped.totalAmount), grouped.itemNameRaw).limit(pagination.pageSize + 1),
+    db
+      .select()
+      .from(grouped)
+      .where(dataWhere)
+      .orderBy(isTop ? desc(grouped.totalAmount) : asc(grouped.totalAmount), grouped.itemNameRaw)
+      .limit(pagination.pageSize + 1),
     db.select({ count: sql<string>`count(*)` }).from(grouped),
   ])
 
@@ -154,8 +172,12 @@ export async function getItemWiseSales(filters: ReportFilters, pagination: Curso
   return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) } satisfies PaginatedResult<(typeof rows)[number]>
 }
 
-/** Top 8 items by return amount — same grouping/filters as `getItemWiseSales`, just ranked by `return_amount` instead of `total_amount`, and not paginated (a "top N" chart source, not a listing). */
-export async function getTopReturnsByItem(filters: ReportFilters): Promise<{ itemNameRaw: string; returnAmount: number }[]> {
+/** Items ranked by return amount — same grouping/filters as `getItemWiseSales`, just ranked by `return_amount` instead of `total_amount`, and not paginated (a "top/bottom N" chart source, not a listing). */
+export async function getTopReturnsByItem(
+  filters: ReportFilters,
+  limit: number = DEFAULT_TOP_N_LIMIT,
+  direction: TopNDirectionValue = TopNDirection.Top,
+): Promise<{ itemNameRaw: string; returnAmount: number }[]> {
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
@@ -163,24 +185,29 @@ export async function getTopReturnsByItem(filters: ReportFilters): Promise<{ ite
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
+  const returnAmountExpr = sql`abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0))`
   const rows = await db
     .select({
       itemNameRaw: salesLines.itemNameRaw,
-      returnAmount: sql<string>`coalesce(abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0)), 0)`,
+      returnAmount: sql<string>`coalesce(${returnAmountExpr}, 0)`,
     })
     .from(salesLines)
     .leftJoin(items, eq(items.id, salesLines.itemId))
     .where(filterWhere)
     .groupBy(salesLines.itemNameRaw)
-    .having(sql`abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0)) > 0`)
-    .orderBy(desc(sql`abs(sum(${salesLines.amount}) filter (where ${salesLines.amount} < 0))`))
-    .limit(8)
+    .having(sql`${returnAmountExpr} > 0`)
+    .orderBy(direction === TopNDirection.Top ? desc(returnAmountExpr) : asc(returnAmountExpr))
+    .limit(limit)
 
   return rows.map((row) => ({ itemNameRaw: row.itemNameRaw, returnAmount: Number(row.returnAmount) }))
 }
 
-/** Top 8 companies by sales amount — mirrors `getStockValueByCompany`'s shape, sourced through the same best-effort item→company link `getItemWiseSales` uses. Positive amounts only (matching `getItemWiseSales`'s convention) so returns don't distort it. */
-export async function getSalesValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
+/** Companies ranked by sales amount — mirrors `getStockValueByCompany`'s shape, sourced through the same best-effort item→company link `getItemWiseSales` uses. Positive amounts only (matching `getItemWiseSales`'s convention) so returns don't distort it. */
+export async function getSalesValueByCompany(
+  filters: ReportFilters,
+  limit: number = DEFAULT_TOP_N_LIMIT,
+  direction: TopNDirectionValue = TopNDirection.Top,
+): Promise<{ company: string; total: number }[]> {
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
@@ -188,17 +215,18 @@ export async function getSalesValueByCompany(filters: ReportFilters): Promise<{ 
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
+  const totalExpr = sql`sum(${salesLines.amount}) filter (where ${salesLines.amount} > 0)`
   const rows = await db
     .select({
       company: items.company,
-      total: sql<string>`coalesce(sum(${salesLines.amount}) filter (where ${salesLines.amount} > 0), 0)`,
+      total: sql<string>`coalesce(${totalExpr}, 0)`,
     })
     .from(salesLines)
     .innerJoin(items, eq(items.id, salesLines.itemId))
     .where(and(filterWhere, sql`${items.company} is not null`))
     .groupBy(items.company)
-    .orderBy(desc(sql`sum(${salesLines.amount}) filter (where ${salesLines.amount} > 0)`))
-    .limit(8)
+    .orderBy(direction === TopNDirection.Top ? desc(totalExpr) : asc(totalExpr))
+    .limit(limit)
 
   return rows.filter((row): row is { company: string; total: string } => row.company !== null).map((row) => ({ company: row.company, total: Number(row.total) }))
 }
@@ -242,7 +270,12 @@ export async function getBranchSales(filters: ReportFilters) {
  */
 type GrossProfitCursor = { salesAmount: number; itemName: string }
 
-export async function getGrossProfitByItem(filters: ReportFilters, pagination: CursorPaginationParams) {
+export async function getGrossProfitByItem(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction: TopNDirectionValue = TopNDirection.Top,
+) {
+  const isTop = direction === TopNDirection.Top
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
@@ -273,10 +306,16 @@ export async function getGrossProfitByItem(filters: ReportFilters, pagination: C
     .as("grouped")
 
   const cursor = decodeCursor<GrossProfitCursor>(pagination.cursor)
-  const dataWhere = cursor ? sql`(${grouped.salesAmount}, ${grouped.itemName}) < (${cursor.salesAmount}, ${cursor.itemName})` : undefined
+  const cursorOp = isTop ? sql`<` : sql`>`
+  const dataWhere = cursor ? sql`(${grouped.salesAmount}, ${grouped.itemName}) ${cursorOp} (${cursor.salesAmount}, ${cursor.itemName})` : undefined
 
   const [rows, countRows] = await Promise.all([
-    db.select().from(grouped).where(dataWhere).orderBy(desc(grouped.salesAmount), grouped.itemName).limit(pagination.pageSize + 1),
+    db
+      .select()
+      .from(grouped)
+      .where(dataWhere)
+      .orderBy(isTop ? desc(grouped.salesAmount) : asc(grouped.salesAmount), grouped.itemName)
+      .limit(pagination.pageSize + 1),
     db.select({ count: sql<string>`count(*)` }).from(grouped),
   ])
 
@@ -287,7 +326,12 @@ export async function getGrossProfitByItem(filters: ReportFilters, pagination: C
 
 type PurchaseSummaryCursor = { totalAmount: number; supplierGroup: string }
 
-export async function getPurchaseSummary(filters: ReportFilters, pagination: CursorPaginationParams) {
+export async function getPurchaseSummary(
+  filters: ReportFilters,
+  pagination: CursorPaginationParams,
+  direction: TopNDirectionValue = TopNDirection.Top,
+) {
+  const isTop = direction === TopNDirection.Top
   const filterWhere = and(
     branchFilter(purchaseLines.branchId, filters),
     itemFilter(purchaseLines.itemNameRaw, filters),
@@ -307,10 +351,16 @@ export async function getPurchaseSummary(filters: ReportFilters, pagination: Cur
     .as("grouped")
 
   const cursor = decodeCursor<PurchaseSummaryCursor>(pagination.cursor)
-  const dataWhere = cursor ? sql`(${grouped.totalAmount}, ${grouped.supplierGroup}) < (${cursor.totalAmount}, ${cursor.supplierGroup})` : undefined
+  const cursorOp = isTop ? sql`<` : sql`>`
+  const dataWhere = cursor ? sql`(${grouped.totalAmount}, ${grouped.supplierGroup}) ${cursorOp} (${cursor.totalAmount}, ${cursor.supplierGroup})` : undefined
 
   const [rows, countRows] = await Promise.all([
-    db.select().from(grouped).where(dataWhere).orderBy(desc(grouped.totalAmount), grouped.supplierGroup).limit(pagination.pageSize + 1),
+    db
+      .select()
+      .from(grouped)
+      .where(dataWhere)
+      .orderBy(isTop ? desc(grouped.totalAmount) : asc(grouped.totalAmount), grouped.supplierGroup)
+      .limit(pagination.pageSize + 1),
     db.select({ count: sql<string>`count(*)` }).from(grouped),
   ])
 
@@ -434,7 +484,11 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
 }
 
 /** Top 8 companies by purchase amount — mirrors `getStockValueByCompany`'s shape, sourced through the same best-effort item→company link `getPurchaseDetail` uses. */
-export async function getPurchaseValueByCompany(filters: ReportFilters): Promise<{ company: string; total: number }[]> {
+export async function getPurchaseValueByCompany(
+  filters: ReportFilters,
+  limit: number = DEFAULT_TOP_N_LIMIT,
+  direction: TopNDirectionValue = TopNDirection.Top,
+): Promise<{ company: string; total: number }[]> {
   const filterWhere = and(
     branchFilter(purchaseLines.branchId, filters),
     itemFilter(purchaseLines.itemNameRaw, filters),
@@ -446,14 +500,15 @@ export async function getPurchaseValueByCompany(filters: ReportFilters): Promise
     ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
   )
 
+  const totalExpr = sql`sum(${purchaseLines.amount})`
   const rows = await db
-    .select({ company: items.company, total: sql<string>`coalesce(sum(${purchaseLines.amount}), 0)` })
+    .select({ company: items.company, total: sql<string>`coalesce(${totalExpr}, 0)` })
     .from(purchaseLines)
     .innerJoin(items, eq(items.id, purchaseLines.itemId))
     .where(and(filterWhere, sql`${items.company} is not null`))
     .groupBy(items.company)
-    .orderBy(desc(sql`sum(${purchaseLines.amount})`))
-    .limit(8)
+    .orderBy(direction === TopNDirection.Top ? desc(totalExpr) : asc(totalExpr))
+    .limit(limit)
 
   return rows.filter((row): row is { company: string; total: string } => row.company !== null).map((row) => ({ company: row.company, total: Number(row.total) }))
 }
@@ -807,16 +862,21 @@ export async function getStockValueByCompany(filters: ReportFilters): Promise<{ 
 }
 
 /** Top 10 items by stock value — same filters as every other Stock chart (`stockFilterClauses`), grouped by item name across batches/branches. */
-export async function getTopStockItemsByValue(filters: ReportFilters): Promise<{ itemName: string; total: number }[]> {
+export async function getTopStockItemsByValue(
+  filters: ReportFilters,
+  limit: number = DEFAULT_TOP_N_LIMIT,
+  direction: TopNDirectionValue = TopNDirection.Top,
+): Promise<{ itemName: string; total: number }[]> {
   const where = and(...stockFilterClauses(filters))
 
+  const totalExpr = sql`sum(${stockSnapshots.value})`
   const rows = await db
-    .select({ itemName: stockSnapshots.itemName, total: sql<string>`coalesce(sum(${stockSnapshots.value}), 0)` })
+    .select({ itemName: stockSnapshots.itemName, total: sql<string>`coalesce(${totalExpr}, 0)` })
     .from(stockSnapshots)
     .where(where)
     .groupBy(stockSnapshots.itemName)
-    .orderBy(desc(sql`sum(${stockSnapshots.value})`))
-    .limit(10)
+    .orderBy(direction === TopNDirection.Top ? desc(totalExpr) : asc(totalExpr))
+    .limit(limit)
 
   return rows.map((row) => ({ itemName: row.itemName, total: Number(row.total) }))
 }

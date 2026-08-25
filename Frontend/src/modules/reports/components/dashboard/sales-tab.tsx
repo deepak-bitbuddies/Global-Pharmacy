@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { ArrowsCounterClockwiseIcon, BuildingsIcon, ChartLineUpIcon } from "@phosphor-icons/react"
@@ -12,7 +12,8 @@ import { formatCurrency } from "@/utils/formatting"
 import { useItemWiseSales, useSalesValueByCompany, useTopReturns } from "../../hooks/use-reports"
 import { buildReportUrl } from "../../utils/report-links"
 import { SectionHeading } from "./section-heading"
-import type { ReportFilters } from "../../types"
+import { TopNSelect } from "./top-n-select"
+import { DEFAULT_TOP_N, type ReportFilters } from "../../types"
 
 export function SalesTab({ filters }: { filters: ReportFilters }) {
   const t = useTranslations("Dashboard.sales")
@@ -20,10 +21,15 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
   const tTabs = useTranslations("Dashboard.tabs")
   const router = useRouter()
 
-  // Independent top-10/top-8 lookups, not a paginated listing — this section is chart-only.
-  const { data: topData, isLoading: isTopItemsLoading } = useItemWiseSales(filters, { pageSize: 10 })
-  const { data: topReturns, isLoading: isReturnsLoading } = useTopReturns(filters)
-  const { data: byCompany, isLoading: isByCompanyLoading } = useSalesValueByCompany(filters)
+  // Each widget's "how many, from which end" choice is independent — picking Bottom 20 on
+  // Returns shouldn't change what Top Items by Sales is showing.
+  const [topItemsN, setTopItemsN] = useState(DEFAULT_TOP_N)
+  const [topReturnsN, setTopReturnsN] = useState(DEFAULT_TOP_N)
+  const [byCompanyN, setByCompanyN] = useState(DEFAULT_TOP_N)
+
+  const { data: topData, isLoading: isTopItemsLoading } = useItemWiseSales(filters, { pageSize: topItemsN.limit }, topItemsN.direction)
+  const { data: topReturns, isLoading: isReturnsLoading } = useTopReturns(filters, topReturnsN)
+  const { data: byCompany, isLoading: isByCompanyLoading } = useSalesValueByCompany(filters, byCompanyN)
 
   const topItems = useMemo(() => (topData?.data ?? []).map((row) => ({ name: row.itemNameRaw, value: row.totalAmount })), [topData])
   const returnItems = useMemo(() => (topReturns ?? []).map((row) => ({ name: row.itemNameRaw, value: row.returnAmount })), [topReturns])
@@ -38,9 +44,12 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
           <ChartLineUpIcon className="size-4 text-muted-foreground" />
           <p className="text-sm font-semibold text-foreground">{t("topItemsBySales")}</p>
           <CustomInfoTooltip content={t("topItemsBySalesDesc")} />
-          <Link href={buildReportUrl("/reports/sales", filters)} className="ml-auto shrink-0 text-xs font-medium text-primary hover:underline">
-            {tCommon("viewDetails")} →
-          </Link>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <TopNSelect value={topItemsN} onChange={setTopItemsN} />
+            <Link href={buildReportUrl("/reports/sales", filters)} className="text-xs font-medium text-primary hover:underline">
+              {tCommon("viewDetails")} →
+            </Link>
+          </div>
         </div>
         {isTopItemsLoading ? (
           <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
@@ -59,6 +68,9 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
             <ArrowsCounterClockwiseIcon className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold text-foreground">{t("topReturns")}</p>
             <CustomInfoTooltip content={t("topReturnsDesc")} />
+            <div className="ml-auto shrink-0">
+              <TopNSelect value={topReturnsN} onChange={setTopReturnsN} />
+            </div>
           </div>
           {isReturnsLoading ? (
             <p className="text-xs text-muted-foreground">{tCommon("loading")}</p>
@@ -76,6 +88,9 @@ export function SalesTab({ filters }: { filters: ReportFilters }) {
             <BuildingsIcon className="size-4 text-muted-foreground" />
             <p className="text-sm font-semibold text-foreground">{t("salesByCompany")}</p>
             <CustomInfoTooltip content={t("salesByCompanyDesc")} />
+            <div className="ml-auto shrink-0">
+              <TopNSelect value={byCompanyN} onChange={setByCompanyN} />
+            </div>
           </div>
           <TremorDonutChart
             data={companyItems}
