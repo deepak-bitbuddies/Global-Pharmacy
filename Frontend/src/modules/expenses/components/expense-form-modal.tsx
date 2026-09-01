@@ -133,7 +133,7 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
         await updateExpenseMutation({
           id: editingExpense.id,
           input: {
-            category: values.type === ExpenseType.Expense ? values.category : undefined,
+            category: values.category || undefined,
             recipient: HANDOVER_TYPES.has(values.type) ? values.recipient : undefined,
             amount: Number(values.amount),
             expenseDate: values.expenseDate,
@@ -148,11 +148,19 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
           values.type === ExpenseType.Expense
             ? await createExpense({ type: ExpenseType.Expense, branchId: values.branchId, category: values.category!, amount: Number(values.amount), expenseDate: values.expenseDate, description: values.description || undefined })
             : values.type === ExpenseType.Credit
-              ? await createExpense({ type: ExpenseType.Credit, branchId: values.branchId, amount: Number(values.amount), expenseDate: values.expenseDate, description: values.description || undefined })
+              ? await createExpense({
+                  type: ExpenseType.Credit,
+                  branchId: values.branchId,
+                  category: values.category || undefined,
+                  amount: Number(values.amount),
+                  expenseDate: values.expenseDate,
+                  description: values.description || undefined,
+                })
               : await createExpense({
                   type: values.type,
                   branchId: values.branchId,
                   recipient: values.recipient!,
+                  category: values.category || undefined,
                   amount: Number(values.amount),
                   expenseDate: values.expenseDate,
                   description: values.description || undefined,
@@ -186,6 +194,7 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
       onNegativePress={() => setIsOpen(false)}
       loading={isCreating || isUpdating || isUploadingProof}
       size="lg"
+      dialogClassName="sm:max-w-2xl"
     >
       <div className="space-y-4">
         {isSuperAdmin &&
@@ -238,9 +247,16 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
           />
         )}
 
-        {type === ExpenseType.Expense && (
-          <div className="space-y-2">
-            <FormInput control={control} name="category" label={t("category")} placeholder={t("categoryPlaceholder")} fullWidth />
+        <div className="space-y-2">
+          <FormInput
+            control={control}
+            name="category"
+            label={t("category")}
+            placeholder={t("categoryPlaceholder")}
+            fullWidth
+            isRequired={type === ExpenseType.Expense}
+          />
+          {type === ExpenseType.Expense && (
             <div className="flex flex-wrap gap-1.5">
               {EXPENSE_CATEGORY_PRESETS.map((preset) => (
                 <CustomButton
@@ -254,8 +270,8 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
                 </CustomButton>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {isHandover && <FormInput control={control} name="recipient" label={t("recipient")} placeholder={t("recipientPlaceholder")} fullWidth />}
 

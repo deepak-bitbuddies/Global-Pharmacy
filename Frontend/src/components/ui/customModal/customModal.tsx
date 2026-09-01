@@ -66,6 +66,8 @@ type CustomModalProps = {
   className?: string;
   /** size of modal */
   size?: "xs" | "sm" | "md" | "lg" | "cover" | "full";
+  /** Extra classes applied to the dialog itself (e.g. a wider `max-w-*` than the largest fixed `size` preset offers) — merged alongside, not instead of, `size`. */
+  dialogClassName?: string;
 };
 
 /**
@@ -138,7 +140,7 @@ export const CustomModal = ({
           scroll={props.scrollBehavior}
           className={`rounded-app`}
         >
-          <Modal.Dialog aria-label={props.title ? undefined : "Dialog"}>
+          <Modal.Dialog aria-label={props.title ? undefined : "Dialog"} className={props.dialogClassName}>
             <Modal.CloseTrigger />
             {props.title && (
               <Modal.Header className="px-1">

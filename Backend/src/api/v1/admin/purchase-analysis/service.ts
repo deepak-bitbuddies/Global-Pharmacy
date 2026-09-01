@@ -29,7 +29,24 @@ import type {
 
 const num = (value: string | number | null): number | null => (value === null ? null : Number(value))
 
+/**
+ * `scheme`/`discount` are stored as the rupee amount knocked off the line (Marg's export gives no
+ * separate %), but party-wise analysis wants the rate, not just the rupee figure — so it's derived
+ * here as discount-or-scheme over the pre-discount gross (`amount` is already net of both), same
+ * denominator for each so they're directly comparable. Rounded to 2dp for display; null once there's
+ * nothing to divide by (no gross) or nothing to express as a rate (the source value is null).
+ */
+function toPct(value: number | null, grossAmount: number): number | null {
+  if (value === null || grossAmount <= 0) return null
+  return Math.round((value / grossAmount) * 10000) / 100
+}
+
 function toRowDto(row: Awaited<ReturnType<typeof getPurchaseAnalysisLines>>["rows"][number]): PurchaseAnalysisRowDto {
+  const scheme = num(row.scheme)
+  const discount = num(row.discount)
+  const amount = Number(row.amount)
+  const grossAmount = amount + (scheme ?? 0) + (discount ?? 0)
+
   return {
     id: row.id,
     partyName: row.partyName,
@@ -44,9 +61,11 @@ function toRowDto(row: Awaited<ReturnType<typeof getPurchaseAnalysisLines>>["row
     qty: num(row.qty),
     freeQty: num(row.freeQty),
     rate: num(row.rate),
-    scheme: num(row.scheme),
-    discount: num(row.discount),
-    amount: Number(row.amount),
+    scheme,
+    schemePct: toPct(scheme, grossAmount),
+    discount,
+    discountPct: toPct(discount, grossAmount),
+    amount,
     gstPct: num(row.gstPct),
     taxAmount: num(row.taxAmount),
     mrp: num(row.mrp),

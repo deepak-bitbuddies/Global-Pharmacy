@@ -33,7 +33,9 @@ export type PurchaseAnalysisRowDto = {
   freeQty: number | null
   rate: number | null
   scheme: number | null
+  schemePct: number | null
   discount: number | null
+  discountPct: number | null
   amount: number
   gstPct: number | null
   taxAmount: number | null

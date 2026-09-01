@@ -1,5 +1,5 @@
 import { extractLetterhead, parseMargDateFullYear, parseMargNumber, type BranchHeader, type SheetRow } from "./parse-utils.js"
-import { extractPartyGroupedRows, letterheadNameLine, parseQtyAndUnit } from "./party-grouped.js"
+import { extractPartyGroupedRows, letterheadNameLine, parseQtyAndUnit, reconcileQty } from "./party-grouped.js"
 
 export type ParsedSalesRow = {
   partyGroup: string
@@ -36,15 +36,16 @@ export function parseSalesFile(rows: SheetRow[]): ParsedSalesFile {
     const amount = parseMargNumber(cells[3] ?? "")
     if (!itemNameRaw || amount === null) continue // not a real item line
 
-    const { qty, unit } = parseQtyAndUnit(cells[1] ?? "")
+    const rate = parseMargNumber(cells[2] ?? "")
+    const parsedQty = parseQtyAndUnit(cells[1] ?? "")
 
     parsedRows.push({
       partyGroup: group,
       itemNameRaw,
       packSizeRaw: splitPackSize(itemNameRaw),
-      qty,
-      unit,
-      rate: parseMargNumber(cells[2] ?? ""),
+      qty: reconcileQty(parsedQty, amount, rate),
+      unit: parsedQty.unit,
+      rate,
       amount,
       pctContribution: parseMargNumber(cells[4] ?? ""),
     })

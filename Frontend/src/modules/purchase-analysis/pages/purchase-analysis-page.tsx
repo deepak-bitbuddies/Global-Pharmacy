@@ -75,6 +75,9 @@ function PurchaseAnalysisDataTab({ filters, onFiltersChange }: { filters: Purcha
           { key: "rate", label: t("rate") },
           { key: "discount", label: t("discount") },
           { key: "amount", label: tCommon("amount"), sortable: true },
+          { key: "discountPct", label: t("discountPct") },
+          { key: "scheme", label: t("scheme") },
+          { key: "schemePct", label: t("schemePct") },
           { key: "gstPct", label: t("gstPct") },
           { key: "taxAmount", label: t("taxAmount") },
           { key: "companyName", label: tCommon("company") },
@@ -98,12 +101,15 @@ function PurchaseAnalysisDataTab({ filters, onFiltersChange }: { filters: Purcha
           onPrevious: pagination.goPrevious,
         }}
         renderCustomCell={(row, key) => {
-          if (key === "amount" || key === "rate" || key === "discount" || key === "taxAmount") {
+          if (key === "amount" || key === "rate" || key === "discount" || key === "scheme" || key === "taxAmount") {
             const value = row[key]
             return value === null ? "-" : formatCurrency(value)
           }
           if (key === "qty" || key === "freeQty") return row[key] === null ? "-" : formatNumber(row[key] as number)
-          if (key === "gstPct") return row.gstPct === null ? "-" : `${row.gstPct}%`
+          if (key === "gstPct" || key === "discountPct" || key === "schemePct") {
+            const value = row[key]
+            return value === null ? "-" : `${value}%`
+          }
           return row[key as keyof PurchaseAnalysisRow] ?? "-"
         }}
       />

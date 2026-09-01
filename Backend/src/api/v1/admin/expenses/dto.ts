@@ -27,8 +27,8 @@ type CreateExpenseBase = {
 
 export type CreateExpenseDto =
   | (CreateExpenseBase & { type: typeof ExpenseType.Expense; category: string })
-  | (CreateExpenseBase & { type: typeof ExpenseType.Credit })
-  | (CreateExpenseBase & { type: typeof ExpenseType.HandoverCash | typeof ExpenseType.HandoverBank; recipient: string })
+  | (CreateExpenseBase & { type: typeof ExpenseType.Credit; category?: string })
+  | (CreateExpenseBase & { type: typeof ExpenseType.HandoverCash | typeof ExpenseType.HandoverBank; recipient: string; category?: string })
 
 // type/branch aren't editable after creation — switching type would orphan proof/approval state,
 // same precedent as branch not being editable. Flat rather than mirroring the create union: the

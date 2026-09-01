@@ -89,7 +89,7 @@ export async function createExpense(input: CreateExpenseDto): Promise<ExpenseDto
   const created = await createExpenseRow({
     branchId: input.branchId,
     type: input.type,
-    category: input.type === ExpenseType.Expense ? input.category : undefined,
+    category: input.category,
     recipient: input.type === ExpenseType.HandoverCash || input.type === ExpenseType.HandoverBank ? input.recipient : undefined,
     amount: input.amount,
     description: input.description,

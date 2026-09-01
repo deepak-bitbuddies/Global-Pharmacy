@@ -68,17 +68,40 @@ function isPaginationNoise(first: string, branchNameLine: string): boolean {
  * PCS") — the negative-number alternative must come before the bare "-"
  * placeholder alternative, or "-37" greedily matches as just "-" leaving
  * "37" stuck in the unit text.
+ *
+ * The strip:loose form's loose count (e.g. the "3" in "0:3", 3 loose tablets
+ * out of a part-sold strip) is deliberately NOT folded into `qty` here — this
+ * export gives no reliable per-item strip size to convert it with. `qty` is
+ * just the strip count; `hasLooseRemainder` flags that a nonzero loose count
+ * was dropped, so a caller that also has `amount`/`rate` in scope can
+ * reconstruct the true fractional qty via `reconcileQty` below instead of
+ * silently truncating a part-strip sale/purchase to 0.
  */
-export function parseQtyAndUnit(raw: string): { qty: number | null; unit: string | null } {
+export function parseQtyAndUnit(raw: string): { qty: number | null; unit: string | null; hasLooseRemainder: boolean } {
   const trimmed = raw.trim()
   const match = /^(-\d+(?:\.\d+)?(?::\d+(?:\.\d+)?)?|-|\d+(?:\.\d+)?(?::\d+(?:\.\d+)?)?)\s*(.*)$/.exec(trimmed)
-  if (!match) return { qty: null, unit: trimmed || null }
+  if (!match) return { qty: null, unit: trimmed || null, hasLooseRemainder: false }
 
   const [, qtyToken, unit] = match
-  if (qtyToken === "-") return { qty: null, unit: unit || null }
+  if (qtyToken === "-") return { qty: null, unit: unit || null, hasLooseRemainder: false }
 
-  const qty = Number(qtyToken.split(":")[0])
-  return { qty: Number.isFinite(qty) ? qty : null, unit: unit || null }
+  const [stripPart, loosePart] = qtyToken.split(":")
+  const qty = Number(stripPart)
+  const hasLooseRemainder = loosePart !== undefined && Number(loosePart) !== 0
+  return { qty: Number.isFinite(qty) ? qty : null, unit: unit || null, hasLooseRemainder }
+}
+
+/**
+ * Reconstructs the true qty when `parseQtyAndUnit`/a strip:loose split dropped a nonzero loose
+ * remainder — `amount / rate` reconciles to the same fraction as loose-units/strip-size in every
+ * sampled case (verified against real imports: e.g. a "0:3"-out-of-a-10-pack line and its
+ * `amount / rate` both land on 0.30), without needing this export's unreliable pack-size text.
+ * Falls back to the strip-only qty when there's nothing to reconcile against (`rate` null/0) or
+ * nothing to fix (no loose remainder was dropped).
+ */
+export function reconcileQty(parsed: { qty: number | null; hasLooseRemainder: boolean }, amount: number, rate: number | null): number | null {
+  if (!parsed.hasLooseRemainder || !rate) return parsed.qty
+  return Math.round((amount / rate) * 100) / 100
 }
 
 export function letterheadNameLine(branch: BranchHeader): string {

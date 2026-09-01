@@ -59,8 +59,8 @@ type CreateExpenseBase = {
 
 export type CreateExpenseInput =
   | (CreateExpenseBase & { type: ExpenseType.Expense; category: string })
-  | (CreateExpenseBase & { type: ExpenseType.Credit })
-  | (CreateExpenseBase & { type: ExpenseType.HandoverCash | ExpenseType.HandoverBank; recipient: string })
+  | (CreateExpenseBase & { type: ExpenseType.Credit; category?: string })
+  | (CreateExpenseBase & { type: ExpenseType.HandoverCash | ExpenseType.HandoverBank; recipient: string; category?: string })
 
 export type UpdateExpenseInput = {
   category?: string

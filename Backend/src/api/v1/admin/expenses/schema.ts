@@ -28,9 +28,9 @@ const createExpenseBaseSchema = z.object({
 
 export const createExpenseSchema = z.discriminatedUnion("type", [
   createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.Expense), category: z.string().min(1, "Category is required") }),
-  createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.Credit) }),
-  createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.HandoverCash), recipient: z.string().min(1, "Recipient is required") }),
-  createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.HandoverBank), recipient: z.string().min(1, "Recipient is required") }),
+  createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.Credit), category: z.string().optional() }),
+  createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.HandoverCash), recipient: z.string().min(1, "Recipient is required"), category: z.string().optional() }),
+  createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.HandoverBank), recipient: z.string().min(1, "Recipient is required"), category: z.string().optional() }),
 ])
 
 // Flat and fully optional — type isn't editable after creation, so there's no discriminant to

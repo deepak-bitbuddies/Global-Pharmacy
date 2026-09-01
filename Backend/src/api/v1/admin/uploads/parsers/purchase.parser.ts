@@ -1,5 +1,5 @@
 import { extractLetterhead, parseMargDateFullYear, parseMargNumber, type BranchHeader, type SheetRow } from "./parse-utils.js"
-import { extractPartyGroupedRows, letterheadNameLine, parseQtyAndUnit } from "./party-grouped.js"
+import { extractPartyGroupedRows, letterheadNameLine, parseQtyAndUnit, reconcileQty } from "./party-grouped.js"
 
 export type ParsedPurchaseRow = {
   supplierGroup: string
@@ -37,7 +37,12 @@ export function parsePurchaseFile(rows: SheetRow[]): ParsedPurchaseFile {
     const rawNameAndQty = (cells[0] ?? "").trim()
     if (!rawNameAndQty || amount === null) continue
 
-    const { namePack, qty } = splitTrailingQty(rawNameAndQty)
+    const rate = parseMargNumber(cells[2] ?? "")
+    const { namePack, qty: parsedQty } = splitTrailingQty(rawNameAndQty)
+    const qty = reconcileQty(parsedQty, amount, rate)
+    // Free qty has no `amount`/`rate` of its own to reconcile a dropped loose remainder against
+    // (it's the bonus units, never separately billed) — best-effort strip count only, same
+    // limitation `parseQtyAndUnit` has always had here.
     const { qty: freeQty } = parseQtyAndUnit(cells[1] ?? "")
 
     parsedRows.push({
@@ -46,7 +51,7 @@ export function parsePurchaseFile(rows: SheetRow[]): ParsedPurchaseFile {
       packSizeRaw: splitPackSize(namePack),
       qty,
       freeQty,
-      rate: parseMargNumber(cells[2] ?? ""),
+      rate,
       amount,
       pctContribution: parseMargNumber(cells[4] ?? ""),
       schemePct: calculateSchemePct(qty, freeQty),
@@ -67,13 +72,15 @@ export function parsePurchaseFile(rows: SheetRow[]): ParsedPurchaseFile {
  * " TROCAR CATH 08    1PCS                -2" → qty -2, or the "12:0"
  * strip:loose format like "AUGMENTIN 625 TAB  1*10              12:0").
  */
-function splitTrailingQty(raw: string): { namePack: string; qty: number | null } {
+function splitTrailingQty(raw: string): { namePack: string; qty: { qty: number | null; hasLooseRemainder: boolean } } {
   const match = /^(.*?)\s+(-?\d+(?:\.\d+)?(?::\d+(?:\.\d+)?)?)$/.exec(raw)
-  if (!match) return { namePack: raw, qty: null }
+  if (!match) return { namePack: raw, qty: { qty: null, hasLooseRemainder: false } }
 
   const [, namePack, qtyToken] = match
-  const qty = Number(qtyToken.split(":")[0])
-  return { namePack: namePack.trim(), qty: Number.isFinite(qty) ? qty : null }
+  const [stripPart, loosePart] = qtyToken.split(":")
+  const qty = Number(stripPart)
+  const hasLooseRemainder = loosePart !== undefined && Number(loosePart) !== 0
+  return { namePack: namePack.trim(), qty: { qty: Number.isFinite(qty) ? qty : null, hasLooseRemainder } }
 }
 
 function splitPackSize(raw: string): string | null {
