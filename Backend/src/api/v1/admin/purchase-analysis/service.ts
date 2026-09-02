@@ -1,10 +1,15 @@
-import { emitPurchaseAnalysisBatchProgress, emitPurchaseAnalysisBatchUpdate } from "../../../../core/realtime/socket.js"
-import { ValidationError } from "../../../../shared/errors/index.js"
+import { emitExportJobProgress, emitExportJobUpdate, emitPurchaseAnalysisBatchProgress, emitPurchaseAnalysisBatchUpdate } from "../../../../core/realtime/socket.js"
+import { ValidationError, NotFoundError } from "../../../../shared/errors/index.js"
+import { buildStyledXlsxBuffer } from "../../../../shared/helpers/xlsx-export.js"
+import { createExportJob, findExportJob, listExportJobs, updateExportJobStatus } from "../reports/repository.js"
+import type { ExportJobDocument } from "../reports/model.js"
+import { readExportFile, saveExportFile } from "../../../../core/storage/export-storage.js"
 import { readWorkbookRows } from "../uploads/parsers/parse-utils.js"
 import { parsePurchaseAnalysisFile } from "./parser.js"
 import {
   createImportBatch,
   deleteImportBatch,
+  exportPurchaseAnalysisLines,
   getPurchaseAnalysisLines,
   getPurchaseAnalysisSummary,
   insertPurchaseAnalysisLines,
@@ -20,12 +25,16 @@ import {
 import type {
   CursorPaginationParams,
   PaginatedResult,
+  PurchaseAnalysisExportJobDto,
   PurchaseAnalysisFilters,
   PurchaseAnalysisImportBatchDto,
   PurchaseAnalysisRowDto,
   PurchaseAnalysisSummaryDto,
   PurchaseAnalysisUploadAckDto,
 } from "./dto.js"
+
+// This module is only ever the one "report" — unlike Reports' four, no per-request discriminant needed.
+const PURCHASE_ANALYSIS_REPORT_TYPE = "purchase_analysis"
 
 const num = (value: string | number | null): number | null => (value === null ? null : Number(value))
 
@@ -163,4 +172,125 @@ export async function purchaseAnalysisImportBatches(): Promise<PurchaseAnalysisI
 
 export async function deletePurchaseAnalysisBatch(id: string): Promise<void> {
   await deleteImportBatch(id)
+}
+
+// ---- Background export — same "ack now, live status/progress over the socket" shape as the
+// import above, and reuses Reports' `export_jobs` table/CRUD (see reports/model.ts) rather than
+// standing up a second copy of this job lifecycle for one more report type.
+
+const EXPORT_CHUNK_SIZE = 2000
+
+const EXPORT_COLUMNS: { key: string; label: string }[] = [
+  { key: "billDate", label: "Date" },
+  { key: "partyName", label: "Party" },
+  { key: "itemName", label: "Item" },
+  { key: "billNo", label: "Bill No." },
+  { key: "batch", label: "Batch" },
+  { key: "qty", label: "Qty" },
+  { key: "freeQty", label: "Free Qty" },
+  { key: "rate", label: "Rate" },
+  { key: "discount", label: "Discount" },
+  { key: "amount", label: "Amount" },
+  { key: "discountPct", label: "Discount %" },
+  { key: "scheme", label: "Scheme" },
+  { key: "schemePct", label: "Scheme %" },
+  { key: "gstPct", label: "GST %" },
+  { key: "taxAmount", label: "Tax Amount" },
+  { key: "companyName", label: "Company" },
+  { key: "areaName", label: "Area" },
+  { key: "routeName", label: "Route" },
+  { key: "type", label: "Type" },
+]
+
+function rangeLabel(from: number | undefined, to: number | undefined): string {
+  if (from !== undefined && to !== undefined) return `${from} – ${to}`
+  if (from !== undefined) return `≥ ${from}`
+  return `≤ ${to}`
+}
+
+/** Human-readable one-line summary of which filters produced an export — same purpose as Reports' `describeFilters`, just this module's own (smaller, branch-less) filter shape. */
+function describeFilters(filters: PurchaseAnalysisFilters): string {
+  const parts: string[] = []
+  if (filters.dateFrom && filters.dateTo) parts.push(`${filters.dateFrom} – ${filters.dateTo}`)
+  if (filters.partyName?.length) parts.push(filters.partyName.join(", "))
+  if (filters.itemName?.length) parts.push(filters.itemName.map((name) => `"${name}"`).join(", "))
+  if (filters.company?.length) parts.push(filters.company.join(", "))
+  if (filters.type?.length) parts.push(filters.type.join(", "))
+  if (filters.area?.length) parts.push(filters.area.join(", "))
+  if (filters.route?.length) parts.push(filters.route.join(", "))
+  if (filters.search) parts.push(`Search "${filters.search}"`)
+  if (filters.amountFrom !== undefined || filters.amountTo !== undefined) parts.push(`Amount ${rangeLabel(filters.amountFrom, filters.amountTo)}`)
+  if (filters.qtyFrom !== undefined || filters.qtyTo !== undefined) parts.push(`Qty ${rangeLabel(filters.qtyFrom, filters.qtyTo)}`)
+  return parts.length > 0 ? parts.join(" | ") : "All records — no filters applied"
+}
+
+function toExportJobDto(job: ExportJobDocument): PurchaseAnalysisExportJobDto {
+  return {
+    id: job.id,
+    reportType: job.reportType,
+    branchId: job.branchId,
+    // This module's own listing/lookup calls are always scoped to `PURCHASE_ANALYSIS_REPORT_TYPE`,
+    // so a job reaching here is always genuinely `PurchaseAnalysisFilters`-shaped.
+    filters: job.filters as PurchaseAnalysisFilters,
+    status: job.status,
+    rowCount: job.rowCount,
+    fileName: job.fileName,
+    errorMessage: job.errorMessage,
+    requestedAt: job.requestedAt,
+    completedAt: job.completedAt,
+  }
+}
+
+/** Maps in chunks purely to emit progress ticks (`export-job:progress`) on the way — same reason `reports/service.ts`'s `mapWithProgress` does. */
+function mapWithProgress(rows: Awaited<ReturnType<typeof exportPurchaseAnalysisLines>>, job: PurchaseAnalysisExportJobDto): Record<string, unknown>[] {
+  const mapped: Record<string, unknown>[] = []
+  const total = rows.length
+  for (let i = 0; i < total; i += EXPORT_CHUNK_SIZE) {
+    for (const row of rows.slice(i, i + EXPORT_CHUNK_SIZE)) mapped.push(toRowDto(row))
+    emitExportJobProgress({ id: job.id, reportType: job.reportType, branchId: job.branchId, rowsProcessed: mapped.length, totalRows: total })
+  }
+  if (total === 0) emitExportJobProgress({ id: job.id, reportType: job.reportType, branchId: job.branchId, rowsProcessed: 0, totalRows: 0 })
+  return mapped
+}
+
+async function runExportPipeline(job: PurchaseAnalysisExportJobDto, filters: PurchaseAnalysisFilters): Promise<void> {
+  try {
+    const rows = await exportPurchaseAnalysisLines(filters)
+    const mappedRows = mapWithProgress(rows, job)
+
+    const filterSummary = describeFilters(filters)
+    const buffer = await buildStyledXlsxBuffer("Party Wise Analysis", filterSummary, EXPORT_COLUMNS, mappedRows)
+    const fileName = `party-wise-analysis-${new Date().toISOString().slice(0, 10)}.xlsx`
+    const { storageKey } = await saveExportFile(job.id, buffer)
+
+    await updateExportJobStatus(job.id, { status: "completed", rowCount: mappedRows.length, fileName, storageKey })
+    emitExportJobUpdate({ id: job.id, reportType: job.reportType, branchId: job.branchId, status: "completed", rowCount: mappedRows.length })
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error while generating this export"
+    await updateExportJobStatus(job.id, { status: "failed", errorMessage })
+    emitExportJobUpdate({ id: job.id, reportType: job.reportType, branchId: job.branchId, status: "failed", errorMessage })
+  }
+}
+
+export async function createPurchaseAnalysisExport(filters: PurchaseAnalysisFilters): Promise<PurchaseAnalysisExportJobDto> {
+  const job = toExportJobDto(await createExportJob({ reportType: PURCHASE_ANALYSIS_REPORT_TYPE, branchId: null, filters }))
+  emitExportJobUpdate({ id: job.id, reportType: job.reportType, branchId: job.branchId, status: "processing" })
+
+  // Not awaited — same fire-and-forget shape as `importPurchaseAnalysisFile` above.
+  void runExportPipeline(job, filters)
+
+  return job
+}
+
+export async function listPurchaseAnalysisExports(): Promise<PurchaseAnalysisExportJobDto[]> {
+  const jobs = await listExportJobs(undefined, PURCHASE_ANALYSIS_REPORT_TYPE)
+  return jobs.map(toExportJobDto)
+}
+
+export async function getPurchaseAnalysisExportFileForDownload(id: string): Promise<{ buffer: Buffer; fileName: string }> {
+  const job = await findExportJob(id)
+  if (!job || job.status !== "completed" || !job.storageKey || !job.fileName) {
+    throw new NotFoundError("Export not found, or it isn't ready to download yet")
+  }
+  return { buffer: await readExportFile(job.storageKey), fileName: job.fileName }
 }

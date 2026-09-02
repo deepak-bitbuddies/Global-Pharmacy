@@ -18,6 +18,7 @@ export const reportFiltersSchema = z.object({
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   company: stringArrayFilter(),
   item: stringArrayFilter(),
+  search: z.string().optional(),
 })
 
 export const expiryQuerySchema = reportFiltersSchema.extend({

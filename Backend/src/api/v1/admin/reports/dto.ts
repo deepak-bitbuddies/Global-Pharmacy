@@ -30,6 +30,9 @@ export type ReportFilters = {
   amountTo?: number
   // Sales-only filter — buckets salesLines.partyGroup via `classifyPartyGroup` (see enums.ts).
   collectionMode?: SalesCollectionModeValue[]
+  // Free-text "search anything" box — matches across every column of whichever detail table the
+  // current report page is backed by (see `anyColumnSearch` usages in repository.ts).
+  search?: string
 }
 
 export type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"

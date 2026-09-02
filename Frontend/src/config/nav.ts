@@ -46,8 +46,8 @@ export const navGroups: NavGroup[] = [
       { labelKey: "purchaseReport", href: "/reports/purchase", icon: ShoppingCartIcon },
       { labelKey: "stockReport", href: "/reports/stock", icon: PackageIcon },
       { labelKey: "dayWiseSales", href: "/reports/day-wise-sales", icon: CalendarCheckIcon },
-      { labelKey: "grossProfitReport", href: "/reports/gross-profit", icon: ScalesIcon },
-      { labelKey: "nonMovingReport", href: "/reports/non-moving", icon: ArrowsCounterClockwiseIcon },
+      // { labelKey: "grossProfitReport", href: "/reports/gross-profit", icon: ScalesIcon },
+      // { labelKey: "nonMovingReport", href: "/reports/non-moving", icon: ArrowsCounterClockwiseIcon },
     ],
   },
   {

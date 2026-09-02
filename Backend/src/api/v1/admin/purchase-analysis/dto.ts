@@ -9,8 +9,8 @@ export type PurchaseAnalysisFilters = {
   type?: string[]
   area?: string[]
   route?: string[]
-  // Free-text — matches bill no. or item name (a quick "find this bill/item" box, distinct from
-  // the exact-match multi-selects above).
+  // Free-text "search anything" box — matches across every column (see `anyColumnSearch` usage in
+  // repository.ts), distinct from the exact-match multi-selects above.
   search?: string
   amountFrom?: number
   amountTo?: number
@@ -71,4 +71,18 @@ export type PurchaseAnalysisImportBatchDto = {
 export type PurchaseAnalysisUploadAckDto = {
   batchId: string
   fileName: string
+}
+
+/** A background export job for this module — same shape as Reports' `ExportJobDto`, since both reuse the one `export_jobs` table/CRUD (see `reports/model.ts`). Never branch-scoped: `branchId` is always null here. */
+export type PurchaseAnalysisExportJobDto = {
+  id: string
+  reportType: string
+  branchId: string | null
+  filters: PurchaseAnalysisFilters
+  status: string
+  rowCount: number
+  fileName: string | null
+  errorMessage: string | null
+  requestedAt: Date
+  completedAt: Date | null
 }

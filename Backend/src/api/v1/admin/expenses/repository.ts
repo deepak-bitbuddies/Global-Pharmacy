@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, gte, ilike, inArray, lte, ne, or, sql, type SQL } from "drizzle-orm"
+import { and, asc, desc, eq, gte, inArray, lte, ne, sql, type SQL } from "drizzle-orm"
 
 import { db } from "../../../../core/database/db.js"
+import { anyColumnSearch } from "../../../../shared/helpers/search-clause.js"
 import { branches } from "../uploads/model.js"
 import { expenses } from "./model.js"
 import { ExpenseStatus, ExpenseType } from "./enums.js"
@@ -12,10 +13,11 @@ function expenseFilterClauses(filters: ExpenseFilters): SQL[] {
   if (filters.branchId?.length) clauses.push(inArray(expenses.branchId, filters.branchId))
   if (filters.type?.length) clauses.push(inArray(expenses.type, filters.type))
   if (filters.status) clauses.push(eq(expenses.status, filters.status))
-  if (filters.search) {
-    const pattern = `%${filters.search}%`
-    clauses.push(or(ilike(expenses.category, pattern), ilike(expenses.recipient, pattern), ilike(expenses.description, pattern)) as SQL)
-  }
+  const searchClause = anyColumnSearch(
+    [expenses.category, expenses.recipient, expenses.description, expenses.amount, expenses.expenseDate, expenses.proofDocumentName, expenses.rejectionReason],
+    filters.search,
+  )
+  if (searchClause) clauses.push(searchClause)
   if (filters.dateFrom) clauses.push(gte(expenses.expenseDate, filters.dateFrom))
   if (filters.dateTo) clauses.push(lte(expenses.expenseDate, filters.dateTo))
   return clauses

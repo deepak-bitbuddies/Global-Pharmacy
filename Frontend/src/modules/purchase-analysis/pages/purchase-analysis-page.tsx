@@ -4,11 +4,12 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { CurrencyInrIcon, FileTextIcon, UsersIcon } from "@phosphor-icons/react"
 
-import { CustomPageHeader, CustomTable, CustomTabs } from "@/components/ui"
+import { CustomColumnsToggle, CustomPageHeader, CustomTable, CustomTabs, type TableHeaderColumn } from "@/components/ui"
 import { TremorStatCard, TremorTone } from "@/components/ui/tremor"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { PurchaseAnalysisBatchHistory } from "../components/purchase-analysis-batch-history"
+import { PurchaseAnalysisExportButton } from "../components/purchase-analysis-export-button"
 import { PurchaseAnalysisFilterPanel } from "../components/purchase-analysis-filters"
 import { PurchaseAnalysisUpload } from "../components/purchase-analysis-upload"
 import { usePurchaseAnalysisLines, usePurchaseAnalysisSummary } from "../hooks/use-purchase-analysis"
@@ -25,6 +26,29 @@ function PurchaseAnalysisDataTab({ filters, onFiltersChange }: { filters: Purcha
     onFiltersChange(updater)
     pagination.reset()
   }
+
+  const allColumns: TableHeaderColumn<PurchaseAnalysisRow>[] = [
+    { key: "billDate", label: tCommon("date"), sortable: true },
+    { key: "partyName", label: t("party"), sortable: true },
+    { key: "itemName", label: tCommon("item"), sortable: true },
+    { key: "billNo", label: t("billNo") },
+    { key: "batch", label: t("batchNo") },
+    { key: "qty", label: tCommon("qty") },
+    { key: "freeQty", label: t("freeQty") },
+    { key: "rate", label: t("rate") },
+    { key: "discount", label: t("discount") },
+    { key: "amount", label: tCommon("amount"), sortable: true },
+    { key: "discountPct", label: t("discountPct") },
+    { key: "scheme", label: t("scheme") },
+    { key: "schemePct", label: t("schemePct") },
+    { key: "gstPct", label: t("gstPct") },
+    { key: "taxAmount", label: t("taxAmount") },
+    { key: "companyName", label: tCommon("company") },
+    { key: "areaName", label: t("area") },
+    { key: "routeName", label: t("route") },
+    { key: "type", label: t("type") },
+  ]
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() => allColumns.map((column) => String(column.key)))
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
@@ -59,32 +83,16 @@ function PurchaseAnalysisDataTab({ filters, onFiltersChange }: { filters: Purcha
         />
       </div>
 
-      <PurchaseAnalysisFilterPanel filters={filters} onFiltersChange={updateFilters} />
+      <PurchaseAnalysisFilterPanel
+        filters={filters}
+        onFiltersChange={updateFilters}
+        trailingContent={<CustomColumnsToggle columns={allColumns} visibleKeys={visibleColumnKeys} onChange={setVisibleColumnKeys} />}
+      />
 
       <CustomTable<PurchaseAnalysisRow>
         fillHeight
         isError={isError}
-        columns={[
-          { key: "billDate", label: tCommon("date"), sortable: true },
-          { key: "partyName", label: t("party"), sortable: true },
-          { key: "itemName", label: tCommon("item"), sortable: true },
-          { key: "billNo", label: t("billNo") },
-          { key: "batch", label: t("batchNo") },
-          { key: "qty", label: tCommon("qty") },
-          { key: "freeQty", label: t("freeQty") },
-          { key: "rate", label: t("rate") },
-          { key: "discount", label: t("discount") },
-          { key: "amount", label: tCommon("amount"), sortable: true },
-          { key: "discountPct", label: t("discountPct") },
-          { key: "scheme", label: t("scheme") },
-          { key: "schemePct", label: t("schemePct") },
-          { key: "gstPct", label: t("gstPct") },
-          { key: "taxAmount", label: t("taxAmount") },
-          { key: "companyName", label: tCommon("company") },
-          { key: "areaName", label: t("area") },
-          { key: "routeName", label: t("route") },
-          { key: "type", label: t("type") },
-        ]}
+        columns={allColumns.filter((column) => visibleColumnKeys.includes(String(column.key)))}
         data={data?.data ?? []}
         loading={isLoading}
         rowKey="id"
@@ -124,7 +132,7 @@ export function PurchaseAnalysisPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="shrink-0">
-        <CustomPageHeader title={t("title")} description={t("description")} />
+        <CustomPageHeader title={t("title")} description={t("description")} actions={<PurchaseAnalysisExportButton filters={filters} />} />
       </div>
 
       <div className="min-h-0 flex-1">

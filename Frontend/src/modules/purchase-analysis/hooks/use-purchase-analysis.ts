@@ -5,10 +5,12 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import type { CursorPaginationParams } from "@/types/pagination"
 import { purchaseAnalysisQueryKeys } from "../constants/query-keys"
 import {
+  createPurchaseAnalysisExportJob,
   deletePurchaseAnalysisBatch,
   getPurchaseAnalysisAreas,
   getPurchaseAnalysisBatches,
   getPurchaseAnalysisCompanies,
+  getPurchaseAnalysisExportJobs,
   getPurchaseAnalysisItems,
   getPurchaseAnalysisLines,
   getPurchaseAnalysisParties,
@@ -17,7 +19,7 @@ import {
   getPurchaseAnalysisTypes,
   uploadPurchaseAnalysisFile,
 } from "../api/purchase-analysis-api"
-import type { PurchaseAnalysisFilters } from "../types"
+import type { PurchaseAnalysisExportJob, PurchaseAnalysisFilters } from "../types"
 
 export function usePurchaseAnalysisLines(filters: PurchaseAnalysisFilters, pagination: CursorPaginationParams) {
   return useQuery({
@@ -80,6 +82,25 @@ export function useDeletePurchaseAnalysisBatch() {
     mutationFn: (id: string) => deletePurchaseAnalysisBatch(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-analysis"] })
+    },
+  })
+}
+
+/** Recent export jobs for the inline history panel — kept live by `useImportSocket`'s `export-job:update` listener invalidating this same query key. */
+export function usePurchaseAnalysisExportJobs() {
+  return useQuery({ queryKey: purchaseAnalysisQueryKeys.exportJobs, queryFn: getPurchaseAnalysisExportJobs })
+}
+
+export function useCreatePurchaseAnalysisExportJob() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (filters: PurchaseAnalysisFilters) => createPurchaseAnalysisExportJob(filters),
+    // Same "write the processing job into the cache directly" reasoning as Reports' identical
+    // `useCreateExportJob` — the history popover opens synchronously right after this resolves, so
+    // only invalidating risks it opening before the refetch lands.
+    onSuccess: (job) => {
+      queryClient.setQueryData<PurchaseAnalysisExportJob[]>(purchaseAnalysisQueryKeys.exportJobs, (existing) => [job, ...(existing ?? [])])
     },
   })
 }

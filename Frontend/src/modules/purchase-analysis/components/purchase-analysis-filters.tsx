@@ -59,9 +59,11 @@ function DistinctValueFilter({
 type PurchaseAnalysisFilterPanelProps = {
   filters: PurchaseAnalysisFilters
   onFiltersChange: (updater: (prev: PurchaseAnalysisFilters) => PurchaseAnalysisFilters) => void
+  /** Rendered at the right end of the search + Filters row — e.g. the Columns toggle. */
+  trailingContent?: React.ReactNode
 }
 
-export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange }: PurchaseAnalysisFilterPanelProps) {
+export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange, trailingContent }: PurchaseAnalysisFilterPanelProps) {
   const t = useTranslations("PurchaseAnalysis")
   const tCommon = useTranslations("Common")
   const tGlobal = useTranslations()
@@ -195,6 +197,8 @@ export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange }: Purcha
             </>
           )}
         </CustomFilterModal>
+
+        {trailingContent}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -51,6 +51,7 @@ export * from "./customStatsCard/customStatsCard";
 export * from "./customStatsCard/customStatsGrid";
 export * from "./customStepper/customStepper";
 export * from "./customSwitch/customSwitch";
+export * from "./customTable/customColumnsToggle";
 export * from "./customTable/customTable";
 export * from "./customTable/tableCellHelpers";
 export * from "./customTabs/customTabs";

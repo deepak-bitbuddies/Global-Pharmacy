@@ -6,8 +6,8 @@ import { branchIdParamSchema, createBranchSchema, listBranchesQuerySchema, updat
 import { createBranch, deleteBranch, getBranches, updateBranch } from "./service.js"
 
 export async function listBranchesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  const { cursor, pageSize } = validateSchema(listBranchesQuerySchema, request.query)
-  const { rows, hasNextPage, nextCursor, total } = await getBranches({ cursor, pageSize })
+  const { cursor, pageSize, search } = validateSchema(listBranchesQuerySchema, request.query)
+  const { rows, hasNextPage, nextCursor, total } = await getBranches({ cursor, pageSize }, search)
   sendSuccess(reply, rows, "Success", 200, { nextCursor, hasNextPage, total, totalPages: Math.ceil(total / pageSize) })
 }
 

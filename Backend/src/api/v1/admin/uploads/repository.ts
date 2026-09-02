@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm"
 import { db, type DbOrTransaction } from "../../../../core/database/db.js"
 import { InternalServerError } from "../../../../shared/errors/index.js"
 import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
+import { anyColumnSearch } from "../../../../shared/helpers/search-clause.js"
 import type { CursorPaginationParams, PaginatedResult } from "../../../../shared/types/pagination.js"
 import { normalizeItemName } from "./parsers/parse-utils.js"
 import {
@@ -56,13 +57,18 @@ export async function listBranches(): Promise<BranchDocument[]> {
 type BranchCursor = { name: string; id: string }
 
 /** Paginated branches list — for the branch-management page only. */
-export async function listBranchesPaginated(pagination: CursorPaginationParams): Promise<PaginatedResult<BranchDocument>> {
+export async function listBranchesPaginated(pagination: CursorPaginationParams, search?: string): Promise<PaginatedResult<BranchDocument>> {
+  const searchClause = anyColumnSearch(
+    [branches.name, branches.address, branches.gstin, branches.phone, branches.drugLicenseNo, branches.contactName, branches.contactEmail, branches.contactPhone],
+    search,
+  )
   const cursor = decodeCursor<BranchCursor>(pagination.cursor)
-  const where = cursor ? sql`(${branches.name}, ${branches.id}) > (${cursor.name}, ${cursor.id})` : undefined
+  const cursorClause = cursor ? sql`(${branches.name}, ${branches.id}) > (${cursor.name}, ${cursor.id})` : undefined
+  const filterWhere = searchClause ? and(searchClause, cursorClause) : cursorClause
 
   const [rows, countRows] = await Promise.all([
-    db.select().from(branches).where(where).orderBy(branches.name, branches.id).limit(pagination.pageSize + 1),
-    db.select({ count: sql<string>`count(*)` }).from(branches),
+    db.select().from(branches).where(filterWhere).orderBy(branches.name, branches.id).limit(pagination.pageSize + 1),
+    db.select({ count: sql<string>`count(*)` }).from(branches).where(searchClause),
   ])
 
   const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ name: r.name, id: r.id }))

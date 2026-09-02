@@ -41,13 +41,13 @@ export function StockReportPage() {
             supplier: true,
             stockRange: true,
           }}
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </div>
 
       <CustomTable<StockRow>
         fillHeight
         isError={isError}
-        // enableColumnVisibility
         noWrap
         columns={[
           { key: "asOfDate", label: tCommon("date"), sortable: true },

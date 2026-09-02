@@ -27,8 +27,8 @@ const UNIQUE_CONSTRAINT_MESSAGES = {
   users_email_unique: "A user with this email already exists",
 }
 
-export async function getBranches(pagination: CursorPaginationParams): Promise<PaginatedResult<BranchDto>> {
-  const { rows, ...page } = await listBranchesPaginated(pagination)
+export async function getBranches(pagination: CursorPaginationParams, search?: string): Promise<PaginatedResult<BranchDto>> {
+  const { rows, ...page } = await listBranchesPaginated(pagination, search)
   return { ...page, rows: rows.map(toBranchDto) }
 }
 

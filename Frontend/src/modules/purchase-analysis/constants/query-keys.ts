@@ -11,4 +11,5 @@ export const purchaseAnalysisQueryKeys = {
   areas: ["purchase-analysis", "areas"] as const,
   routes: ["purchase-analysis", "routes"] as const,
   batches: ["purchase-analysis", "batches"] as const,
+  exportJobs: ["purchase-analysis", "export-jobs"] as const,
 }

@@ -1,7 +1,8 @@
-import { and, desc, eq, gte, ilike, inArray, lte, or, sql, type AnyColumn, type SQL } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, lte, sql, type AnyColumn, type SQL } from "drizzle-orm"
 
 import { db } from "../../../../core/database/db.js"
 import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
+import { anyColumnSearch } from "../../../../shared/helpers/search-clause.js"
 import { purchaseAnalysisImportBatches, purchaseAnalysisLines } from "./model.js"
 import type { ParsedPurchaseAnalysisRow } from "./parser.js"
 import type { CursorPaginationParams, PurchaseAnalysisFilters } from "./dto.js"
@@ -32,10 +33,36 @@ function filterClauses(filters: PurchaseAnalysisFilters): SQL[] {
   if (filters.amountTo !== undefined) clauses.push(lte(purchaseAnalysisLines.amount, filters.amountTo))
   if (filters.qtyFrom !== undefined) clauses.push(gte(purchaseAnalysisLines.qty, filters.qtyFrom))
   if (filters.qtyTo !== undefined) clauses.push(lte(purchaseAnalysisLines.qty, filters.qtyTo))
-  if (filters.search) {
-    const pattern = `%${filters.search}%`
-    clauses.push(or(ilike(purchaseAnalysisLines.billNo, pattern), ilike(purchaseAnalysisLines.itemName, pattern)) as SQL)
-  }
+  const searchClause = anyColumnSearch(
+    [
+      purchaseAnalysisLines.partyName,
+      purchaseAnalysisLines.itemName,
+      purchaseAnalysisLines.billNo,
+      purchaseAnalysisLines.billDate,
+      purchaseAnalysisLines.type,
+      purchaseAnalysisLines.pan,
+      purchaseAnalysisLines.bankAcctNo,
+      purchaseAnalysisLines.ifscCode,
+      purchaseAnalysisLines.batch,
+      purchaseAnalysisLines.qty,
+      purchaseAnalysisLines.freeQty,
+      purchaseAnalysisLines.rate,
+      purchaseAnalysisLines.scheme,
+      purchaseAnalysisLines.discount,
+      purchaseAnalysisLines.amount,
+      purchaseAnalysisLines.gstPct,
+      purchaseAnalysisLines.taxAmount,
+      purchaseAnalysisLines.mrp,
+      purchaseAnalysisLines.mrpAmt,
+      purchaseAnalysisLines.companyName,
+      purchaseAnalysisLines.areaName,
+      purchaseAnalysisLines.routeName,
+      purchaseAnalysisLines.saleType,
+      purchaseAnalysisLines.gstNo,
+    ],
+    filters.search,
+  )
+  if (searchClause) clauses.push(searchClause)
   return clauses
 }
 
@@ -95,6 +122,19 @@ export async function getPurchaseAnalysisLines(filters: PurchaseAnalysisFilters,
 
   const { rows: page, hasNextPage, nextCursor } = buildPage(rows, pagination.pageSize, (r) => ({ billDate: r.billDate ?? "0001-01-01", id: r.id }))
   return { rows: page, hasNextPage, nextCursor, total: Number(countRows[0]?.count ?? 0) }
+}
+
+const EXPORT_ROW_CAP = 50_000
+
+/** Unpaginated fetch for a background export — same row shape/filters as `getPurchaseAnalysisLines`, just without the cursor page window. */
+export async function exportPurchaseAnalysisLines(filters: PurchaseAnalysisFilters) {
+  const where = and(...filterClauses(filters))
+  return db
+    .select(ROW_SELECTION)
+    .from(purchaseAnalysisLines)
+    .where(where)
+    .orderBy(desc(purchaseAnalysisLines.billDate), desc(purchaseAnalysisLines.id))
+    .limit(EXPORT_ROW_CAP)
 }
 
 export async function getPurchaseAnalysisSummary(filters: PurchaseAnalysisFilters) {

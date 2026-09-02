@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, inArray, lte, notExists, notInArray, or, sql, 
 import { db } from "../../../../core/database/db.js"
 import { buildPage, decodeCursor } from "../../../../shared/helpers/cursor.js"
 import { InternalServerError } from "../../../../shared/errors/index.js"
+import { anyColumnSearch } from "../../../../shared/helpers/search-clause.js"
 import {
   branches,
   dailySalesSummary,
@@ -21,6 +22,7 @@ import {
 } from "./enums.js"
 import { exportJobs, type ExportJobDocument } from "./model.js"
 import type { CursorPaginationParams, PaginatedResult, ReportFilters } from "./dto.js"
+import type { PurchaseAnalysisFilters } from "../purchase-analysis/dto.js"
 
 function branchFilter(column: AnyColumn, filters: ReportFilters): SQL | undefined {
   return filters.branchId?.length ? inArray(column, filters.branchId) : undefined
@@ -279,6 +281,7 @@ export async function getGrossProfitByItem(
   const filterWhere = and(
     branchFilter(salesLines.branchId, filters),
     itemFilter(salesLines.itemNameRaw, filters),
+    anyColumnSearch([salesLines.itemNameRaw, salesLines.partyGroup, salesLines.amount, salesLines.qty], filters.search),
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -380,6 +383,12 @@ export async function getSalesDetail(filters: ReportFilters, pagination: CursorP
     filters.amountFrom !== undefined ? gte(salesLines.amount, filters.amountFrom) : undefined,
     filters.amountTo !== undefined ? lte(salesLines.amount, filters.amountTo) : undefined,
     collectionModeFilter(filters),
+    // `items` (not `branches`) is the only table also joined by this function's count query below —
+    // search columns are limited to `salesLines`/`items` so the same `filterWhere` stays valid there.
+    anyColumnSearch(
+      [salesLines.partyGroup, salesLines.itemNameRaw, salesLines.packSizeRaw, salesLines.qty, salesLines.unit, salesLines.rate, salesLines.amount, items.company],
+      filters.search,
+    ),
     ...dateRangeOverlap(salesLines.reportDateFrom, salesLines.reportDateTo, filters),
   )
 
@@ -438,6 +447,21 @@ export async function getPurchaseDetail(filters: ReportFilters, pagination: Curs
     filters.supplierGroup?.length ? inArray(purchaseLines.supplierGroup, filters.supplierGroup) : undefined,
     filters.amountFrom !== undefined ? gte(purchaseLines.amount, filters.amountFrom) : undefined,
     filters.amountTo !== undefined ? lte(purchaseLines.amount, filters.amountTo) : undefined,
+    // Same "only tables the count query also joins" constraint as `getSalesDetail` — `items`, not `branches`.
+    anyColumnSearch(
+      [
+        purchaseLines.supplierGroup,
+        purchaseLines.itemNameRaw,
+        purchaseLines.packSizeRaw,
+        purchaseLines.qty,
+        purchaseLines.freeQty,
+        purchaseLines.rate,
+        purchaseLines.amount,
+        purchaseLines.schemePct,
+        items.company,
+      ],
+      filters.search,
+    ),
     ...dateRangeOverlap(purchaseLines.reportDateFrom, purchaseLines.reportDateTo, filters),
   )
 
@@ -726,6 +750,12 @@ export async function getDaySalesDetail(filters: ReportFilters, pagination: Curs
   const clauses = [branchFilter(dailySalesSummary.branchId, filters)]
   if (filters.dateFrom) clauses.push(gte(dailySalesSummary.date, filters.dateFrom))
   if (filters.dateTo) clauses.push(lte(dailySalesSummary.date, filters.dateTo))
+  // `branches` isn't joined by the count query below — search stays to `dailySalesSummary`'s own columns.
+  const searchClause = anyColumnSearch(
+    [dailySalesSummary.date, dailySalesSummary.billNoRange, dailySalesSummary.billValue, dailySalesSummary.taxable, dailySalesSummary.taxPayable, dailySalesSummary.taxFree, dailySalesSummary.exempted, dailySalesSummary.roundOff],
+    filters.search,
+  )
+  if (searchClause) clauses.push(searchClause)
   const filterWhere = and(...clauses)
 
   const cursor = decodeCursor<DaySalesDetailCursor>(pagination.cursor)
@@ -808,6 +838,33 @@ function stockFilterClauses(filters: ReportFilters): SQL[] {
   if (filters.dateFrom) clauses.push(gte(stockSnapshots.asOfDate, filters.dateFrom))
   if (filters.dateTo) clauses.push(lte(stockSnapshots.asOfDate, filters.dateTo))
   if (!filters.dateFrom && !filters.dateTo) clauses.push(latestStockDateClause())
+  // `branches` isn't joined by every caller's count query (e.g. `getStockReport`'s) — search stays
+  // to `stockSnapshots`' own columns so this stays valid everywhere `stockFilterClauses` is used.
+  const searchClause = anyColumnSearch(
+    [
+      stockSnapshots.itemCode,
+      stockSnapshots.itemName,
+      stockSnapshots.unit,
+      stockSnapshots.currentStock,
+      stockSnapshots.costPrice,
+      stockSnapshots.value,
+      stockSnapshots.mrp,
+      stockSnapshots.purchasePrice,
+      stockSnapshots.salesPrice,
+      stockSnapshots.company,
+      stockSnapshots.manufacturer,
+      stockSnapshots.batch,
+      stockSnapshots.mfgDateRaw,
+      stockSnapshots.expDate,
+      stockSnapshots.supplier,
+      stockSnapshots.invNo,
+      stockSnapshots.invDate,
+      stockSnapshots.rackNo,
+      stockSnapshots.recDate,
+    ],
+    filters.search,
+  )
+  if (searchClause) clauses.push(searchClause)
   return clauses
 }
 
@@ -1062,7 +1119,7 @@ export async function exportDaySalesDetail(filters: ReportFilters) {
 
 // ---- export_jobs CRUD ----
 
-export async function createExportJob(input: { reportType: string; branchId: string | null; filters: ReportFilters }): Promise<ExportJobDocument> {
+export async function createExportJob(input: { reportType: string; branchId: string | null; filters: ReportFilters | PurchaseAnalysisFilters }): Promise<ExportJobDocument> {
   const [job] = await db.insert(exportJobs).values(input).returning()
   if (!job) throw new InternalServerError("Failed to record export job")
   return job

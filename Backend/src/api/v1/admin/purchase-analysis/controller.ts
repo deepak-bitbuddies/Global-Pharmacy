@@ -3,10 +3,13 @@ import type { FastifyReply, FastifyRequest } from "fastify"
 import { sendSuccess } from "../../../../shared/helpers/http-response.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
 import { ValidationError } from "../../../../shared/errors/index.js"
-import { idParamSchema, purchaseAnalysisQuerySchema } from "./schema.js"
+import { createPurchaseAnalysisExportSchema, idParamSchema, purchaseAnalysisQuerySchema } from "./schema.js"
 import {
+  createPurchaseAnalysisExport,
   deletePurchaseAnalysisBatch,
+  getPurchaseAnalysisExportFileForDownload,
   importPurchaseAnalysisFile,
+  listPurchaseAnalysisExports,
   purchaseAnalysisAreas,
   purchaseAnalysisCompanies,
   purchaseAnalysisImportBatches,
@@ -75,4 +78,23 @@ export async function deletePurchaseAnalysisBatchHandler(request: FastifyRequest
   const { id } = validateSchema(idParamSchema, request.params)
   await deletePurchaseAnalysisBatch(id)
   sendSuccess(reply, null, "Import batch deleted")
+}
+
+export async function createPurchaseAnalysisExportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const filters = validateSchema(createPurchaseAnalysisExportSchema, request.body)
+  const job = await createPurchaseAnalysisExport(filters)
+  sendSuccess(reply, job, "Export started — processing in background", 202)
+}
+
+export async function listPurchaseAnalysisExportsHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  sendSuccess(reply, await listPurchaseAnalysisExports())
+}
+
+export async function downloadPurchaseAnalysisExportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { id } = validateSchema(idParamSchema, request.params)
+  const { buffer, fileName } = await getPurchaseAnalysisExportFileForDownload(id)
+  reply
+    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    .header("Content-Disposition", `attachment; filename="${fileName}"`)
+    .send(buffer)
 }

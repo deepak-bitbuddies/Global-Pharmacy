@@ -21,4 +21,5 @@ export const branchIdParamSchema = z.object({
 export const listBranchesQuerySchema = z.object({
   cursor: z.string().optional(),
   pageSize: z.coerce.number().int().positive().max(200).default(10),
+  search: z.string().optional(),
 })

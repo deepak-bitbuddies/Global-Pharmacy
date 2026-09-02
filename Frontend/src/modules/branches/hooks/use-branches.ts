@@ -8,13 +8,13 @@ import type { UpdateBranchInput } from "../types"
 
 export const branchesQueryKeys = {
   all: ["branches"] as const,
-  list: (pagination: CursorPaginationParams) => ["branches", "list", pagination] as const,
+  list: (pagination: CursorPaginationParams, search?: string) => ["branches", "list", pagination, search] as const,
 }
 
-export function useBranches(pagination: CursorPaginationParams) {
+export function useBranches(pagination: CursorPaginationParams, search?: string) {
   return useQuery({
-    queryKey: branchesQueryKeys.list(pagination),
-    queryFn: () => getBranches(pagination),
+    queryKey: branchesQueryKeys.list(pagination, search),
+    queryFn: () => getBranches(pagination, search),
     // Keeps the current page's rows on screen (with `isFetching` true)
     // while a page/page-size change is in flight, instead of the table
     // blanking out on every pagination interaction.

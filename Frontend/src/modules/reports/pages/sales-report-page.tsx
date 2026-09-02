@@ -47,6 +47,7 @@ export function SalesReportPage() {
           filters={filters}
           onFiltersChange={updateFilters}
           show={{ item: true, branch: true, company: true, dateRange: true, amountRange: true, collectionMode: true }}
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </div>
 

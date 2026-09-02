@@ -21,6 +21,8 @@ type CustomCheckboxProps = {
   customIndicator?: React.ReactNode;
   variant?: CustomCheckboxVariant;
   labelClassName?: string;
+  /** Extra classes for the checkbox box itself (`Checkbox.Control`) — e.g. `rounded-none` for a square box, distinct from `className` which targets the whole field. */
+  controlClassName?: string;
 };
 export const CustomCheckbox = ({ ...props }: CustomCheckboxProps) => {
   return (
@@ -36,7 +38,7 @@ export const CustomCheckbox = ({ ...props }: CustomCheckboxProps) => {
       isInvalid={props.isInvalid}
       variant={props.variant}
     >
-      <Checkbox.Control>
+      <Checkbox.Control className={props.controlClassName}>
         {props.customIndicator ? (
           props.isSelected ? (
             props.customIndicator

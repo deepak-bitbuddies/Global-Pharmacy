@@ -33,6 +33,7 @@ export function PurchaseReportPage() {
           filters={filters}
           onFiltersChange={updateFilters}
           show={{ item: true, branch: true, company: true, schemeTier: true, dateRange: true, supplierGroup: true, amountRange: true }}
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </div>
 

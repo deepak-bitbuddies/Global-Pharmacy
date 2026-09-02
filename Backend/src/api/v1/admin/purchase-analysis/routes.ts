@@ -3,8 +3,11 @@ import type { FastifyInstance } from "fastify"
 import { requireAuth, requireRole } from "../../../../core/auth/guards.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
 import {
+  createPurchaseAnalysisExportHandler,
   deletePurchaseAnalysisBatchHandler,
+  downloadPurchaseAnalysisExportHandler,
   listPurchaseAnalysisBatchesHandler,
+  listPurchaseAnalysisExportsHandler,
   purchaseAnalysisAreasHandler,
   purchaseAnalysisCompaniesHandler,
   purchaseAnalysisItemsHandler,
@@ -34,4 +37,7 @@ export async function purchaseAnalysisRoutes(fastify: FastifyInstance): Promise<
   fastify.post("/upload", uploadPurchaseAnalysisHandler)
   fastify.get("/batches", listPurchaseAnalysisBatchesHandler)
   fastify.delete("/batches/:id", deletePurchaseAnalysisBatchHandler)
+  fastify.post("/exports", createPurchaseAnalysisExportHandler)
+  fastify.get("/exports", listPurchaseAnalysisExportsHandler)
+  fastify.get("/exports/:id/download", downloadPurchaseAnalysisExportHandler)
 }

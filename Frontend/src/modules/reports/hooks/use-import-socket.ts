@@ -31,8 +31,10 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000"
  *   chatty for that at chunk frequency.
  * - `export-job:update` / `export-job:progress` — same processing/completed/failed shape and same
  *   progress store (keyed generically by job id either way, nothing import-specific about it) for
- *   background report exports. No filename-correlation needed here the way bulk import needs it —
- *   `useCreateExportJob`'s ack already returns the job's real id synchronously.
+ *   background exports — Reports' four report types AND Purchase Analysis' own export, both riding
+ *   the one shared `export_jobs` table (see `reports/model.ts`), hence invalidating both modules'
+ *   `export-jobs` query keys on `:update`. No filename-correlation needed here the way bulk import
+ *   needs it — the create-export ack already returns the job's real id synchronously.
  * - `purchase-analysis-batch:update` / `:progress` — same processing/completed/failed shape as the
  *   import-batch pair, for the fully separate Purchase Analysis module's background import (see
  *   `purchase-analysis/service.ts`). Its own status store (no `branchId`/`fileType` concept exists
@@ -73,7 +75,11 @@ export function useImportSocket(): void {
       })
 
       socket.on("export-job:update", (payload: ExportJobUpdateEvent) => {
+        // Both Reports and Purchase Analysis export jobs arrive on this one event (see
+        // `reports/model.ts`'s shared `export_jobs` table) — invalidate both query key prefixes
+        // rather than branching on `payload.reportType`.
         queryClient.invalidateQueries({ queryKey: ["reports", "export-jobs"] })
+        queryClient.invalidateQueries({ queryKey: ["purchase-analysis", "export-jobs"] })
         clearProgress(payload.id)
       })
 

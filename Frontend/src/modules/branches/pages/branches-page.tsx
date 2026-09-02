@@ -13,6 +13,7 @@ import {
   CustomButton,
   CustomModal,
   CustomPageHeader,
+  CustomSearchFilter,
   CustomTable,
   customToast,
   FormInput,
@@ -55,7 +56,8 @@ export function BranchesPage() {
   const tCommon = useTranslations("Common")
 
   const pagination = useCursorPagination()
-  const { data: branches, isLoading, isError } = useBranches({ cursor: pagination.cursor, pageSize: pagination.pageSize })
+  const [search, setSearch] = useState<string>("")
+  const { data: branches, isLoading, isError } = useBranches({ cursor: pagination.cursor, pageSize: pagination.pageSize }, search || undefined)
   const { mutateAsync: createBranch, isPending: isCreating } = useCreateBranch()
   const { mutateAsync: updateBranchMutation, isPending: isUpdating } = useUpdateBranch()
   const { mutateAsync: deleteBranchMutation } = useDeleteBranch()
@@ -161,6 +163,19 @@ export function BranchesPage() {
           </CustomButton>
         }
       />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-52 flex-1">
+          <CustomSearchFilter
+            value={search}
+            onChange={(value) => {
+              setSearch(value)
+              pagination.reset()
+            }}
+            placeholder={t("searchPlaceholder")}
+          />
+        </div>
+      </div>
 
       <CustomTable<Branch>
         fillHeight

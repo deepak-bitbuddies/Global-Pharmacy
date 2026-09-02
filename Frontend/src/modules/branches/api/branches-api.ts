@@ -4,8 +4,8 @@ import type { Branch, CreateBranchInput, UpdateBranchInput } from "../types"
 
 const BASE = "/admin/branches"
 
-export async function getBranches(pagination: CursorPaginationParams): Promise<PaginatedResponse<Branch>> {
-  const { data } = await api.get<PaginatedResponse<Branch>>(BASE, { params: pagination })
+export async function getBranches(pagination: CursorPaginationParams, search?: string): Promise<PaginatedResponse<Branch>> {
+  const { data } = await api.get<PaginatedResponse<Branch>>(BASE, { params: { ...pagination, search } })
   return data
 }
 

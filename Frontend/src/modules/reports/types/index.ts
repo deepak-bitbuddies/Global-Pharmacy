@@ -46,6 +46,8 @@ export type ReportFilters = {
   amountTo?: number
   // Sales-only filter.
   collectionMode?: SalesCollectionMode[]
+  // Free-text "search anything" box — matches across every column of the current report page's detail table.
+  search?: string
   // Gross Profit's own "Top N" drill-through — only the one dashboard widget this maps 1:1 to a
   // real report page for (see `gross-profit-report-page.tsx`). Not a filter on the data itself,
   // just how many rows (and from which end) to show — so it lives here for `buildReportUrl`'s

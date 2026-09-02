@@ -14,6 +14,7 @@
   "Search": "Search",
   "Columns": "Columns",
   "ShowAll": "Show all",
+  "HideAll": "Hide all",
   "Nav": {
     "dashboard": "Dashboard",
     "setup": "Setup",
@@ -198,7 +199,8 @@
       "modePlaceholder": "Filter by mode",
       "modeCash": "Cash",
       "modePaytmOnline": "Paytm/Online",
-      "modeCreditDue": "Credit/Due"
+      "modeCreditDue": "Credit/Due",
+      "searchPlaceholder": "Search by item, company, party, or any keyword..."
     },
     "stock": {
       "title": "Stock Report",
@@ -255,6 +257,7 @@
       "schemeTier30to50": "30% – 50%",
       "schemeTier50to100": "50% – 100%",
       "schemeTierGte100": "100%+",
+      "searchPlaceholder": "Search by item, supplier, company, or any keyword...",
       "emptyText": "No purchase data — import a Purchase Register file first."
     },
     "daySales": {
@@ -268,6 +271,7 @@
       "taxFree": "Tax Free",
       "exempted": "Exempted",
       "roundOff": "Round Off",
+      "searchPlaceholder": "Search by bill no. range or any keyword...",
       "emptyText": "No Day-Wise Sale data — import a Day-Wise Sale file first."
     },
     "nonMoving": {
@@ -289,7 +293,8 @@
       "emptyText": "No gross profit data — import Sales and Stock files first.",
       "showingTop": "Showing the top {count} items by gross profit.",
       "showingBottom": "Showing the bottom {count} items by gross profit.",
-      "showAll": "Show all instead"
+      "showAll": "Show all instead",
+      "searchPlaceholder": "Search by item name..."
     }
   },
   "Import": {
@@ -353,6 +358,7 @@
     "title": "Branches",
     "description": "Register pharmacy branches. Each branch's contact person also becomes its login user.",
     "addBranch": "Add Branch",
+    "searchPlaceholder": "Search by name, GSTIN, contact, or any keyword...",
     "gstin": "GSTIN",
     "contact": "Contact",
     "actions": "Actions",

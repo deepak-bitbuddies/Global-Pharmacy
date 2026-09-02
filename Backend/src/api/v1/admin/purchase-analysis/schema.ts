@@ -30,3 +30,7 @@ export const purchaseAnalysisQuerySchema = purchaseAnalysisFiltersSchema.merge(c
 export const idParamSchema = z.object({
   id: z.string().uuid(),
 })
+
+// Export has no reportType discriminant — this module is only ever the one "report", unlike
+// Reports' `createExportSchema` which fans out across four.
+export const createPurchaseAnalysisExportSchema = purchaseAnalysisFiltersSchema

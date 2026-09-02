@@ -32,6 +32,7 @@ export function NonMovingReportPage() {
           filters={filters}
           onFiltersChange={updateFilters}
           show={{ item: true, branch: true, company: true }}
+          searchPlaceholder={t("searchPlaceholder")}
         />
       </div>
 

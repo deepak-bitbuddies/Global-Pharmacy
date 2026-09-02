@@ -84,3 +84,20 @@ export type PurchaseAnalysisBatchProgressEvent = {
   rowsProcessed: number
   totalRows: number
 }
+
+/** A background export job for this module — same shape/lifecycle as Reports' `ExportJob` (both ride the one shared `export_jobs` table server-side); `branchId` is always null here since this module isn't branch-scoped. */
+export type PurchaseAnalysisExportJob = {
+  id: string
+  reportType: string
+  branchId: string | null
+  filters: PurchaseAnalysisFilters
+  status: "processing" | "completed" | "failed"
+  rowCount: number
+  fileName: string | null
+  errorMessage: string | null
+  requestedAt: string
+  completedAt: string | null
+}
+
+/** Instant ack for a new export job — same shape as `PurchaseAnalysisExportJob`, just the moment it's created (`status: "processing"`). */
+export type PurchaseAnalysisExportJobAck = PurchaseAnalysisExportJob

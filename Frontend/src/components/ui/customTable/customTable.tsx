@@ -1,21 +1,18 @@
 "use client";
 
-import { CustomSize } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { Selection, SortDescriptor } from "@heroui/react";
 import { Checkbox, Label, Table } from "@heroui/react";
-import { ArrowDownIcon, ClipboardTextIcon, ColumnsIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { ArrowDownIcon, ClipboardTextIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { useTranslations } from "next-intl";
 import { ReactNode, useCallback, useMemo, useState } from "react";
 import { CustomAppIcon } from "../customAppIcon/customAppIcon";
 import { BulkAction, CustomBulkActionsToolbar } from "../customActions/customBulkActionsToolbar";
 import { ButtonVariant, CustomButton } from "../customButton/customButton";
-import { CheckboxOrientation, CustomCheckboxGroup } from "../customCheckboxGroup/customCheckboxGroup";
 import { CustomEmptyState } from "../customEmptyState/customEmptyState";
 import { CustomSearchFilter } from "../customFilters/customSearchFilter";
 import CustomCursorPagination from "../customPagination/customCursorPagination";
 import CustomPagination from "../customPagination/customPagination";
-import { CustomPopover } from "../customPopover/customPopover";
 import { CustomSelect } from "../customSelect/customSelect";
 import { CustomSkeleton } from "../customSkeleton/customSkeleton";
 
@@ -188,13 +185,6 @@ type CustomTableProps<T extends object> = {
     onPrevious: () => void;
   };
   /**
-   * Shows a "Columns" toggle button (in the top toolbar row) that lets the
-   * user show/hide individual columns. Hidden columns are omitted from both
-   * the header and body cells but stay listed (and re-toggleable) in the
-   * popover. Defaults to false.
-   */
-  enableColumnVisibility?: boolean;
-  /**
    * Prevents header labels and cell content from wrapping (keeps every
    * column to a single line, relying on the table's horizontal scroll for
    * overflow). Defaults to true — pass `false` for a table that should wrap
@@ -274,18 +264,10 @@ export const CustomTable = <T extends object>({
   // Track the last clicked sortable column header to map aria IDs to column keys
   const [lastSortedColumnKey, setLastSortedColumnKey] = useState<string>();
 
-  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() =>
-    props.columns.map((column) => String(column.key)),
-  );
-  const [isColumnPopoverOpen, setIsColumnPopoverOpen] = useState(false);
-
-  const visibleColumns = useMemo(
-    () =>
-      props.enableColumnVisibility
-        ? props.columns.filter((column) => visibleColumnKeys.includes(String(column.key)))
-        : props.columns,
-    [props.columns, props.enableColumnVisibility, visibleColumnKeys],
-  );
+  // Column show/hide lives outside the table entirely now (`CustomColumnsToggle`, placed by the
+  // page wherever its filter bar needs) — a page that wants it just pre-filters `columns` before
+  // passing them in, so `props.columns` is always exactly what should render.
+  const visibleColumns = props.columns
 
   const handleSortChange = useCallback(
     (descriptor: SortDescriptor) => {
@@ -495,7 +477,7 @@ export const CustomTable = <T extends object>({
         props.fillHeight && "flex min-h-0 shrink flex-col",
       )}
     >
-      {(props.onGlobalFilterChange || props.bulkActions || props.enableColumnVisibility) && (
+      {(props.onGlobalFilterChange || props.bulkActions) && (
         <div className="flex items-center justify-between gap-2 pb-3">
           <div>
             {props.bulkActions && selectedCount > 0 ? (
@@ -515,50 +497,17 @@ export const CustomTable = <T extends object>({
               )
             )}
           </div>
-          {props.enableColumnVisibility && (
-            <CustomPopover
-              isOpen={isColumnPopoverOpen}
-              setIsOpen={setIsColumnPopoverOpen}
-              ariaLabel={t("Columns")}
-              trigger={
-                <CustomButton
-                  variant={ButtonVariant.outline}
-                  startContent={<CustomAppIcon Icon={ColumnsIcon} size={16} />}
-                >
-                  {t("Columns")} ({visibleColumnKeys.length}/{props.columns.length})
-                </CustomButton>
-              }
-            >
-              <div className="w-[min(90vw,32rem)] overflow-hidden rounded-app border border-default bg-surface shadow-lg">
-                <div className="flex items-center justify-between gap-3 border-b border-default px-4 py-2.5">
-                  <span className="text-sm font-semibold text-foreground">{t("Columns")}</span>
-                  <CustomButton
-                    variant={ButtonVariant.ghost}
-                    size={CustomSize.sm}
-                    className="h-7 px-2 text-xs"
-                    isDisabled={visibleColumnKeys.length === props.columns.length}
-                    onClick={() => setVisibleColumnKeys(props.columns.map((column) => String(column.key)))}
-                  >
-                    {t("ShowAll")}
-                  </CustomButton>
-                </div>
-                <CustomCheckboxGroup
-                  data={props.columns}
-                  valueKey="key"
-                  labelKey="label"
-                  value={visibleColumnKeys}
-                  onChange={setVisibleColumnKeys}
-                  orientation={CheckboxOrientation.Horizontal}
-                  className="max-h-72 overflow-y-auto p-3"
-                />
-              </div>
-            </CustomPopover>
-          )}
         </div>
       )}
       <div>{props.topContent}</div>
       <Table.ScrollContainer className={cn(props.fillHeight && "min-h-0 flex-1 overflow-y-auto")}>
         <Table.Content
+          // Forces a clean remount whenever the visible column *set* changes (e.g. a page-driven
+          // column-visibility toggle) — react-aria's Collection otherwise keeps some already-
+          // mounted rows' cells stale for one render, throwing "Cell count must match column
+          // count" since the header (recomputed immediately) and those rows (not yet) briefly
+          // disagree on how many columns there are.
+          key={visibleColumns.map((column) => String(column.key)).join("|")}
           aria-label="Table with selection"
           selectionMode={selectionMode}
           selectedKeys={selectedKeys}
