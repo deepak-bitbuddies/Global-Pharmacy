@@ -19,6 +19,8 @@ function filterClauses(filters: PurchaseAnalysisFilters): SQL[] {
   if (itemClause) clauses.push(itemClause)
   const companyClause = arrayFilter(purchaseAnalysisLines.companyName, filters.company)
   if (companyClause) clauses.push(companyClause)
+  const branchClause = arrayFilter(purchaseAnalysisLines.branchName, filters.branch)
+  if (branchClause) clauses.push(branchClause)
   const typeClause = arrayFilter(purchaseAnalysisLines.type, filters.type)
   if (typeClause) clauses.push(typeClause)
   const areaClause = arrayFilter(purchaseAnalysisLines.areaName, filters.area)
@@ -41,7 +43,7 @@ function filterClauses(filters: PurchaseAnalysisFilters): SQL[] {
       purchaseAnalysisLines.billDate,
       purchaseAnalysisLines.type,
       purchaseAnalysisLines.pan,
-      purchaseAnalysisLines.bankAcctNo,
+      purchaseAnalysisLines.branchName,
       purchaseAnalysisLines.ifscCode,
       purchaseAnalysisLines.batch,
       purchaseAnalysisLines.qty,
@@ -74,7 +76,7 @@ const ROW_SELECTION = {
   billDate: purchaseAnalysisLines.billDate,
   type: purchaseAnalysisLines.type,
   pan: purchaseAnalysisLines.pan,
-  bankAcctNo: purchaseAnalysisLines.bankAcctNo,
+  branchName: purchaseAnalysisLines.branchName,
   ifscCode: purchaseAnalysisLines.ifscCode,
   batch: purchaseAnalysisLines.batch,
   qty: purchaseAnalysisLines.qty,
@@ -171,6 +173,15 @@ export async function listPurchaseAnalysisCompanies(): Promise<string[]> {
     .where(sql`${purchaseAnalysisLines.companyName} is not null`)
     .orderBy(purchaseAnalysisLines.companyName)
   return rows.map((row) => row.companyName).filter((value): value is string => value !== null)
+}
+
+export async function listPurchaseAnalysisBranches(): Promise<string[]> {
+  const rows = await db
+    .selectDistinct({ branchName: purchaseAnalysisLines.branchName })
+    .from(purchaseAnalysisLines)
+    .where(sql`${purchaseAnalysisLines.branchName} is not null`)
+    .orderBy(purchaseAnalysisLines.branchName)
+  return rows.map((row) => row.branchName).filter((value): value is string => value !== null)
 }
 
 export async function listPurchaseAnalysisTypes(): Promise<string[]> {

@@ -7,6 +7,7 @@ export const purchaseAnalysisQueryKeys = {
   parties: ["purchase-analysis", "parties"] as const,
   items: ["purchase-analysis", "items"] as const,
   companies: ["purchase-analysis", "companies"] as const,
+  branches: ["purchase-analysis", "branches"] as const,
   types: ["purchase-analysis", "types"] as const,
   areas: ["purchase-analysis", "areas"] as const,
   routes: ["purchase-analysis", "routes"] as const,

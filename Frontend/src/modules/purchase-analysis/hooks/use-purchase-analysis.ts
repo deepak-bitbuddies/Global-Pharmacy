@@ -9,6 +9,7 @@ import {
   deletePurchaseAnalysisBatch,
   getPurchaseAnalysisAreas,
   getPurchaseAnalysisBatches,
+  getPurchaseAnalysisBranches,
   getPurchaseAnalysisCompanies,
   getPurchaseAnalysisExportJobs,
   getPurchaseAnalysisItems,
@@ -47,6 +48,10 @@ export function usePurchaseAnalysisItems() {
 
 export function usePurchaseAnalysisCompanies() {
   return useQuery({ queryKey: purchaseAnalysisQueryKeys.companies, queryFn: getPurchaseAnalysisCompanies })
+}
+
+export function usePurchaseAnalysisBranches() {
+  return useQuery({ queryKey: purchaseAnalysisQueryKeys.branches, queryFn: getPurchaseAnalysisBranches })
 }
 
 export function usePurchaseAnalysisTypes() {

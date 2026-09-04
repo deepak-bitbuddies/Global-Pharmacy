@@ -491,6 +491,7 @@
     "filterByParty": "Filter by party",
     "filterByItem": "Filter by item",
     "filterByCompany": "Filter by company",
+    "filterByBranch": "Filter by branch",
     "filterByType": "Filter by type",
     "filterByArea": "Filter by area",
     "filterByRoute": "Filter by route",

@@ -15,6 +15,7 @@ import {
   insertPurchaseAnalysisLines,
   listImportBatches,
   listPurchaseAnalysisAreas,
+  listPurchaseAnalysisBranches,
   listPurchaseAnalysisCompanies,
   listPurchaseAnalysisItems,
   listPurchaseAnalysisParties,
@@ -64,7 +65,7 @@ function toRowDto(row: Awaited<ReturnType<typeof getPurchaseAnalysisLines>>["row
     billDate: row.billDate,
     type: row.type,
     pan: row.pan,
-    bankAcctNo: row.bankAcctNo,
+    branchName: row.branchName,
     ifscCode: row.ifscCode,
     batch: row.batch,
     qty: num(row.qty),
@@ -109,6 +110,7 @@ export async function purchaseAnalysisSummary(filters: PurchaseAnalysisFilters):
 export const purchaseAnalysisParties = listPurchaseAnalysisParties
 export const purchaseAnalysisItems = listPurchaseAnalysisItems
 export const purchaseAnalysisCompanies = listPurchaseAnalysisCompanies
+export const purchaseAnalysisBranches = listPurchaseAnalysisBranches
 export const purchaseAnalysisTypes = listPurchaseAnalysisTypes
 export const purchaseAnalysisAreas = listPurchaseAnalysisAreas
 export const purchaseAnalysisRoutes = listPurchaseAnalysisRoutes
@@ -185,6 +187,7 @@ const EXPORT_COLUMNS: { key: string; label: string }[] = [
   { key: "partyName", label: "Party" },
   { key: "itemName", label: "Item" },
   { key: "billNo", label: "Bill No." },
+  { key: "branchName", label: "Branch" },
   { key: "batch", label: "Batch" },
   { key: "qty", label: "Qty" },
   { key: "freeQty", label: "Free Qty" },
@@ -215,6 +218,7 @@ function describeFilters(filters: PurchaseAnalysisFilters): string {
   if (filters.partyName?.length) parts.push(filters.partyName.join(", "))
   if (filters.itemName?.length) parts.push(filters.itemName.map((name) => `"${name}"`).join(", "))
   if (filters.company?.length) parts.push(filters.company.join(", "))
+  if (filters.branch?.length) parts.push(filters.branch.join(", "))
   if (filters.type?.length) parts.push(filters.type.join(", "))
   if (filters.area?.length) parts.push(filters.area.join(", "))
   if (filters.route?.length) parts.push(filters.route.join(", "))

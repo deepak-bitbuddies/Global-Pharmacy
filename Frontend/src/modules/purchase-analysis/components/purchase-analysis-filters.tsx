@@ -15,6 +15,7 @@ import {
 import { NumberRangeFilter, ReportDateRangeFilter } from "@/modules/reports/components/filters"
 import {
   usePurchaseAnalysisAreas,
+  usePurchaseAnalysisBranches,
   usePurchaseAnalysisCompanies,
   usePurchaseAnalysisItems,
   usePurchaseAnalysisParties,
@@ -71,6 +72,7 @@ export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange, trailing
   const { data: parties } = usePurchaseAnalysisParties()
   const { data: items } = usePurchaseAnalysisItems()
   const { data: companies } = usePurchaseAnalysisCompanies()
+  const { data: branches } = usePurchaseAnalysisBranches()
   const { data: types } = usePurchaseAnalysisTypes()
   const { data: areas } = usePurchaseAnalysisAreas()
   const { data: routes } = usePurchaseAnalysisRoutes()
@@ -79,6 +81,7 @@ export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange, trailing
     filters.partyName?.length,
     filters.itemName?.length,
     filters.company?.length,
+    filters.branch?.length,
     filters.type?.length,
     filters.area?.length,
     filters.route?.length,
@@ -87,7 +90,7 @@ export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange, trailing
     filters.qtyFrom !== undefined || filters.qtyTo !== undefined,
   ].filter(Boolean).length
 
-  function removeFromArray(key: "partyName" | "itemName" | "company" | "type" | "area" | "route", value: string) {
+  function removeFromArray(key: "partyName" | "itemName" | "company" | "branch" | "type" | "area" | "route", value: string) {
     onFiltersChange((prev) => {
       const next = (prev[key] ?? []).filter((v) => v !== value)
       return { ...prev, [key]: next.length > 0 ? next : undefined }
@@ -139,6 +142,15 @@ export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange, trailing
                   onChange={(company) => setDraft((prev) => ({ ...prev, company }))}
                   placeholder={t("filterByCompany")}
                   ariaLabel={tCommon("company")}
+                />
+              </CustomFilterField>
+              <CustomFilterField label={tCommon("branch")}>
+                <DistinctValueFilter
+                  options={branches}
+                  value={draft.branch}
+                  onChange={(branch) => setDraft((prev) => ({ ...prev, branch }))}
+                  placeholder={t("filterByBranch")}
+                  ariaLabel={tCommon("branch")}
                 />
               </CustomFilterField>
               <CustomFilterField label={t("type")}>
@@ -215,6 +227,11 @@ export function PurchaseAnalysisFilterPanel({ filters, onFiltersChange, trailing
         {(filters.company ?? []).map((value) => (
           <CustomChip key={`company:${value}`} onClose={() => removeFromArray("company", value)}>
             {tCommon("company")}: {value}
+          </CustomChip>
+        ))}
+        {(filters.branch ?? []).map((value) => (
+          <CustomChip key={`branch:${value}`} onClose={() => removeFromArray("branch", value)}>
+            {tCommon("branch")}: {value}
           </CustomChip>
         ))}
         {(filters.type ?? []).map((value) => (

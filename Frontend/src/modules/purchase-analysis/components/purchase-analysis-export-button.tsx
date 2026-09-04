@@ -29,13 +29,14 @@ function rangeLabel(from: number | undefined, to: number | undefined): string {
   return `≤ ${to}`
 }
 
-/** Turns a job's saved filter snapshot into a short, readable line — same purpose as Reports' `formatFilterSummary`, just this module's own (branch-less) filter shape. */
+/** Turns a job's saved filter snapshot into a short, readable line — same purpose as Reports' `formatFilterSummary`, just this module's own filter shape (no `branchId`-style FK scoping — `branch` here is a free-text distinct value like `company`). */
 function formatFilterSummary(filters: PurchaseAnalysisFilters): string[] {
   const parts: string[] = []
   if (filters.dateFrom && filters.dateTo) parts.push(`${filters.dateFrom} – ${filters.dateTo}`)
   if (filters.partyName?.length) parts.push(filters.partyName.join(", "))
   if (filters.itemName?.length) parts.push(filters.itemName.map((name) => `"${name}"`).join(", "))
   if (filters.company?.length) parts.push(filters.company.join(", "))
+  if (filters.branch?.length) parts.push(filters.branch.join(", "))
   if (filters.type?.length) parts.push(filters.type.join(", "))
   if (filters.area?.length) parts.push(filters.area.join(", "))
   if (filters.route?.length) parts.push(filters.route.join(", "))

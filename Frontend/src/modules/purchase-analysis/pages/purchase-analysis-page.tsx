@@ -30,6 +30,7 @@ function PurchaseAnalysisDataTab({ filters, onFiltersChange }: { filters: Purcha
   const allColumns: TableHeaderColumn<PurchaseAnalysisRow>[] = [
     { key: "billDate", label: tCommon("date"), sortable: true },
     { key: "partyName", label: t("party"), sortable: true },
+    { key: "branchName", label: tCommon("branch") },
     { key: "itemName", label: tCommon("item"), sortable: true },
     { key: "billNo", label: t("billNo") },
     { key: "batch", label: t("batchNo") },

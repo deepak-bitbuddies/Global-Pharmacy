@@ -10,6 +10,7 @@ export const purchaseAnalysisFiltersSchema = z.object({
   partyName: stringArrayFilter(),
   itemName: stringArrayFilter(),
   company: stringArrayFilter(),
+  branch: stringArrayFilter(),
   type: stringArrayFilter(),
   area: stringArrayFilter(),
   route: stringArrayFilter(),

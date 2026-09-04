@@ -45,7 +45,11 @@ export const purchaseAnalysisLines = pgTable(
     // not an enum: this is Marg's own vocabulary, not a value this app defines or fully controls.
     type: text("type"),
     pan: text("pan"),
-    bankAcctNo: text("bank_acct_no"),
+    // Marg labels this column "Bank Acct No." on the export, but this shop's Marg setup actually
+    // records which of its branches (e.g. "BHANDARI", "SARGAM", "RAJSAMAND") a bill belongs to
+    // here — never a real bank account number in any export seen so far. Named for what it
+    // actually holds, not the misleading source label.
+    branchName: text("branch_name"),
     ifscCode: text("ifsc_code"),
     batch: text("batch"),
     qty: numeric("qty", { precision: 14, scale: 2, mode: "number" }),
@@ -70,6 +74,7 @@ export const purchaseAnalysisLines = pgTable(
     index("purchase_analysis_lines_party_idx").on(table.partyName),
     index("purchase_analysis_lines_item_idx").on(table.itemName),
     index("purchase_analysis_lines_batch_idx").on(table.importBatchId),
+    index("purchase_analysis_lines_branch_idx").on(table.branchName),
   ],
 )
 

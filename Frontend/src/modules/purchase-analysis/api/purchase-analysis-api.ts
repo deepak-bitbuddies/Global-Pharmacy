@@ -40,6 +40,11 @@ export async function getPurchaseAnalysisCompanies(): Promise<string[]> {
   return data.data
 }
 
+export async function getPurchaseAnalysisBranches(): Promise<string[]> {
+  const { data } = await api.get<{ data: string[] }>(`${BASE}/branches`)
+  return data.data
+}
+
 export async function getPurchaseAnalysisTypes(): Promise<string[]> {
   const { data } = await api.get<{ data: string[] }>(`${BASE}/types`)
   return data.data

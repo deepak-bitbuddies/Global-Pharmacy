@@ -9,6 +9,7 @@ import {
   listPurchaseAnalysisBatchesHandler,
   listPurchaseAnalysisExportsHandler,
   purchaseAnalysisAreasHandler,
+  purchaseAnalysisBranchesHandler,
   purchaseAnalysisCompaniesHandler,
   purchaseAnalysisItemsHandler,
   purchaseAnalysisLinesHandler,
@@ -31,6 +32,7 @@ export async function purchaseAnalysisRoutes(fastify: FastifyInstance): Promise<
   fastify.get("/parties", purchaseAnalysisPartiesHandler)
   fastify.get("/items", purchaseAnalysisItemsHandler)
   fastify.get("/companies", purchaseAnalysisCompaniesHandler)
+  fastify.get("/branches", purchaseAnalysisBranchesHandler)
   fastify.get("/types", purchaseAnalysisTypesHandler)
   fastify.get("/areas", purchaseAnalysisAreasHandler)
   fastify.get("/routes", purchaseAnalysisRoutesHandler)

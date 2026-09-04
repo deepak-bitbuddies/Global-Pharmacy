@@ -4,6 +4,9 @@ export type PurchaseAnalysisFilters = {
   partyName?: string[]
   itemName?: string[]
   company?: string[]
+  // Marg calls the source column "Bank Acct No.", but this shop's Marg setup actually records
+  // which branch a bill belongs to there.
+  branch?: string[]
   type?: string[]
   area?: string[]
   route?: string[]
@@ -22,7 +25,7 @@ export type PurchaseAnalysisRow = {
   billDate: string | null
   type: string | null
   pan: string | null
-  bankAcctNo: string | null
+  branchName: string | null
   ifscCode: string | null
   batch: string | null
   qty: number | null

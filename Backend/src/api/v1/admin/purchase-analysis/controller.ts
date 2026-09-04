@@ -11,6 +11,7 @@ import {
   importPurchaseAnalysisFile,
   listPurchaseAnalysisExports,
   purchaseAnalysisAreas,
+  purchaseAnalysisBranches,
   purchaseAnalysisCompanies,
   purchaseAnalysisImportBatches,
   purchaseAnalysisItems,
@@ -46,6 +47,10 @@ export async function purchaseAnalysisItemsHandler(_request: FastifyRequest, rep
 
 export async function purchaseAnalysisCompaniesHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
   sendSuccess(reply, await purchaseAnalysisCompanies())
+}
+
+export async function purchaseAnalysisBranchesHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  sendSuccess(reply, await purchaseAnalysisBranches())
 }
 
 export async function purchaseAnalysisTypesHandler(_request: FastifyRequest, reply: FastifyReply): Promise<void> {
