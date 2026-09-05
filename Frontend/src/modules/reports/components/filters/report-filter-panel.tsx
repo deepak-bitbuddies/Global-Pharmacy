@@ -30,6 +30,8 @@ type ReportFilterPanelProps = {
   show: ReportFilterFlags
   /** Placeholder for the always-visible search box — each page passes its own tailored copy. */
   searchPlaceholder?: string
+  /** Rendered at the right end of the search + Filters row — e.g. the Columns toggle. */
+  trailingContent?: React.ReactNode
 }
 
 /**
@@ -43,7 +45,7 @@ type ReportFilterPanelProps = {
  * Tracker's own filter bars. `FilterModal` stages edits behind Apply/Cancel; active filters show as
  * removable chips via `FilterChips` underneath — one chip per selected value.
  */
-export function ReportFilterPanel({ filters, onFiltersChange, show, searchPlaceholder }: ReportFilterPanelProps) {
+export function ReportFilterPanel({ filters, onFiltersChange, show, searchPlaceholder, trailingContent }: ReportFilterPanelProps) {
   const hasFilterModalContent =
     show.item ||
     show.branch ||
@@ -82,6 +84,7 @@ export function ReportFilterPanel({ filters, onFiltersChange, show, searchPlaceh
           />
         </div>
         {hasFilterModalContent && <FilterModal filters={filters} onFiltersChange={onFiltersChange} show={show} activeCount={activeCount} />}
+        {trailingContent}
       </div>
       {hasFilterModalContent && <FilterChips filters={filters} onFiltersChange={onFiltersChange} show={show} />}
     </div>

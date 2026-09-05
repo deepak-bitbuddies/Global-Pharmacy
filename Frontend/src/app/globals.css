@@ -246,6 +246,19 @@
     scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
   }
 
+  /* HeroUI's own `[data-scrollbar]` system (customTable/customAutoComplete's dropdowns, popovers,
+     ...) reads `--scrollbar-thumb`/`--scrollbar-track` instead of the plain CSS `scrollbar-color`
+     above, and its own package default is a barely-there 15%-opacity thumb on a transparent
+     track — invisible enough in a short list (e.g. a 9-branch filter dropdown) that a scrollable
+     tail past the fold reads as "missing" rather than "scroll for more". Overridden here to match
+     the same 35%/60%-hover convention as the rest of the app instead of two different scrollbar
+     looks coexisting. */
+  :root {
+    --scrollbar-thumb: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+    --scrollbar-track: transparent;
+  }
+
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -344,3 +357,18 @@
 .sidebar-scroll:hover::-webkit-scrollbar-thumb {
   background-color: var(--sidebar-border);
 }
+
+/* CustomAutoComplete's dropdown list (branch/company/item/... filter pickers) — capped at 270px
+   before it scrolls. Deliberately unlayered (outside any `@layer` block): HeroUI's own default for
+   this lives in a higher-priority cascade layer, so a same-specificity override inside `@layer
+   base` loses regardless of source order; only an unlayered rule reliably beats it. Targets
+   `[data-slot="list-box"]` — the actual scrollable element — not the Virtualizer's own inner
+   content div (the one sized e.g. `height: 428px` in devtools), which has no stable class to hook
+   and isn't the scroll container anyway. */
+.autocomplete__popover [data-slot="list-box"] {
+  max-height: 270px;
+}
+
+
+
+

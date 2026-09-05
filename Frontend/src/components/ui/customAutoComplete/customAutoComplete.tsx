@@ -164,9 +164,17 @@ export function CustomAutoComplete<T>({
   // unvirtualized `itemsData`/`sectionsData` array — this only affects what gets rendered).
   // `estimatedRowSize` lets rows measure their real height instead of assuming a fixed one,
   // so this stays correct for both the default single-line row and a custom `renderItem`.
+  // Keyed on the item count so the virtualizer remounts fresh whenever the underlying dataset
+  // size changes (e.g. an async-loaded options list — branches, items, ... — resolves after the
+  // dropdown's first render). Without this, `Virtualizer` can keep laying out against however many
+  // rows it saw on mount, silently clipping the tail of the list until some other interaction
+  // (typing into the search field) forces a relayout — same "stale virtualized collection" failure
+  // mode `CustomTable` hit with its own column virtualization.
+  const itemsCount = props.itemsData?.length ?? props.sectionsData?.reduce((sum, [, items]) => sum + items.length, 0) ?? 0
+
   const renderSections = () => {
     return (
-      <Virtualizer layout={ListLayout} layoutOptions={{ estimatedRowSize: 40, headingSize: 32, gap: 2 }}>
+      <Virtualizer key={itemsCount} layout={ListLayout} layoutOptions={{ estimatedRowSize: 40, headingSize: 32, gap: 2 }}>
         <ListBox
           renderEmptyState={() => <CustomEmptyState title="No results found" />}
         >
@@ -213,7 +221,7 @@ export function CustomAutoComplete<T>({
 
   const renderItems = () => {
     return (
-      <Virtualizer layout={ListLayout} layoutOptions={{ estimatedRowSize: 40, gap: 2 }}>
+      <Virtualizer key={itemsCount} layout={ListLayout} layoutOptions={{ estimatedRowSize: 40, gap: 2 }}>
         <ListBox
           renderEmptyState={() => <CustomEmptyState title="No results found" />}
         >

@@ -15,6 +15,10 @@ import { PurchaseAnalysisUpload } from "../components/purchase-analysis-upload"
 import { usePurchaseAnalysisLines, usePurchaseAnalysisSummary } from "../hooks/use-purchase-analysis"
 import type { PurchaseAnalysisFilters, PurchaseAnalysisRow } from "../types"
 
+// Hidden by default (still selectable via the Columns toggle) — the less commonly needed fields,
+// kept off-screen so the table isn't overwhelming on first load.
+const DEFAULT_HIDDEN_COLUMNS = ["gstPct", "taxAmount", "areaName", "routeName"]
+
 function PurchaseAnalysisDataTab({ filters, onFiltersChange }: { filters: PurchaseAnalysisFilters; onFiltersChange: (updater: (prev: PurchaseAnalysisFilters) => PurchaseAnalysisFilters) => void }) {
   const t = useTranslations("PurchaseAnalysis")
   const tCommon = useTranslations("Common")
@@ -49,7 +53,9 @@ function PurchaseAnalysisDataTab({ filters, onFiltersChange }: { filters: Purcha
     { key: "routeName", label: t("route") },
     { key: "type", label: t("type") },
   ]
-  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() => allColumns.map((column) => String(column.key)))
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() =>
+    allColumns.map((column) => String(column.key)).filter((key) => !DEFAULT_HIDDEN_COLUMNS.includes(key)),
+  )
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">

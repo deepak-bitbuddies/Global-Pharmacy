@@ -1,7 +1,9 @@
 export type CreateBranchDto = {
   name: string
   address?: string
-  gstin?: string
+  // `null` means "explicitly cleared"; `undefined` means "left untouched" — only meaningfully
+  // distinct on update, see `schema.ts`'s `nullableGstin`.
+  gstin?: string | null
   phone?: string
   drugLicenseNo?: string
   contactName: string

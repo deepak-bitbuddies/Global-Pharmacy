@@ -21,6 +21,8 @@ type CustomSelectFilterProps<T> = {
   className?: string;
   /** Allow selecting more than one value (tag chips, no "All" option). Default: false. */
   multiple?: boolean;
+  /** Show the "Select All" row at the top of a `multiple` list. Default: true. Has no effect in single-select mode (which uses its own built-in "All" option instead). */
+  showSelectAllOption?: boolean;
 };
 
 /**
@@ -51,6 +53,7 @@ export const CustomSelectFilter = <T,>({ multiple = false, ...props }: CustomSel
         ariaLabel={props.ariaLabel ?? props.label}
         placeholder={props.placeholder}
         selectionMode={SelectionModeEnum.multiple}
+        showSelectAllOption={props.showSelectAllOption}
         triggerClassName={FILTER_TRIGGER_CLASSNAME}
         className={props.className}
       />

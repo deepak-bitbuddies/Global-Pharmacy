@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 
-import { CustomPageHeader, CustomTable } from "@/components/ui"
+import { CustomColumnsToggle, CustomPageHeader, CustomTable, type TableHeaderColumn } from "@/components/ui"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
 import { formatCurrency, formatNumber } from "@/utils/formatting"
 import { ExportReportButton } from "../components/export-report-button"
@@ -11,6 +11,10 @@ import { ReportFilterPanel } from "../components/filters"
 import { useInitialFiltersFromUrl } from "../hooks/use-filters-from-url"
 import { useStockReport } from "../hooks/use-reports"
 import type { ReportFilters, StockRow } from "../types"
+
+// Hidden by default (still selectable via the Columns toggle) — the less commonly needed fields,
+// kept off-screen so the table isn't overwhelming on first load.
+const DEFAULT_HIDDEN_COLUMNS = ["itemCode", "manufacturer", "mfgDateRaw", "salesSchemeDeal", "salesSchemeFree", "rackNo"]
 
 export function StockReportPage() {
   const t = useTranslations("Reports.stock")
@@ -24,6 +28,38 @@ export function StockReportPage() {
     setFilters(updater)
     pagination.reset()
   }
+
+  const allColumns: TableHeaderColumn<StockRow>[] = [
+    { key: "asOfDate", label: tCommon("date"), sortable: true },
+    { key: "branchName", label: tCommon("branch") },
+    { key: "itemCode", label: t("itemCode") },
+    { key: "itemName", label: tCommon("item"), sortable: true },
+    { key: "currentStock", label: t("stockColumn"), sortable: true },
+    { key: "unit", label: tCommon("unit") },
+    { key: "value", label: t("value"), sortable: true },
+    { key: "expDate", label: t("expiry"), sortable: true },
+    { key: "daysToExpiry", label: t("daysToExpiry"), sortable: true },
+    { key: "company", label: tCommon("company") },
+    { key: "batch", label: t("batch") },
+    { key: "costPrice", label: t("costPrice") },
+    { key: "mrp", label: t("mrp") },
+    { key: "purchasePrice", label: t("purchasePrice") },
+    { key: "salesPrice", label: t("salesPrice") },
+    { key: "manufacturer", label: t("manufacturer") },
+    { key: "mfgDateRaw", label: t("mfgDate") },
+    { key: "supplier", label: t("supplier") },
+    { key: "invNo", label: t("invNo") },
+    { key: "invDate", label: t("invDate") },
+    { key: "rackNo", label: t("rackNo") },
+    { key: "salesSchemeDeal", label: t("salesSchemeDeal") },
+    { key: "salesSchemeFree", label: t("salesSchemeFree") },
+    { key: "purcSchemeDeal", label: t("purcSchemeDeal") },
+    { key: "purcSchemeFree", label: t("purcSchemeFree") },
+    { key: "recDate", label: t("recDate") },
+  ]
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(() =>
+    allColumns.map((column) => String(column.key)).filter((key) => !DEFAULT_HIDDEN_COLUMNS.includes(key)),
+  )
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
@@ -42,6 +78,7 @@ export function StockReportPage() {
             stockRange: true,
           }}
           searchPlaceholder={t("searchPlaceholder")}
+          trailingContent={<CustomColumnsToggle columns={allColumns} visibleKeys={visibleColumnKeys} onChange={setVisibleColumnKeys} />}
         />
       </div>
 
@@ -49,34 +86,7 @@ export function StockReportPage() {
         fillHeight
         isError={isError}
         noWrap
-        columns={[
-          { key: "asOfDate", label: tCommon("date"), sortable: true },
-          { key: "branchName", label: tCommon("branch") },
-          { key: "itemCode", label: t("itemCode") },
-          { key: "itemName", label: tCommon("item"), sortable: true },
-          { key: "currentStock", label: t("stockColumn"), sortable: true },
-          { key: "unit", label: tCommon("unit") },
-          { key: "value", label: t("value"), sortable: true },
-          { key: "expDate", label: t("expiry"), sortable: true },
-          { key: "daysToExpiry", label: t("daysToExpiry"), sortable: true },
-          { key: "company", label: tCommon("company") },
-          { key: "batch", label: t("batch") },
-          { key: "costPrice", label: t("costPrice") },
-          { key: "mrp", label: t("mrp") },
-          { key: "purchasePrice", label: t("purchasePrice") },
-          { key: "salesPrice", label: t("salesPrice") },
-          { key: "manufacturer", label: t("manufacturer") },
-          { key: "mfgDateRaw", label: t("mfgDate") },
-          { key: "supplier", label: t("supplier") },
-          { key: "invNo", label: t("invNo") },
-          { key: "invDate", label: t("invDate") },
-          { key: "rackNo", label: t("rackNo") },
-          { key: "salesSchemeDeal", label: t("salesSchemeDeal") },
-          { key: "salesSchemeFree", label: t("salesSchemeFree") },
-          { key: "purcSchemeDeal", label: t("purcSchemeDeal") },
-          { key: "purcSchemeFree", label: t("purcSchemeFree") },
-          { key: "recDate", label: t("recDate") },
-        ]}
+        columns={allColumns.filter((column) => visibleColumnKeys.includes(String(column.key)))}
         data={data?.data ?? []}
         loading={isLoading}
         rowKey="id"
