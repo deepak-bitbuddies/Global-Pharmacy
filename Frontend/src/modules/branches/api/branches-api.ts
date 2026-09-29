@@ -22,3 +22,9 @@ export async function updateBranch(id: string, input: UpdateBranchInput): Promis
 export async function deleteBranch(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`)
 }
+
+/** Decrypted on demand server-side — `null` when this branch's password was set before this feature existed and has never been changed since. Deliberately not part of `getBranches`/a single `getBranch` — a separate, explicit fetch so viewing it is a deliberate action. */
+export async function getBranchPassword(id: string): Promise<string | null> {
+  const { data } = await api.get<{ data: { password: string | null } }>(`${BASE}/${id}/password`)
+  return data.data.password
+}

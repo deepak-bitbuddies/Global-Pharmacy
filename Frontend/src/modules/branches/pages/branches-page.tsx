@@ -4,10 +4,11 @@ import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
+import { CheckIcon, CopySimpleIcon, EyeIcon, PencilSimpleIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { useTranslations } from "next-intl"
 
 import {
+  ButtonType,
   ButtonVariant,
   ConfirmVariant,
   CustomButton,
@@ -20,9 +21,11 @@ import {
   InputTypes,
   useConfirm,
 } from "@/components/ui"
+import { CustomSize } from "@/lib/types"
 import type { ApiErrorPayload } from "@/lib/axios"
 import { useCursorPagination } from "@/hooks/use-cursor-pagination"
-import { useBranches, useCreateBranch, useUpdateBranch, useDeleteBranch } from "../hooks/use-branches"
+import { useBranches, useBranchPassword, useCreateBranch, useUpdateBranch, useDeleteBranch } from "../hooks/use-branches"
+import { copyToClipboard } from "@/utils/clipboard"
 import type { Branch } from "../types"
 
 type BranchFormValues = {
@@ -61,10 +64,16 @@ export function BranchesPage() {
   const { mutateAsync: createBranch, isPending: isCreating } = useCreateBranch()
   const { mutateAsync: updateBranchMutation, isPending: isUpdating } = useUpdateBranch()
   const { mutateAsync: deleteBranchMutation } = useDeleteBranch()
+  const { mutateAsync: fetchBranchPassword, isPending: isRevealingPassword } = useBranchPassword()
   const confirm = useConfirm()
 
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null)
+  // The branch's *current* login password, fetched on demand (see `handleRevealPassword`) — kept
+  // entirely separate from the form's own `password` field (which is only ever for setting a new
+  // one) so viewing it never risks silently re-submitting the same password on Save.
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null)
+  const [isPasswordCopied, setIsPasswordCopied] = useState(false)
 
   const branchFormSchema = useMemo(
     () =>
@@ -94,12 +103,14 @@ export function BranchesPage() {
 
   const openCreateForm = () => {
     setEditingBranch(null)
+    setRevealedPassword(null)
     reset(EMPTY_FORM)
     setIsFormOpen(true)
   }
 
   const openEditForm = (branch: Branch) => {
     setEditingBranch(branch)
+    setRevealedPassword(null)
     reset({
       name: branch.name,
       address: branch.address ?? "",
@@ -112,6 +123,31 @@ export function BranchesPage() {
       password: "",
     })
     setIsFormOpen(true)
+  }
+
+  const handleRevealPassword = async () => {
+    if (!editingBranch) return
+    try {
+      const password = await fetchBranchPassword(editingBranch.id)
+      if (password === null) {
+        customToast.danger(t("noSavedPassword"))
+        return
+      }
+      setRevealedPassword(password)
+    } catch (error) {
+      customToast.danger((error as ApiErrorPayload).message || t("somethingWentWrong"))
+    }
+  }
+
+  const handleCopyRevealedPassword = async () => {
+    if (!revealedPassword) return
+    const copied = await copyToClipboard(revealedPassword)
+    if (!copied) {
+      customToast.danger(t("copyFailed"))
+      return
+    }
+    setIsPasswordCopied(true)
+    setTimeout(() => setIsPasswordCopied(false), 2000)
   }
 
   const onSubmit = handleSubmit(async (values) => {
@@ -257,14 +293,43 @@ export function BranchesPage() {
               <FormInput control={control} name="contactName" label={t("contactName")} placeholder={t("contactNamePlaceholder")} fullWidth />
               <FormInput control={control} name="contactEmail" label={t("email")} placeholder={t("emailPlaceholder")} fullWidth />
               <FormInput control={control} name="contactPhone" label={t("phone")} placeholder={t("phonePlaceholder")} fullWidth />
-              <FormInput
-                control={control}
-                name="password"
-                label={t("password")}
-                type={InputTypes.password}
-                placeholder={editingBranch ? t("passwordEditPlaceholder") : t("passwordPlaceholder")}
-                fullWidth
-              />
+              <div className="space-y-1.5">
+                <FormInput
+                  control={control}
+                  name="password"
+                  label={t("password")}
+                  type={InputTypes.password}
+                  placeholder={editingBranch ? t("passwordEditPlaceholder") : t("passwordPlaceholder")}
+                  fullWidth
+                />
+                {editingBranch &&
+                  (revealedPassword === null ? (
+                    <CustomButton
+                      type={ButtonType.button}
+                      variant={ButtonVariant.ghost}
+                      size={CustomSize.sm}
+                      className="h-7 px-2 text-xs"
+                      loading={isRevealingPassword}
+                      onClick={handleRevealPassword}
+                    >
+                      <EyeIcon className="size-3.5" />
+                      {t("showCurrentPassword")}
+                    </CustomButton>
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-app border border-default bg-muted-surface px-2.5 py-1.5">
+                      <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">{revealedPassword}</span>
+                      <CustomButton
+                        type={ButtonType.button}
+                        variant={ButtonVariant.ghost}
+                        isIconOnly
+                        className="size-7 shrink-0"
+                        onClick={handleCopyRevealedPassword}
+                      >
+                        {isPasswordCopied ? <CheckIcon className="size-3.5 text-success" /> : <CopySimpleIcon className="size-3.5" />}
+                      </CustomButton>
+                    </div>
+                  ))}
+              </div>
             </div>
           </div>
         </div>

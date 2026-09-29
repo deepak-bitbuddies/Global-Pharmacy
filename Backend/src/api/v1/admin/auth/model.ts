@@ -7,6 +7,12 @@ export const authUsers = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  // Reversibly encrypted copy of the current password (AES-256-GCM, see
+  // `shared/helpers/password-crypto.ts`) — exists only so a super_admin can look a branch's
+  // password back up from the Edit Branch screen. Never used for authentication (that's
+  // `passwordHash`, bcrypt, one-way); null for accounts created before this existed or that never
+  // had a password set through the branch-management flow (e.g. the seeded super_admin).
+  passwordEncrypted: text("password_encrypted"),
   role: text("role").notNull().default("admin"),
   isActive: boolean("is_active").notNull().default(true),
   // Set for branch_user accounts created from branch registration

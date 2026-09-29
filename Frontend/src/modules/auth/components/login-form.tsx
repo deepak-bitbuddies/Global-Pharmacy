@@ -21,8 +21,15 @@ import {
 } from "@phosphor-icons/react"
 
 import { useAuthStore } from "@/providers"
+import { SystemRoleCode } from "@/store/auth-store"
 import { login } from "../api/auth-api"
 import type { ApiErrorPayload } from "@/lib/axios"
+
+// Dashboard ("/") is super_admin-only nav (see config/nav.ts) — a branch_user landing there right
+// after login would hit a page their own sidebar doesn't even link to, so they get the one page
+// that's always theirs instead.
+const DEFAULT_LANDING_ROUTE = "/"
+const BRANCH_USER_LANDING_ROUTE = "/import"
 
 const DEMO_EMAIL = process.env.NEXT_PUBLIC_BRAND_DEMO_USERNAME ?? ''
 const DEMO_PASSWORD = process.env.NEXT_PUBLIC_BRAND_DEMO_PASSWORD ?? ''
@@ -54,7 +61,8 @@ export function LoginForm() {
     mutationFn: login,
     onSuccess: ({ user }) => {
       setUser(user)
-      router.push(searchParams.get("from") ?? "/")
+      const defaultRoute = user.role === SystemRoleCode.BranchUser ? BRANCH_USER_LANDING_ROUTE : DEFAULT_LANDING_ROUTE
+      router.push(searchParams.get("from") ?? defaultRoute)
     },
     onError: (error: ApiErrorPayload) => {
       customToast.danger(error.message || t("errorTitle"))

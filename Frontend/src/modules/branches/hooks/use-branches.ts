@@ -3,7 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import type { CursorPaginationParams } from "@/types/pagination"
-import { createBranch, deleteBranch, getBranches, updateBranch } from "../api/branches-api"
+import { createBranch, deleteBranch, getBranchPassword, getBranches, updateBranch } from "../api/branches-api"
 import type { UpdateBranchInput } from "../types"
 
 export const branchesQueryKeys = {
@@ -42,6 +42,11 @@ export function useUpdateBranch() {
       queryClient.invalidateQueries({ queryKey: ["reports"] })
     },
   })
+}
+
+/** On-demand fetch (a mutation, not a query) — viewing a branch's password is a deliberate click, not something that should auto-fire/cache/refetch in the background the way a `useQuery` would. */
+export function useBranchPassword() {
+  return useMutation({ mutationFn: getBranchPassword })
 }
 
 export function useDeleteBranch() {

@@ -3,7 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify"
 import { sendSuccess } from "../../../../shared/helpers/http-response.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
 import { branchIdParamSchema, createBranchSchema, listBranchesQuerySchema, updateBranchSchema } from "./schema.js"
-import { createBranch, deleteBranch, getBranches, updateBranch } from "./service.js"
+import { createBranch, deleteBranch, getBranchPassword, getBranches, updateBranch } from "./service.js"
 
 export async function listBranchesHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const { cursor, pageSize, search } = validateSchema(listBranchesQuerySchema, request.query)
@@ -28,4 +28,11 @@ export async function deleteBranchHandler(request: FastifyRequest, reply: Fastif
   const { id } = validateSchema(branchIdParamSchema, request.params)
   await deleteBranch(id)
   sendSuccess(reply, null, "Branch deleted successfully")
+}
+
+/** A separate, deliberate fetch (not part of the normal branch GET) — see `getBranchPassword`. */
+export async function getBranchPasswordHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { id } = validateSchema(branchIdParamSchema, request.params)
+  const password = await getBranchPassword(id)
+  sendSuccess(reply, { password })
 }

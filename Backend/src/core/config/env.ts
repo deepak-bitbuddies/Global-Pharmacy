@@ -22,6 +22,9 @@ const envSchema = z.object({
   DATABASE_URL: z.url("DATABASE_URL must be a valid PostgreSQL connection URL"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),
+  // Symmetric key a super_admin's "reveal branch password" screen decrypts with — separate from
+  // JWT_SECRET so rotating one never invalidates the other. See `shared/helpers/password-crypto.ts`.
+  PASSWORD_ENCRYPTION_KEY: z.string().min(16, "PASSWORD_ENCRYPTION_KEY must be at least 16 characters"),
 
   CORS_ORIGIN: z.string().default("*"),
 })

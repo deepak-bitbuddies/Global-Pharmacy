@@ -4,8 +4,15 @@ import { db } from "../../../../core/database/db.js"
 import { BCRYPT_SALT_ROUNDS } from "../../../../shared/constants/auth.constants.js"
 import { ConflictError, NotFoundError } from "../../../../shared/errors/index.js"
 import { rethrowUniqueViolation } from "../../../../shared/helpers/db-errors.js"
+import { decryptPassword, encryptPassword } from "../../../../shared/helpers/password-crypto.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
-import { createAuthUser, deleteAuthUserByBranchId, findAuthUserByEmail, updateAuthUserPasswordByBranchId } from "../auth/index.js"
+import {
+  createAuthUser,
+  deleteAuthUserByBranchId,
+  findAuthUserByBranchId,
+  findAuthUserByEmail,
+  updateAuthUserPasswordByBranchId,
+} from "../auth/index.js"
 import {
   countImportBatchesForBranch,
   createBranch as createBranchRow,
@@ -51,6 +58,7 @@ export async function createBranch(input: CreateBranchDto): Promise<BranchDto> {
   if (existingUser) throw new ConflictError("A user with this email already exists")
 
   const passwordHash = await hash(input.password, BCRYPT_SALT_ROUNDS)
+  const passwordEncrypted = encryptPassword(input.password)
 
   try {
     const branch = await db.transaction(async (tx) => {
@@ -73,6 +81,7 @@ export async function createBranch(input: CreateBranchDto): Promise<BranchDto> {
           name: input.contactName.trim(),
           email: contactEmail,
           passwordHash,
+          passwordEncrypted,
           role: SystemRoleCode.BRANCH_USER,
           branchId: createdBranch.id,
         },
@@ -113,10 +122,26 @@ export async function updateBranch(branchId: string, input: UpdateBranchDto): Pr
   // password when the admin actually typed a new one.
   if (input.password) {
     const passwordHash = await hash(input.password, BCRYPT_SALT_ROUNDS)
-    await updateAuthUserPasswordByBranchId(branchId, passwordHash)
+    const passwordEncrypted = encryptPassword(input.password)
+    await updateAuthUserPasswordByBranchId(branchId, passwordHash, passwordEncrypted)
   }
 
   return toBranchDto(updated)
+}
+
+/**
+ * Decrypts a branch's current login password for the "reveal password" action on the Edit Branch
+ * screen. Never returned as part of the normal branch GET/list response (`BranchDto` doesn't carry
+ * it) — this is a separate, deliberate fetch so viewing a password is an explicit action, not
+ * something that comes along for free with every branch list load.
+ */
+export async function getBranchPassword(branchId: string): Promise<string | null> {
+  const existing = await findBranchById(branchId)
+  if (!existing) throw new NotFoundError("Branch not found")
+
+  const user = await findAuthUserByBranchId(branchId)
+  if (!user?.passwordEncrypted) return null
+  return decryptPassword(user.passwordEncrypted)
 }
 
 /** Deletes a branch and its linked login account together — blocked if the branch already has imports on record. */
