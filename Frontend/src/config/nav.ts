@@ -30,7 +30,7 @@ export interface NavGroup {
 export const navGroups: NavGroup[] = [
   {
     headingKey: "dashboard",
-    items: [{ labelKey: "dashboard", href: "/", icon: HouseIcon }],
+    items: [{ labelKey: "dashboard", href: "/", icon: HouseIcon, superAdminOnly: true }],
   },
   {
     headingKey: "setup",
@@ -42,10 +42,10 @@ export const navGroups: NavGroup[] = [
   {
     headingKey: "reports",
     items: [
-      { labelKey: "salesReport", href: "/reports/sales", icon: ChartLineUpIcon },
-      { labelKey: "purchaseReport", href: "/reports/purchase", icon: ShoppingCartIcon },
-      { labelKey: "stockReport", href: "/reports/stock", icon: PackageIcon },
-      { labelKey: "dayWiseSales", href: "/reports/day-wise-sales", icon: CalendarCheckIcon },
+      { labelKey: "salesReport", href: "/reports/sales", icon: ChartLineUpIcon, superAdminOnly: true },
+      { labelKey: "purchaseReport", href: "/reports/purchase", icon: ShoppingCartIcon, superAdminOnly: true },
+      { labelKey: "stockReport", href: "/reports/stock", icon: PackageIcon, superAdminOnly: true },
+      { labelKey: "dayWiseSales", href: "/reports/day-wise-sales", icon: CalendarCheckIcon, superAdminOnly: true },
       // { labelKey: "grossProfitReport", href: "/reports/gross-profit", icon: ScalesIcon },
       // { labelKey: "nonMovingReport", href: "/reports/non-moving", icon: ArrowsCounterClockwiseIcon },
     ],

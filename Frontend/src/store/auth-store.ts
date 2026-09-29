@@ -1,6 +1,15 @@
 import { createStore } from "zustand/vanilla"
 
-export type AuthRole = "super_admin" | "rider" | "customer" | "branch_user"
+// Mirrors the backend's `SystemRoleCode` (`shared/enums/user-role.enum.ts`) value-for-value — kept
+// as a real TS enum here per this codebase's frontend convention (backend uses a const-object).
+export enum SystemRoleCode {
+  SuperAdmin = "super_admin",
+  BranchUser = "branch_user",
+  Rider = "rider",
+  Customer = "customer",
+}
+
+export type AuthRole = `${SystemRoleCode}`
 
 export interface AuthUser {
   id: string

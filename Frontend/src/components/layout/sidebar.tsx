@@ -15,6 +15,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/providers"
+import { SystemRoleCode } from "@/store/auth-store"
 import { logout } from "@/modules/auth"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { navGroups, type NavItem } from "@/config/nav"
@@ -96,7 +97,7 @@ export function Sidebar({ sidebarOpen, setSidebarOpen, collapsed, onToggleCollap
   const setUser = useAuthStore((state) => state.setUser)
   const role = useAuthStore((state) => state.user?.role)
   const visibleNavGroups = navGroups
-    .map((group) => ({ ...group, items: group.items.filter((item) => !item.superAdminOnly || role === "super_admin") }))
+    .map((group) => ({ ...group, items: group.items.filter((item) => !item.superAdminOnly || role === SystemRoleCode.SuperAdmin) }))
     .filter((group) => group.items.length > 0)
   const close = () => setSidebarOpen(false)
   const labelClassName = cn(
