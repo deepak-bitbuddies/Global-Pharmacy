@@ -15,7 +15,7 @@ export function ExpenseSummary({ filters }: { filters: ExpenseFilters }) {
   const { data: summary, isLoading } = useExpenseSummary(filters)
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <TremorStatCard label={t("totalCollection")} value={formatCurrency(summary?.totalCollection ?? 0)} icon={TrendUpIcon} tone={TremorTone.success} loading={isLoading} />
       <TremorStatCard label={t("totalOpeningBalance")} value={formatCurrency(summary?.totalOpeningBalance ?? 0)} icon={PiggyBankIcon} tone={TremorTone.success} loading={isLoading} />
       <TremorStatCard label={t("totalExpenses")} value={formatCurrency(summary?.totalExpenses ?? 0)} icon={TrendDownIcon} tone={TremorTone.danger} loading={isLoading} />

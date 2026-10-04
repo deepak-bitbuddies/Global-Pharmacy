@@ -69,9 +69,20 @@ export function useReviewExpense() {
   })
 }
 
-/** Recent export jobs for the inline history panel — kept live by `useImportSocket`'s `export-job:update` listener invalidating this same query key. */
+/**
+ * Recent export jobs for the inline history panel — kept live by `useImportSocket`'s
+ * `export-job:update` listener invalidating this same query key. `refetchInterval` is a safety net
+ * on top of that: a missed/late socket event (e.g. the backend reconnecting right after a deploy)
+ * would otherwise leave a completed job stuck showing "Processing" forever, since there'd be
+ * nothing else to trigger a refetch. Only polls while a job is actually still processing, and stops
+ * itself the moment none are.
+ */
 export function useExpensesExportJobs() {
-  return useQuery({ queryKey: expensesQueryKeys.exportJobs, queryFn: getExpensesExportJobs })
+  return useQuery({
+    queryKey: expensesQueryKeys.exportJobs,
+    queryFn: getExpensesExportJobs,
+    refetchInterval: (query) => (query.state.data?.some((job) => job.status === "processing") ? 3000 : false),
+  })
 }
 
 export function useCreateExpensesExportJob() {
