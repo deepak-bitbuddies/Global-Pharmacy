@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { BankIcon, HandCoinsIcon, HourglassMediumIcon, ScalesIcon, TrendDownIcon, TrendUpIcon } from "@phosphor-icons/react"
+import { BankIcon, HandCoinsIcon, HourglassMediumIcon, PiggyBankIcon, ScalesIcon, TrendDownIcon, TrendUpIcon } from "@phosphor-icons/react"
 
 import { TremorStatCard, TremorTone } from "@/components/ui/tremor"
 import { useAuthStore } from "@/providers"
@@ -17,6 +17,7 @@ export function ExpenseSummary({ filters }: { filters: ExpenseFilters }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <TremorStatCard label={t("totalCollection")} value={formatCurrency(summary?.totalCollection ?? 0)} icon={TrendUpIcon} tone={TremorTone.success} loading={isLoading} />
+      <TremorStatCard label={t("totalOpeningBalance")} value={formatCurrency(summary?.totalOpeningBalance ?? 0)} icon={PiggyBankIcon} tone={TremorTone.success} loading={isLoading} />
       <TremorStatCard label={t("totalExpenses")} value={formatCurrency(summary?.totalExpenses ?? 0)} icon={TrendDownIcon} tone={TremorTone.danger} loading={isLoading} />
       <TremorStatCard label={t("currentBalance")} value={formatCurrency(summary?.balance ?? 0)} icon={ScalesIcon} tone={TremorTone.primary} loading={isLoading} />
       <TremorStatCard label={t("handedOverCash")} value={formatCurrency(summary?.totalHandoverCash ?? 0)} icon={HandCoinsIcon} tone={TremorTone.warning} loading={isLoading} />

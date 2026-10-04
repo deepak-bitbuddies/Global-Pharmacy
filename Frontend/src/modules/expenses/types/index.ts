@@ -1,6 +1,9 @@
 export enum ExpenseType {
   Expense = "expense",
   Credit = "credit",
+  // Super-admin-only: adds to the running balance like Credit, but kept as its own distinct type
+  // for reporting/filtering rather than reusing Credit.
+  OpeningBalance = "opening_balance",
   HandoverCash = "handover_cash",
   HandoverBank = "handover_bank",
 }
@@ -60,6 +63,7 @@ type CreateExpenseBase = {
 export type CreateExpenseInput =
   | (CreateExpenseBase & { type: ExpenseType.Expense; category: string })
   | (CreateExpenseBase & { type: ExpenseType.Credit; category?: string })
+  | (CreateExpenseBase & { type: ExpenseType.OpeningBalance; category: string })
   | (CreateExpenseBase & { type: ExpenseType.HandoverCash | ExpenseType.HandoverBank; recipient: string; category?: string })
 
 export type UpdateExpenseInput = {
@@ -72,9 +76,27 @@ export type UpdateExpenseInput = {
 
 export type ExpenseSummary = {
   totalCollection: number
+  totalOpeningBalance: number
   totalExpenses: number
   totalHandoverCash: number
   totalHandoverBank: number
   balance: number
   pendingApprovalCount: number
 }
+
+/** A background ledger export job — same shape/lifecycle as Purchase Analysis' `PurchaseAnalysisExportJob` (both ride the one shared `export_jobs` table server-side). */
+export type ExpenseExportJob = {
+  id: string
+  reportType: string
+  branchId: string | null
+  filters: ExpenseFilters
+  status: "processing" | "completed" | "failed"
+  rowCount: number
+  fileName: string | null
+  errorMessage: string | null
+  requestedAt: string
+  completedAt: string | null
+}
+
+/** Instant ack for a new export job — same shape as `ExpenseExportJob`, just the moment it's created (`status: "processing"`). */
+export type ExpenseExportJobAck = ExpenseExportJob

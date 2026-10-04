@@ -22,6 +22,7 @@ export function ExpenseFilterModal({ filters, onFiltersChange, isSuperAdmin, act
   const typeOptions = [
     { id: ExpenseType.Expense, label: t("typeExpense") },
     { id: ExpenseType.Credit, label: t("typeCredit") },
+    { id: ExpenseType.OpeningBalance, label: t("typeOpeningBalance") },
     { id: ExpenseType.HandoverCash, label: t("typeHandoverCash") },
     { id: ExpenseType.HandoverBank, label: t("typeHandoverBank") },
   ]

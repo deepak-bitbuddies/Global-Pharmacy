@@ -7,12 +7,33 @@ import { sendSuccess } from "../../../../shared/helpers/http-response.js"
 import { scopeToUserBranch, scopeToUserBranchList } from "../../../../shared/helpers/scope-to-user-branch.js"
 import { validateSchema } from "../../../../shared/validators/validate-schema.js"
 import { ValidationError } from "../../../../shared/errors/index.js"
-import { createExpenseSchema, expenseFiltersSchema, expenseIdParamSchema, reviewExpenseSchema, updateExpenseSchema } from "./schema.js"
-import { attachExpenseProof, createExpense, deleteExpense, expenseLedger, expenseSummary, getExpenseProof, reviewExpense, updateExpense } from "./service.js"
+import {
+  createExpenseSchema,
+  createExpensesExportSchema,
+  expenseFiltersSchema,
+  expenseIdParamSchema,
+  listExpensesExportsQuerySchema,
+  expensesExportIdParamSchema,
+  reviewExpenseSchema,
+  updateExpenseSchema,
+} from "./schema.js"
+import {
+  attachExpenseProof,
+  createExpense,
+  createExpensesExport,
+  deleteExpense,
+  expenseLedger,
+  expenseSummary,
+  getExpenseProof,
+  getExpensesExportFileForDownload,
+  listExpensesExports,
+  reviewExpense,
+  updateExpense,
+} from "./service.js"
 
 export async function createExpenseHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const input = scopeToUserBranch(request, validateSchema(createExpenseSchema, request.body))
-  sendSuccess(reply, await createExpense(input), "Entry recorded", 201)
+  sendSuccess(reply, await createExpense(input, request.user), "Entry recorded", 201)
 }
 
 export async function expenseLedgerHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -73,4 +94,27 @@ export async function reviewExpenseHandler(request: FastifyRequest, reply: Fasti
   const { id } = validateSchema(expenseIdParamSchema, request.params)
   const { action, rejectionReason } = validateSchema(reviewExpenseSchema, request.body)
   sendSuccess(reply, await reviewExpense(id, action, request.user, rejectionReason), "Entry reviewed")
+}
+
+export async function createExpensesExportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const filters = scopeToUserBranchList(request, validateSchema(createExpensesExportSchema, request.body))
+  // `export_jobs.branch_id` is a single nullable column (used only to filter the export-history
+  // panel by branch) — kept populated for the common single-branch case, null for zero/multiple.
+  const job = await createExpensesExport(filters, filters.branchId?.length === 1 ? filters.branchId[0] : null)
+  sendSuccess(reply, job, "Export started — processing in background", 202)
+}
+
+export async function listExpensesExportsHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { branchId: requestedBranchId } = validateSchema(listExpensesExportsQuerySchema, request.query)
+  const { branchId } = scopeToUserBranch(request, { branchId: requestedBranchId })
+  sendSuccess(reply, await listExpensesExports(branchId))
+}
+
+export async function downloadExpensesExportHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const { id } = validateSchema(expensesExportIdParamSchema, request.params)
+  const { buffer, fileName } = await getExpensesExportFileForDownload(id)
+  reply
+    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    .header("Content-Disposition", `attachment; filename="${fileName}"`)
+    .send(buffer)
 }

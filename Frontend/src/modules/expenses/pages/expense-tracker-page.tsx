@@ -28,6 +28,7 @@ import { useAuthStore } from "@/providers"
 import { useBranches } from "@/modules/reports/hooks/use-reports"
 import { useDeleteExpense, useExpenseLedger, useReviewExpense } from "../hooks/use-expenses"
 import { getExpenseProofUrl } from "../api/expenses-api"
+import { ExpenseExportButton } from "../components/expense-export-button"
 import { ExpenseFilterModal } from "../components/expense-filter-modal"
 import { ExpenseFormModal } from "../components/expense-form-modal"
 import { ExpenseSummary } from "../components/expense-summary"
@@ -35,6 +36,8 @@ import { ExpenseStatus, ExpenseType, ReviewAction } from "../types"
 import type { Expense, ExpenseFilters, ExpenseLedgerRow } from "../types"
 
 const HANDOVER_TYPES = new Set<ExpenseType>([ExpenseType.HandoverCash, ExpenseType.HandoverBank])
+// Adds to the running balance the same way Credit does — used for the amount sign in the table.
+const CREDIT_LIKE_TYPES = new Set<ExpenseType>([ExpenseType.Credit, ExpenseType.OpeningBalance])
 const EDITABLE_STATUSES = new Set<ExpenseStatus>([ExpenseStatus.Posted, ExpenseStatus.Pending])
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp"])
 
@@ -52,12 +55,14 @@ export function ExpenseTrackerPage() {
   const TYPE_LABEL: Record<ExpenseType, string> = {
     [ExpenseType.Expense]: t("typeExpense"),
     [ExpenseType.Credit]: t("typeCredit"),
+    [ExpenseType.OpeningBalance]: t("typeOpeningBalance"),
     [ExpenseType.HandoverCash]: t("typeHandoverCash"),
     [ExpenseType.HandoverBank]: t("typeHandoverBank"),
   }
   const TYPE_COLOR: Record<ExpenseType, CustomChipColor> = {
     [ExpenseType.Expense]: CustomChipColor.danger,
     [ExpenseType.Credit]: CustomChipColor.success,
+    [ExpenseType.OpeningBalance]: CustomChipColor.success,
     [ExpenseType.HandoverCash]: CustomChipColor.warning,
     [ExpenseType.HandoverBank]: CustomChipColor.warning,
   }
@@ -199,10 +204,13 @@ export function ExpenseTrackerPage() {
         title={t("title")}
         description={t("description")}
         actions={
-          <CustomButton onClick={openCreateForm}>
-            <PlusIcon className="size-4" />
-            {t("addExpense")}
-          </CustomButton>
+          <div className="flex items-center gap-2">
+            <ExpenseExportButton filters={filters} />
+            <CustomButton onClick={openCreateForm}>
+              <PlusIcon className="size-4" />
+              {t("addExpense")}
+            </CustomButton>
+          </div>
         }
       />
 
@@ -257,7 +265,12 @@ export function ExpenseTrackerPage() {
         renderCustomCell={(entry, key) => {
           if (key === "type") return <CustomChip color={TYPE_COLOR[entry.type]}>{TYPE_LABEL[entry.type]}</CustomChip>
           if (key === "description") {
-            const detail = entry.type === ExpenseType.Expense ? entry.category : HANDOVER_TYPES.has(entry.type) ? entry.recipient : null
+            const detail =
+              entry.type === ExpenseType.Expense || entry.type === ExpenseType.OpeningBalance
+                ? entry.category
+                : HANDOVER_TYPES.has(entry.type)
+                  ? entry.recipient
+                  : null
             return (
               <div className="flex flex-col">
                 {detail && <span>{detail}</span>}
@@ -267,7 +280,7 @@ export function ExpenseTrackerPage() {
             )
           }
           if (key === "amount") {
-            const isCredit = entry.type === ExpenseType.Credit
+            const isCredit = CREDIT_LIKE_TYPES.has(entry.type)
             return <span className={isCredit ? "text-success" : "text-danger"}>{isCredit ? "+" : "-"}{formatCurrency(entry.amount)}</span>
           }
           if (key === "balanceAfter") return formatCurrency(entry.balanceAfter)

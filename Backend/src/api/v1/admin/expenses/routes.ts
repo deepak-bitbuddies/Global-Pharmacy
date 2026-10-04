@@ -4,10 +4,13 @@ import { requireAuth, requireRole } from "../../../../core/auth/guards.js"
 import { SystemRoleCode } from "../../../../shared/enums/index.js"
 import {
   createExpenseHandler,
+  createExpensesExportHandler,
   deleteExpenseHandler,
   downloadExpenseProofHandler,
+  downloadExpensesExportHandler,
   expenseLedgerHandler,
   expenseSummaryHandler,
+  listExpensesExportsHandler,
   reviewExpenseHandler,
   updateExpenseHandler,
   uploadExpenseProofHandler,
@@ -28,4 +31,7 @@ export async function expensesRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post("/:id/proof", uploadExpenseProofHandler)
   fastify.get("/:id/proof", downloadExpenseProofHandler)
   fastify.patch("/:id/review", { preHandler: requireRole(SystemRoleCode.SUPER_ADMIN) }, reviewExpenseHandler)
+  fastify.post("/exports", createExpensesExportHandler)
+  fastify.get("/exports", listExpensesExportsHandler)
+  fastify.get("/exports/:id/download", downloadExpensesExportHandler)
 }

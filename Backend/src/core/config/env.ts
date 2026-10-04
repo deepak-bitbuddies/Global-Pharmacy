@@ -26,6 +26,13 @@ const envSchema = z.object({
   // JWT_SECRET so rotating one never invalidates the other. See `shared/helpers/password-crypto.ts`.
   PASSWORD_ENCRYPTION_KEY: z.string().min(16, "PASSWORD_ENCRYPTION_KEY must be at least 16 characters"),
 
+  // File storage — local disk doesn't survive this app's deploy target (a read-only filesystem at
+  // runtime), so every uploaded/generated file (expense proofs, report exports) goes to Cloudinary
+  // instead. See `core/storage/cloudinary-storage.ts`.
+  CLOUDINARY_CLOUD_NAME: z.string().min(1, "CLOUDINARY_CLOUD_NAME is required"),
+  CLOUDINARY_API_KEY: z.string().min(1, "CLOUDINARY_API_KEY is required"),
+  CLOUDINARY_API_SECRET: z.string().min(1, "CLOUDINARY_API_SECRET is required"),
+
   CORS_ORIGIN: z.string().default("*"),
 })
 

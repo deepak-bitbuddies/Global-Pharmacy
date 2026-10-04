@@ -28,6 +28,7 @@ type CreateExpenseBase = {
 export type CreateExpenseDto =
   | (CreateExpenseBase & { type: typeof ExpenseType.Expense; category: string })
   | (CreateExpenseBase & { type: typeof ExpenseType.Credit; category?: string })
+  | (CreateExpenseBase & { type: typeof ExpenseType.OpeningBalance; category: string })
   | (CreateExpenseBase & { type: typeof ExpenseType.HandoverCash | typeof ExpenseType.HandoverBank; recipient: string; category?: string })
 
 // type/branch aren't editable after creation — switching type would orphan proof/approval state,
@@ -62,8 +63,23 @@ export type ExpenseDto = {
 /** One ledger row — `ExpenseDto` plus the running balance immediately after this entry, computed server-side over the full ordered result set (see `getExpenseLedger`). */
 export type ExpenseLedgerRowDto = ExpenseDto & { balanceAfter: number }
 
+/** A background ledger export — same shape/lifecycle as Reports' and Purchase Analysis' `ExportJobDto` (all three ride the one shared `export_jobs` table server-side). */
+export type ExpenseExportJobDto = {
+  id: string
+  reportType: string
+  branchId: string | null
+  filters: ExpenseFilters
+  status: string
+  rowCount: number
+  fileName: string | null
+  errorMessage: string | null
+  requestedAt: Date
+  completedAt: Date | null
+}
+
 export type ExpenseSummaryDto = {
   totalCollection: number
+  totalOpeningBalance: number
   totalExpenses: number
   totalHandoverCash: number
   totalHandoverBank: number

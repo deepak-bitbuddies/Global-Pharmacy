@@ -78,7 +78,7 @@ export async function getExpenseLedger(filters: ExpenseFilters) {
     .select({
       ...ROW_SELECTION,
       balanceAfter: sql<string>`sum(
-        case when ${expenses.type} = ${ExpenseType.Credit} then ${expenses.amount} else -${expenses.amount} end
+        case when ${expenses.type} in (${ExpenseType.Credit}, ${ExpenseType.OpeningBalance}) then ${expenses.amount} else -${expenses.amount} end
       ) filter (where ${expenses.status} != ${ExpenseStatus.Rejected}) over (order by ${expenses.expenseDate}, ${expenses.id} rows unbounded preceding)`.as(
         "balance_after",
       ),
@@ -100,6 +100,7 @@ export async function getExpenseSummary(filters: ExpenseFilters) {
     db
       .select({
         totalCollection: sql<string>`coalesce(sum(${expenses.amount}) filter (where ${expenses.type} = ${ExpenseType.Credit}), 0)`,
+        totalOpeningBalance: sql<string>`coalesce(sum(${expenses.amount}) filter (where ${expenses.type} = ${ExpenseType.OpeningBalance}), 0)`,
         totalExpenses: sql<string>`coalesce(sum(${expenses.amount}) filter (where ${expenses.type} = ${ExpenseType.Expense}), 0)`,
         totalHandoverCash: sql<string>`coalesce(sum(${expenses.amount}) filter (where ${expenses.type} = ${ExpenseType.HandoverCash}), 0)`,
         totalHandoverBank: sql<string>`coalesce(sum(${expenses.amount}) filter (where ${expenses.type} = ${ExpenseType.HandoverBank}), 0)`,
@@ -109,7 +110,7 @@ export async function getExpenseSummary(filters: ExpenseFilters) {
       .where(where),
   ])
 
-  return row ?? { totalCollection: "0", totalExpenses: "0", totalHandoverCash: "0", totalHandoverBank: "0", pendingApprovalCount: "0" }
+  return row ?? { totalCollection: "0", totalOpeningBalance: "0", totalExpenses: "0", totalHandoverCash: "0", totalHandoverBank: "0", pendingApprovalCount: "0" }
 }
 
 export async function findExpenseById(id: string) {

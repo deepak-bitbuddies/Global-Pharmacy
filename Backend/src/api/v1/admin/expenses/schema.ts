@@ -29,6 +29,7 @@ const createExpenseBaseSchema = z.object({
 export const createExpenseSchema = z.discriminatedUnion("type", [
   createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.Expense), category: z.string().min(1, "Category is required") }),
   createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.Credit), category: z.string().optional() }),
+  createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.OpeningBalance), category: z.string().min(1, "Category is required") }),
   createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.HandoverCash), recipient: z.string().min(1, "Recipient is required"), category: z.string().optional() }),
   createExpenseBaseSchema.extend({ type: z.literal(ExpenseType.HandoverBank), recipient: z.string().min(1, "Recipient is required"), category: z.string().optional() }),
 ])
@@ -60,4 +61,16 @@ export const reviewExpenseSchema = z.object({
 
 export const expenseIdParamSchema = z.object({
   id: z.string().uuid("Invalid expense id"),
+})
+
+// Export has no reportType discriminant — this module is only ever the one "report", unlike
+// Reports' `createExportSchema` which fans out across four.
+export const createExpensesExportSchema = expenseFiltersSchema
+
+export const listExpensesExportsQuerySchema = z.object({
+  branchId: z.string().uuid().optional(),
+})
+
+export const expensesExportIdParamSchema = z.object({
+  id: z.string().uuid("Invalid export id"),
 })

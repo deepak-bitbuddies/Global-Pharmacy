@@ -63,12 +63,18 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
   const [proofError, setProofError] = useState<string | undefined>(undefined)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const typeOptions: ExpenseTypeOption[] = [
+  // Every type's label, for resolving the read-only display when editing an existing entry
+  // (a branch_user can still be shown/edit an opening-balance row a super_admin created for their
+  // branch, even though they can't pick that type themselves — see `typeOptions` below).
+  const ALL_TYPE_OPTIONS: ExpenseTypeOption[] = [
     { id: ExpenseType.Expense, label: t("typeExpense") },
     { id: ExpenseType.Credit, label: t("typeCredit") },
+    { id: ExpenseType.OpeningBalance, label: t("typeOpeningBalance") },
     { id: ExpenseType.HandoverCash, label: t("typeHandoverCash") },
     { id: ExpenseType.HandoverBank, label: t("typeHandoverBank") },
   ]
+  // Only a super_admin may record an opening balance — enforced again server-side either way.
+  const typeOptions: ExpenseTypeOption[] = isSuperAdmin ? ALL_TYPE_OPTIONS : ALL_TYPE_OPTIONS.filter((option) => option.id !== ExpenseType.OpeningBalance)
 
   const schema = useMemo(
     () =>
@@ -83,7 +89,7 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
           description: z.string().optional(),
         })
         .superRefine((values, ctx) => {
-          if (values.type === ExpenseType.Expense && !values.category) {
+          if ((values.type === ExpenseType.Expense || values.type === ExpenseType.OpeningBalance) && !values.category) {
             ctx.addIssue({ code: "custom", path: ["category"], message: t("categoryRequired") })
           }
           if (HANDOVER_TYPES.has(values.type) && !values.recipient) {
@@ -147,24 +153,26 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
         const created =
           values.type === ExpenseType.Expense
             ? await createExpense({ type: ExpenseType.Expense, branchId: values.branchId, category: values.category!, amount: Number(values.amount), expenseDate: values.expenseDate, description: values.description || undefined })
-            : values.type === ExpenseType.Credit
-              ? await createExpense({
-                  type: ExpenseType.Credit,
-                  branchId: values.branchId,
-                  category: values.category || undefined,
-                  amount: Number(values.amount),
-                  expenseDate: values.expenseDate,
-                  description: values.description || undefined,
-                })
-              : await createExpense({
-                  type: values.type,
-                  branchId: values.branchId,
-                  recipient: values.recipient!,
-                  category: values.category || undefined,
-                  amount: Number(values.amount),
-                  expenseDate: values.expenseDate,
-                  description: values.description || undefined,
-                })
+            : values.type === ExpenseType.OpeningBalance
+              ? await createExpense({ type: ExpenseType.OpeningBalance, branchId: values.branchId, category: values.category!, amount: Number(values.amount), expenseDate: values.expenseDate, description: values.description || undefined })
+              : values.type === ExpenseType.Credit
+                ? await createExpense({
+                    type: ExpenseType.Credit,
+                    branchId: values.branchId,
+                    category: values.category || undefined,
+                    amount: Number(values.amount),
+                    expenseDate: values.expenseDate,
+                    description: values.description || undefined,
+                  })
+                : await createExpense({
+                    type: values.type,
+                    branchId: values.branchId,
+                    recipient: values.recipient!,
+                    category: values.category || undefined,
+                    amount: Number(values.amount),
+                    expenseDate: values.expenseDate,
+                    description: values.description || undefined,
+                  })
 
         if (proofFile && HANDOVER_TYPES.has(values.type)) {
           try {
@@ -223,7 +231,7 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
           ))}
 
         {editingExpense ? (
-          <CustomInput value={typeOptions.find((option) => option.id === editingExpense.type)?.label ?? editingExpense.type} onChange={() => {}} isReadOnly isDisabled label={t("type")} fullWidth />
+          <CustomInput value={ALL_TYPE_OPTIONS.find((option) => option.id === editingExpense.type)?.label ?? editingExpense.type} onChange={() => {}} isReadOnly isDisabled label={t("type")} fullWidth />
         ) : (
           // Plain `FormInput`'s select path forwards the raw scalar RHF value straight into
           // `CustomSelect`, which needs the whole option *object* to resolve a selection — same
@@ -254,9 +262,9 @@ export function ExpenseFormModal({ isOpen, setIsOpen, editingExpense }: ExpenseF
             label={t("category")}
             placeholder={t("categoryPlaceholder")}
             fullWidth
-            isRequired={type === ExpenseType.Expense}
+            isRequired={type === ExpenseType.Expense || type === ExpenseType.OpeningBalance}
           />
-          {type === ExpenseType.Expense && (
+          {(type === ExpenseType.Expense || type === ExpenseType.OpeningBalance) && (
             <div className="flex flex-wrap gap-1.5">
               {EXPENSE_CATEGORY_PRESETS.map((preset) => (
                 <CustomButton

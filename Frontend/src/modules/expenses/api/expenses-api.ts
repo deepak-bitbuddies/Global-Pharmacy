@@ -1,5 +1,15 @@
 import { api } from "@/lib/axios"
-import type { CreateExpenseInput, Expense, ExpenseFilters, ExpenseLedgerRow, ExpenseSummary, ReviewAction, UpdateExpenseInput } from "../types"
+import type {
+  CreateExpenseInput,
+  Expense,
+  ExpenseExportJob,
+  ExpenseExportJobAck,
+  ExpenseFilters,
+  ExpenseLedgerRow,
+  ExpenseSummary,
+  ReviewAction,
+  UpdateExpenseInput,
+} from "../types"
 
 const BASE = "/admin/expenses"
 
@@ -49,4 +59,23 @@ export function getExpenseProofUrl(id: string): string {
 export async function reviewExpense(id: string, action: ReviewAction, rejectionReason?: string): Promise<Expense> {
   const { data } = await api.patch<{ data: Expense }>(`${BASE}/${id}/review`, { action, rejectionReason })
   return data.data
+}
+
+/** Kicks off a background export job — instant ack (status "processing"), the file itself shows up later via socket + `downloadExpensesExportJob`. */
+export async function createExpensesExportJob(filters: ExpenseFilters): Promise<ExpenseExportJobAck> {
+  const { data } = await api.post<{ data: ExpenseExportJobAck }>(`${BASE}/exports`, filters)
+  return data.data
+}
+
+export async function getExpensesExportJobs(): Promise<ExpenseExportJob[]> {
+  const { data } = await api.get<{ data: ExpenseExportJob[] }>(`${BASE}/exports`)
+  return data.data
+}
+
+/** Only ever called against a job already known to be `completed` — the file itself, plus its display filename parsed off `Content-Disposition`. */
+export async function downloadExpensesExportJob(id: string): Promise<{ blob: Blob; fileName: string | null }> {
+  const response = await api.get<Blob>(`${BASE}/exports/${id}/download`, { responseType: "blob" })
+  const disposition = response.headers["content-disposition"] as string | undefined
+  const fileName = disposition ? (/filename="?([^"]+)"?/.exec(disposition)?.[1] ?? null) : null
+  return { blob: response.data, fileName }
 }
