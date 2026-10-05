@@ -305,7 +305,11 @@ function parseAndValidate(kind: FileTypeValue, rows: SheetRow[]): ValidatedParse
 
   if (kind === FileType.Sales) {
     const parsed = parseSalesFile(rows)
-    if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Sales)
+    // Unlike Stock (a pharmacy always carries *some* inventory, so 0 rows there is always a real
+    // format problem), a branch can have a genuinely quiet day with zero sales/purchases/summary
+    // entries — the title row was already verified (`assertReportKind`, or by construction on the
+    // bulk path), so an empty-but-correctly-dated file here is a valid "nothing happened" import,
+    // not an error. The date checks below still catch an actually wrong/garbled file.
     if (!parsed.reportDateFrom || !parsed.reportDateTo) throw new MissingDateError(FileType.Sales)
     if (parsed.reportDateFrom !== parsed.reportDateTo) throw new MultiDayFileError(parsed.reportDateFrom, parsed.reportDateTo)
     return { kind: FileType.Sales, reportDateFrom: parsed.reportDateFrom, reportDateTo: parsed.reportDateTo, rows: parsed.rows }
@@ -313,15 +317,16 @@ function parseAndValidate(kind: FileTypeValue, rows: SheetRow[]): ValidatedParse
 
   if (kind === FileType.Purchase) {
     const parsed = parsePurchaseFile(rows)
-    if (parsed.rows.length === 0) throw new EmptyImportError(FileType.Purchase)
+    // Same "quiet day is valid" reasoning as Sales above — e.g. no stock delivery that day.
     if (!parsed.reportDateFrom || !parsed.reportDateTo) throw new MissingDateError(FileType.Purchase)
     if (parsed.reportDateFrom !== parsed.reportDateTo) throw new MultiDayFileError(parsed.reportDateFrom, parsed.reportDateTo)
     return { kind: FileType.Purchase, reportDateFrom: parsed.reportDateFrom, reportDateTo: parsed.reportDateTo, rows: parsed.rows }
   }
 
-  // Day-Wise Sale
+  // Day-Wise Sale — same "quiet day is valid" reasoning; this type has no file-level date header
+  // to double-check against (each row carries its own date), so the title-row check already run
+  // by the caller is the only structural guard, same as it was before this file had any rows at all.
   const parsed = parseDaySalesFile(rows)
-  if (parsed.rows.length === 0) throw new EmptyImportError(FileType.DayWiseSale)
   return { kind: FileType.DayWiseSale, rows: parsed.rows }
 }
 
@@ -467,9 +472,30 @@ function compareCommitOrder(a: PreparedImport, b: PreparedImport): number {
   return dateCompare !== 0 ? dateCompare : TYPE_PRIORITY[a.kind] - TYPE_PRIORITY[b.kind]
 }
 
-/** Phase A per file: detect type, create its placeholder row immediately (so the table fills in fast), parse + structurally validate. Returns null if the file couldn't be handled at all (unrecognized type, or a structural failure) — either way the failure is already recorded/emitted, nothing left for the caller to do with it. */
+/** Phase A per file: detect type, create its placeholder row immediately (so the table fills in fast), parse + structurally validate. Returns null if the file couldn't be handled at all (unreadable, unrecognized type, or a structural failure) — either way the failure is already recorded/emitted, nothing left for the caller to do with it. */
 async function prepareBulkFile(branch: BranchDocument, fileName: string, buffer: Buffer): Promise<PreparedImport | null> {
-  const rows = readWorkbookRows(buffer)
+  // Reading the workbook can throw synchronously (corrupted file, not actually an Excel file, a
+  // password-protected one, zero sheets) — must be caught here and not let propagate: this whole
+  // bulk pipeline runs unawaited (`void processBulkFilesInBackground`), so an uncaught throw here
+  // would become an unhandled promise rejection and crash the entire process, taking every other
+  // upload/request down with it over one bad file in the batch. No batch row exists yet to attach
+  // the failure to (same as the "couldn't identify this file's type" case below), so it's reported
+  // the same way: a `batchId: null` event.
+  let rows: SheetRow[]
+  try {
+    rows = readWorkbookRows(buffer)
+  } catch {
+    emitImportBatchUpdate({
+      batchId: null,
+      branchId: branch.id,
+      fileType: null,
+      fileName,
+      status: "failed",
+      errorMessage: "Could not read this file — it may be corrupted or not a valid Excel file.",
+    })
+    return null
+  }
+
   const kind = detectReportKind(rows)
   if (!kind) {
     emitImportBatchUpdate({
