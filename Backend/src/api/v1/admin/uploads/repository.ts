@@ -260,7 +260,7 @@ export async function listImportBatches(branchId?: string, fileType?: string): P
     (clause): clause is NonNullable<typeof clause> => clause !== undefined,
   )
   const query = db.select().from(importBatches)
-  return (clauses.length > 0 ? query.where(and(...clauses)) : query).orderBy(importBatches.importedAt)
+  return (clauses.length > 0 ? query.where(and(...clauses)) : query).orderBy(desc(importBatches.importedAt))
 }
 
 export async function deleteStockSnapshotsByBatch(batchId: string, dbClient: DbOrTransaction = db): Promise<void> {

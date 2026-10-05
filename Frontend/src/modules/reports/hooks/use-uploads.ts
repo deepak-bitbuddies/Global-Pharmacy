@@ -7,11 +7,20 @@ import { reportsQueryKeys } from "../constants/query-keys"
 import type { ImportFileType } from "../types"
 import { bulkUploadFiles, getImportBatches, getUploadCycleStatus, revertImportBatch, uploadFile } from "../api/uploads-api"
 
+/**
+ * Kept live by `useImportSocket`'s `import-batch:update` listener invalidating `["reports"]`.
+ * `refetchInterval` is a safety net on top of that: a small/fast file can finish processing before
+ * the socket's own handshake completes (same race documented on `useExpensesExportJobs`), which
+ * would otherwise leave this list stuck showing "Processing" — and never picking up the row at all,
+ * for a file whose placeholder didn't arrive before the missed event — until the page is manually
+ * refreshed. Only polls while a batch in the current result is actually still processing.
+ */
 export function useImportBatches(branchId?: string, fileType?: ImportFileType) {
   return useQuery({
     queryKey: reportsQueryKeys.importBatches(branchId, fileType),
     queryFn: () => getImportBatches(branchId, fileType),
     enabled: !!branchId,
+    refetchInterval: (query) => (query.state.data?.some((batch) => batch.status === "processing") ? 3000 : false),
   })
 }
 
