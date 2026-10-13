@@ -217,12 +217,19 @@ export async function findImportBatchByDate(
   return batch ?? null
 }
 
-/** The most recent dated batch of this type for the branch — e.g. the branch's latest Stock date, to find the currently-open pipeline date. */
+/**
+ * The most recent dated batch of this type for the branch — e.g. the branch's latest Stock date, to
+ * find the currently-open pipeline date. Restricted to `status = "completed"` — a failed batch never
+ * gets a `date` written to it (stays null), and Postgres sorts NULL *first* in a `desc` ordering by
+ * default, so without this filter a single failed upload anywhere in the branch's history would make
+ * this permanently return null instead of the true latest date, silently disabling the sequencing
+ * gate that calls this (see `assertUploadAllowed`).
+ */
 export async function findLatestBatchDate(branchId: string, fileType: string): Promise<string | null> {
   const [row] = await db
     .select({ date: importBatches.date })
     .from(importBatches)
-    .where(and(eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType)))
+    .where(and(eq(importBatches.branchId, branchId), eq(importBatches.fileType, fileType), eq(importBatches.status, "completed")))
     .orderBy(desc(importBatches.date))
     .limit(1)
   return row?.date ?? null

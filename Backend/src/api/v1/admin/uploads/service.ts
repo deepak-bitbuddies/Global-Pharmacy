@@ -121,15 +121,28 @@ async function replaceExistingBatchByDate(
   return true
 }
 
+/** `date` plus one calendar day, both as "YYYY-MM-DD" — UTC-based arithmetic so it's immune to the server's local timezone. */
+function nextIsoDate(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
 /**
- * Enforces Stock -> Purchase -> Sales, one date at a time, per branch:
- * - Stock for a new date is blocked while the branch's current open date still has
- *   Purchase and/or Sales pending.
+ * Enforces Stock -> Purchase -> Sales, one date at a time, per branch, with no gaps:
+ * - A new Stock date is blocked while the branch's current open date still has Purchase
+ *   and/or Sales pending.
+ * - Once that cycle is closed, the *next* Stock upload must be for exactly the following
+ *   calendar day — not an earlier backfill, and not skipping ahead. Without this, a file whose
+ *   printed date doesn't match the business day it was meant for (see `parseStockFile`'s
+ *   `asOfDate` — taken verbatim from the file, never corrected) could silently skip a day with no
+ *   warning, the way it did for one branch: a Stock file meant for one date landed one day later
+ *   instead, and the day in between was never caught because nothing checked for a gap.
  * - Purchase/Sales for a date is blocked until Stock exists for that exact date.
- * Re-uploading for a date that already has a batch of that type is always a "correction"
- * and skips these checks entirely (handled by `replaceExistingBatchByDate` instead). Always reads
- * committed state (`db`, never a transaction) — by the time this runs for a given file, every
- * earlier file in the commit order has already fully committed or failed.
+ * Re-uploading for a date that already has a batch of that type is always a "correction" and skips
+ * every check below (handled by `replaceExistingBatchByDate` instead). Always reads committed state
+ * (`db`, never a transaction) — by the time this runs for a given file, every earlier file in the
+ * commit order has already fully committed or failed.
  */
 async function assertUploadAllowed(branchId: string, fileType: FileTypeValue, date: string): Promise<void> {
   if (await hasBatchForDate(branchId, fileType, date)) return // correction to an existing date — always allowed
@@ -142,12 +155,20 @@ async function assertUploadAllowed(branchId: string, fileType: FileTypeValue, da
       hasBatchForDate(branchId, FileType.Purchase, openStockDate),
       hasBatchForDate(branchId, FileType.Sales, openStockDate),
     ])
-    if (purchaseDone && salesDone) return // previous cycle closed — free to start a new date
+    if (!purchaseDone || !salesDone) {
+      const pending = [!purchaseDone && "Purchase", !salesDone && "Sales"].filter(Boolean).join(" and ")
+      throw new OutOfSequenceError(
+        `${pending} for ${openStockDate} still pending — finish that before uploading Stock for a new date (${date}).`,
+      )
+    }
 
-    const pending = [!purchaseDone && "Purchase", !salesDone && "Sales"].filter(Boolean).join(" and ")
-    throw new OutOfSequenceError(
-      `${pending} for ${openStockDate} still pending — finish that before uploading Stock for a new date (${date}).`,
-    )
+    const expectedDate = nextIsoDate(openStockDate)
+    if (date !== expectedDate) {
+      throw new OutOfSequenceError(
+        `Stock for ${openStockDate} is already on record — the next upload must be for ${expectedDate}, not ${date}. Dates can't be skipped; check the file's own date before re-exporting it.`,
+      )
+    }
+    return // previous cycle closed and this is exactly the next date — free to proceed
   }
 
   // Purchase or Sales
