@@ -222,7 +222,23 @@ export type DashboardSummary = {
   nonMovingCount: number
 }
 
-export type ImportFileType = "stock" | "sales" | "purchase" | "day_wise_sale"
+export enum ImportFileType {
+  Stock = "stock",
+  Sales = "sales",
+  Purchase = "purchase",
+  DayWiseSale = "day_wise_sale",
+}
+
+export enum ImportBatchStatus {
+  Processing = "processing",
+  Completed = "completed",
+  Failed = "failed",
+}
+
+/** Bulk-upload-only display state for a picked file the server hasn't reported on yet — never a real batch status. */
+export enum BulkFileStatus {
+  Queued = "queued",
+}
 
 /** Instant ack for a single-file upload — the batch already exists (status "processing") by the time this comes back; the real outcome (rowCount, replaced-or-not) only ever shows up later as the matching row in `ImportBatch` history, driven live by the import socket. */
 export type UploadAck = {
@@ -240,7 +256,7 @@ export type ImportBatch = {
   fileType: ImportFileType
   fileName: string
   rowCount: number
-  status: string
+  status: ImportBatchStatus
   errorMessage: string | null
   importedAt: string
 }
@@ -263,7 +279,7 @@ export type ImportBatchUpdateEvent = {
   branchId: string
   fileType: ImportFileType | null
   fileName: string
-  status: "processing" | "completed" | "failed"
+  status: ImportBatchStatus
   rowCount?: number
   errorMessage?: string
 }

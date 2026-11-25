@@ -10,7 +10,7 @@ import { ExportReportButton } from "../components/export-report-button"
 import { ReportFilterPanel } from "../components/filters"
 import { useInitialFiltersFromUrl } from "../hooks/use-filters-from-url"
 import { useStockReport } from "../hooks/use-reports"
-import type { ReportFilters, StockRow } from "../types"
+import { ImportFileType, type ReportFilters, type StockRow } from "../types"
 
 // Hidden by default (still selectable via the Columns toggle) — the less commonly needed fields,
 // kept off-screen so the table isn't overwhelming on first load.
@@ -64,7 +64,7 @@ export function StockReportPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="shrink-0 space-y-2">
-        <CustomPageHeader title={t("title")} description={t("description")} actions={<ExportReportButton reportType="stock" filters={filters} />} />
+        <CustomPageHeader title={t("title")} description={t("description")} actions={<ExportReportButton reportType={ImportFileType.Stock} filters={filters} />} />
         <ReportFilterPanel
           filters={filters}
           onFiltersChange={updateFilters}

@@ -9,7 +9,7 @@ import { usePurchaseAnalysisImportStatusStore } from "@/modules/purchase-analysi
 import type { PurchaseAnalysisBatchProgressEvent, PurchaseAnalysisBatchUpdateEvent } from "@/modules/purchase-analysis/types"
 import { useImportProgressStore } from "./use-import-progress-store"
 import { useImportStatusStore } from "./use-import-status-store"
-import type { ExportJobProgressEvent, ExportJobUpdateEvent, ImportBatchProgressEvent, ImportBatchUpdateEvent } from "../types"
+import { ImportBatchStatus, type ExportJobProgressEvent, type ExportJobUpdateEvent, type ImportBatchProgressEvent, type ImportBatchUpdateEvent } from "../types"
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:4000"
 
@@ -66,7 +66,7 @@ export function useImportSocket(): void {
         queryClient.invalidateQueries({ queryKey: ["reports"] })
         if (payload.batchId) clearProgress(payload.batchId)
         setStatus(payload.fileName, { batchId: payload.batchId, fileType: payload.fileType, status: payload.status, errorMessage: payload.errorMessage })
-        if (payload.batchId === null && payload.status === "failed") {
+        if (payload.batchId === null && payload.status === ImportBatchStatus.Failed) {
           customToast.danger(`${payload.fileName}: ${payload.errorMessage ?? "Could not process this file"}`)
         }
       })

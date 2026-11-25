@@ -1,11 +1,11 @@
 import { create } from "zustand"
 
-import type { ImportFileType } from "../types"
+import type { ImportBatchStatus, ImportFileType } from "../types"
 
 export type FileImportStatus = {
   batchId: string | null
   fileType: ImportFileType | null
-  status: "processing" | "completed" | "failed"
+  status: ImportBatchStatus
   errorMessage?: string
 }
 

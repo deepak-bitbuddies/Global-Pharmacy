@@ -35,3 +35,10 @@ export const reportsQueryKeys = {
   uploadCycleStatus: (branchId?: string) => ["reports", "upload-cycle-status", branchId] as const,
   exportJobs: (reportType?: string, branchId?: string) => ["reports", "export-jobs", reportType, branchId] as const,
 }
+
+/** Shared prefix lets the Import page ask "is any file still being sent to the server?" across both the single-file and bulk upload mutations. */
+export const reportsMutationKeys = {
+  uploadAny: ["reports", "upload"] as const,
+  uploadFile: ["reports", "upload", "file"] as const,
+  uploadBulk: ["reports", "upload", "bulk"] as const,
+}

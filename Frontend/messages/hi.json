@@ -317,12 +317,6 @@
     "revertDescription": "यह इस आयात द्वारा जोड़ी गई हर पंक्ति को स्थायी रूप से हटा देगा। इसे पूर्ववत नहीं किया जा सकता।",
     "reverted": "आयात पूर्ववत हुआ — इसकी सभी पंक्तियाँ हटा दी गईं",
     "revertFailed": "इस आयात को पूर्ववत नहीं किया जा सका",
-    "getStarted": "इस शाखा के लिए शुरू करने हेतु स्टॉक अपलोड करें।",
-    "cycleComplete": "{date} पूरी तरह आयात हो चुकी है — अगली तारीख़ के स्टॉक के लिए तैयार।",
-    "cyclePending": "{date} के लिए स्टॉक हो चुका है — अब उस तारीख़ के लिए {pending} अपलोड करें।",
-    "purchaseWord": "खरीद",
-    "salesWord": "बिक्री",
-    "andWord": "और",
     "stockRegister": {
       "title": "स्टॉक रजिस्टर",
       "description": "आइटम-वार वर्तमान स्टॉक, बैच, समाप्ति, लागत/बिक्री मूल्य — एक ही दिन के लिए होना चाहिए।"
@@ -352,7 +346,29 @@
     "bulkUploadDropzoneHint": ".xls या .xlsx — Stock, Purchase, Sales, Day-Wise Sale का कोई भी मिश्रण",
     "bulkUploadSubmit": "अपलोड करें",
     "bulkUploadFilesSelected": "{count} फ़ाइल चुनी गईं",
-    "bulkUploadProcessing": "{count} फ़ाइलें प्राप्त हुईं — बैकग्राउंड में प्रोसेस हो रही हैं"
+    "bulkUploadProcessing": "{count} फ़ाइलें प्राप्त हुईं — बैकग्राउंड में प्रोसेस हो रही हैं",
+    "guide": {
+      "nextStep": "अगला",
+      "uploadFileForDate": "<b>{date}</b> की <b>{fileType}</b> फ़ाइल अपलोड करें",
+      "uploadFirstStock": "शुरू करने के लिए स्टॉक फ़ाइल अपलोड करें",
+      "checkDateHint": "जाँच लें कि फ़ाइल के अंदर छपी तारीख़ {date} है।",
+      "firstStockHint": "जिस पहले दिन से आयात करना है वहाँ से शुरू करें। हर दिन: स्टॉक → खरीद → बिक्री।",
+      "goToTab": "{fileType} पर जाएँ",
+      "nextBadge": "अगला",
+      "importingTitle": "कृपया प्रतीक्षा करें —",
+      "importingFile": "\"{fileName}\" आयात हो रही है। इसके पूरा होने तक बाकी अपलोड बंद हैं।",
+      "importingSending": "आपकी फ़ाइल अपलोड हो रही है। इसके पूरा होने तक बाकी अपलोड बंद हैं।",
+      "lockedHint": "कृपया मौजूदा आयात पूरा होने तक प्रतीक्षा करें।",
+      "stepsLabel": "इस दिन के चरण",
+      "notDue": "अभी यहाँ कुछ अपलोड नहीं करना है। अगला: {date} की {fileType} फ़ाइल।",
+      "notDueFirstStock": "अभी यहाँ कुछ अपलोड नहीं करना है। पहले स्टॉक फ़ाइल अपलोड करें।",
+      "fileTypes": {
+        "stock": "स्टॉक",
+        "purchase": "खरीद",
+        "sales": "बिक्री",
+        "day_wise_sale": "डे-वाइज़ सेल"
+      }
+    }
   },
   "Branches": {
     "title": "शाखाएं",
@@ -391,7 +407,7 @@
     "emailPlaceholder": "उदा. name@branch.com",
     "phonePlaceholder": "उदा. 9876543210",
     "passwordPlaceholder": "इस शाखा के लिए एक लॉगिन पासवर्ड सेट करें",
-  "passwordEditPlaceholder": "वर्तमान पासवर्ड बनाए रखने के लिए खाली छोड़ें",
+    "passwordEditPlaceholder": "वर्तमान पासवर्ड बनाए रखने के लिए खाली छोड़ें",
     "showCurrentPassword": "वर्तमान पासवर्ड दिखाएं",
     "noSavedPassword": "इस शाखा के लिए अभी तक कोई सहेजा गया पासवर्ड नहीं है — भविष्य में देखने के लिए नीचे एक नया सेट करें",
     "copyPassword": "पासवर्ड कॉपी करें",
@@ -409,7 +425,7 @@
   },
   "ExpenseTracker": {
     "title": "व्यय ट्रैकर",
-    "description": "आपकी शाखा के हाथ में मौजूद नकदी की बहीखाता — जोड़ी गई, खर्च की गई, या अधिकृत व्यक्ति को नकद/बैंक-यूपीआई द्वारा सौंपी गई राशि।",
+    "description": "विवरण",
     "addExpense": "प्रविष्टि जोड़ें",
     "editExpense": "प्रविष्टि संपादित करें",
     "edit": "संपादित करें",
@@ -438,7 +454,6 @@
     "amountPositive": "राशि 0 से अधिक होनी चाहिए",
     "date": "तारीख",
     "dateRequired": "तारीख आवश्यक है",
-    "description": "विवरण",
     "descriptionPlaceholder": "इस प्रविष्टि के बारे में वैकल्पिक टिप्पणी",
     "proofDocument": "प्रमाण दस्तावेज़",
     "download": "डाउनलोड करें",

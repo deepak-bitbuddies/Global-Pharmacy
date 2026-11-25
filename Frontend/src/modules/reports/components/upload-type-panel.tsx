@@ -1,13 +1,14 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import { ArrowCounterClockwiseIcon } from "@phosphor-icons/react"
+import { ArrowCounterClockwiseIcon, InfoIcon } from "@phosphor-icons/react"
 
 import { CustomColor } from "@/lib/types"
 import {
   ButtonVariant,
   ConfirmVariant,
   CustomButton,
+  CustomCard,
   CustomProgress,
   CustomSection,
   CustomTable,
@@ -22,14 +23,12 @@ import { useAuthStore } from "@/providers"
 import { FileUploadSlot } from "./file-upload-slot"
 import { useImportBatches, useRevertImportBatch } from "../hooks/use-uploads"
 import { useImportProgressStore } from "../hooks/use-import-progress-store"
-import type { ImportBatch, ImportFileType } from "../types"
+import { ImportBatchStatus, type ImportBatch, type ImportFileType } from "../types"
 
-type BatchStatus = "processing" | "completed" | "failed"
-
-const STATUS_COLOR_MAP: StatusColorMap<BatchStatus> = {
-  processing: CustomColor.warning,
-  completed: CustomColor.success,
-  failed: CustomColor.danger,
+const STATUS_COLOR_MAP: StatusColorMap<ImportBatchStatus> = {
+  [ImportBatchStatus.Processing]: CustomColor.warning,
+  [ImportBatchStatus.Completed]: CustomColor.success,
+  [ImportBatchStatus.Failed]: CustomColor.danger,
 }
 
 type UploadTypePanelProps = {
@@ -37,10 +36,17 @@ type UploadTypePanelProps = {
   title: string
   description: string
   branchId: string
+  isLocked: boolean
+  isCheckingStatus: boolean
+  onUploadStart: () => void
+  /** Only the file that's due next (and Day-Wise Sale) gets an upload box — every other tab just shows its history, so there's never a wrong "Choose file" button to press. */
+  showUpload: boolean
+  /** One short line telling the user what's due instead, shown in place of the upload box. */
+  notDueMessage?: string
 }
 
 /** One tab's content on the Import page: the upload slot for this file type, plus its own history — never mixed with the other file types' history. */
-export function UploadTypePanel({ fileType, title, description, branchId }: UploadTypePanelProps) {
+export function UploadTypePanel({ fileType, title, description, branchId, isLocked, isCheckingStatus, onUploadStart, showUpload, notDueMessage }: UploadTypePanelProps) {
   const t = useTranslations("Import")
   const role = useAuthStore((state) => state.user?.role)
   const isSuperAdmin = role === "super_admin"
@@ -68,7 +74,16 @@ export function UploadTypePanel({ fileType, title, description, branchId }: Uplo
 
   return (
     <div className="space-y-4">
-      <FileUploadSlot fileType={fileType} title={title} description={description} branchId={branchId} />
+      {showUpload ? (
+        <FileUploadSlot fileType={fileType} title={title} description={description} branchId={branchId} isLocked={isLocked} isCheckingStatus={isCheckingStatus} onUploadStart={onUploadStart} />
+      ) : (
+        notDueMessage && (
+          <CustomCard className="flex-row! items-center justify-center gap-2 border-dashed px-4 py-3 text-center">
+            <InfoIcon className="size-4 shrink-0 text-foreground" aria-hidden />
+            <p className="text-sm text-foreground">{notDueMessage}</p>
+          </CustomCard>
+        )
+      )}
 
       <CustomSection title={`${title} ${t("historySuffix")}`}>
         <CustomTable<ImportBatch>
@@ -89,9 +104,9 @@ export function UploadTypePanel({ fileType, title, description, branchId }: Uplo
           renderCustomCell={(batch, key) => {
             if (key === "importedAt") return new Date(batch.importedAt).toLocaleString()
             if (key === "status") {
-              const status = batch.status as BatchStatus
+              const status = batch.status
               const progress = progressByBatch[batch.id]
-              if (status === "processing" && progress) {
+              if (status === ImportBatchStatus.Processing && progress) {
                 return (
                   <div className="w-32 space-y-1">
                     <CustomProgress progress={Math.round((progress.rowsProcessed / progress.totalRows) * 100)} className="w-full" />
@@ -103,11 +118,11 @@ export function UploadTypePanel({ fileType, title, description, branchId }: Uplo
               }
 
               const chip = renderStatusCell(status, STATUS_COLOR_MAP, {
-                processing: t("statusProcessing"),
-                completed: t("statusCompleted"),
-                failed: t("statusFailed"),
+                [ImportBatchStatus.Processing]: t("statusProcessing"),
+                [ImportBatchStatus.Completed]: t("statusCompleted"),
+                [ImportBatchStatus.Failed]: t("statusFailed"),
               })
-              if (status !== "failed" || !batch.errorMessage) return chip
+              if (status !== ImportBatchStatus.Failed || !batch.errorMessage) return chip
               return (
                 <CustomTooltip trigger={chip}>
                   <p className="max-w-64 text-xs">{batch.errorMessage}</p>
@@ -115,7 +130,7 @@ export function UploadTypePanel({ fileType, title, description, branchId }: Uplo
               )
             }
             if (key === "id") {
-              if (batch.status !== "completed") return null
+              if (batch.status !== ImportBatchStatus.Completed) return null
               return (
                 <CustomTooltip trigger={
                   <CustomButton variant={ButtonVariant.ghost} isIconOnly loading={isReverting} onClick={() => handleRevert(batch)}>

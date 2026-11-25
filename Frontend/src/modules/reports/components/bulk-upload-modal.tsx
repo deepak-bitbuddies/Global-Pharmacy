@@ -12,18 +12,21 @@ import type { ApiErrorPayload } from "@/lib/axios"
 import { useBulkUploadFiles } from "../hooks/use-uploads"
 import { useImportProgressStore } from "../hooks/use-import-progress-store"
 import { useImportStatusStore } from "../hooks/use-import-status-store"
+import { BulkFileStatus, ImportBatchStatus } from "../types"
 
 type BulkUploadModalProps = {
   branchId: string
+  /** A file for this branch is still importing — starting a new bulk upload is blocked until it finishes. */
+  isDisabled?: boolean
 }
 
-type FileStatus = "queued" | "processing" | "completed" | "failed"
+type FileStatus = ImportBatchStatus | BulkFileStatus
 
 const STATUS_COLOR_MAP: StatusColorMap<FileStatus> = {
-  queued: CustomColor.default,
-  processing: CustomColor.warning,
-  completed: CustomColor.success,
-  failed: CustomColor.danger,
+  [BulkFileStatus.Queued]: CustomColor.default,
+  [ImportBatchStatus.Processing]: CustomColor.warning,
+  [ImportBatchStatus.Completed]: CustomColor.success,
+  [ImportBatchStatus.Failed]: CustomColor.danger,
 }
 
 function formatFileSize(bytes: number): string {
@@ -55,7 +58,7 @@ function mergeFiles(existing: File[], incoming: FileList | File[]): File[] {
  * then a completed/failed chip. Correlating an event back to *this* file only works by filename
  * (`useImportStatusStore`) — the batch id isn't known until the background pipeline gets to it.
  */
-export function BulkUploadModal({ branchId }: BulkUploadModalProps) {
+export function BulkUploadModal({ branchId, isDisabled = false }: BulkUploadModalProps) {
   const t = useTranslations("Import")
   const inputRef = useRef<HTMLInputElement>(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -106,7 +109,7 @@ export function BulkUploadModal({ branchId }: BulkUploadModalProps) {
 
   return (
     <>
-      <CustomButton variant={ButtonVariant.outline} startContent={<CloudArrowUpIcon className="size-4" />} onClick={() => setIsOpen(true)}>
+      <CustomButton variant={ButtonVariant.outline} startContent={<CloudArrowUpIcon className="size-4" />} isDisabled={isDisabled} onClick={() => setIsOpen(true)}>
         {t("bulkUpload")}
       </CustomButton>
 
@@ -191,27 +194,27 @@ export function BulkUploadModal({ branchId }: BulkUploadModalProps) {
               {files.map((file, index) => {
                 const fileStatus = statusByFileName[file.name]
                 const progress = fileStatus?.batchId ? progressByBatch[fileStatus.batchId] : undefined
-                const status: FileStatus = fileStatus?.status ?? "queued"
+                const status: FileStatus = fileStatus?.status ?? BulkFileStatus.Queued
 
                 const chip = renderStatusCell<FileStatus>(status, STATUS_COLOR_MAP, {
-                  queued: t("statusQueued"),
-                  processing: t("statusProcessing"),
-                  completed: t("statusCompleted"),
-                  failed: t("statusFailed"),
+                  [BulkFileStatus.Queued]: t("statusQueued"),
+                  [ImportBatchStatus.Processing]: t("statusProcessing"),
+                  [ImportBatchStatus.Completed]: t("statusCompleted"),
+                  [ImportBatchStatus.Failed]: t("statusFailed"),
                 })
 
                 return (
                   <div key={`${file.name}-${index}`} className="flex items-center gap-3 rounded-app border border-default px-3 py-2">
                     <FileXlsIcon className="size-4 shrink-0 text-success" />
                     <span className="min-w-0 flex-1 truncate text-sm">{file.name}</span>
-                    {status === "processing" && progress ? (
+                    {status === ImportBatchStatus.Processing && progress ? (
                       <div className="w-32 shrink-0 space-y-1">
                         <CustomProgress progress={Math.round((progress.rowsProcessed / progress.totalRows) * 100)} className="w-full" />
                         <p className="text-right text-xs text-muted-foreground">
                           {progress.rowsProcessed}/{progress.totalRows}
                         </p>
                       </div>
-                    ) : status === "failed" && fileStatus?.errorMessage ? (
+                    ) : status === ImportBatchStatus.Failed && fileStatus?.errorMessage ? (
                       <CustomTooltip trigger={chip}>
                         <p className="max-w-64 text-xs">{fileStatus.errorMessage}</p>
                       </CustomTooltip>

@@ -317,12 +317,6 @@
     "revertDescription": "This permanently deletes every row this import inserted. This cannot be undone.",
     "reverted": "Import reverted — all its rows were removed",
     "revertFailed": "Could not revert this import",
-    "getStarted": "Upload Stock to get started for this branch.",
-    "cycleComplete": "{date} is fully imported — ready for the next date's Stock.",
-    "cyclePending": "Stock done for {date} — now upload {pending} for that date.",
-    "purchaseWord": "Purchase",
-    "salesWord": "Sales",
-    "andWord": "and",
     "stockRegister": {
       "title": "Stock Register",
       "description": "Item-wise current stock, batches, expiry, cost/sale price — must be for a single day."
@@ -352,7 +346,29 @@
     "bulkUploadDropzoneHint": ".xls or .xlsx — any mix of Stock, Purchase, Sales, Day-Wise Sale",
     "bulkUploadSubmit": "Upload",
     "bulkUploadFilesSelected": "{count} file(s) selected",
-    "bulkUploadProcessing": "{count} file(s) received — processing in the background"
+    "bulkUploadProcessing": "{count} file(s) received — processing in the background",
+    "guide": {
+      "nextStep": "Next",
+      "uploadFileForDate": "upload the <b>{fileType}</b> file for <b>{date}</b>",
+      "uploadFirstStock": "upload a Stock file to get started",
+      "checkDateHint": "Make sure the date printed inside the file is {date}.",
+      "firstStockHint": "Start with the first day you want to import. Each day goes Stock → Purchase → Sales.",
+      "goToTab": "Go to {fileType}",
+      "nextBadge": "Next",
+      "importingTitle": "Please wait —",
+      "importingFile": "\"{fileName}\" is importing. Other uploads are locked until it finishes.",
+      "importingSending": "your file is uploading. Other uploads are locked until it finishes.",
+      "lockedHint": "Please wait until the current import finishes.",
+      "stepsLabel": "Steps for this day",
+      "notDue": "Nothing to upload here right now. Next: the {fileType} file for {date}.",
+      "notDueFirstStock": "Nothing to upload here yet. Start with a Stock file.",
+      "fileTypes": {
+        "stock": "Stock",
+        "purchase": "Purchase",
+        "sales": "Sales",
+        "day_wise_sale": "Day-Wise Sale"
+      }
+    }
   },
   "Branches": {
     "title": "Branches",
@@ -391,7 +407,7 @@
     "emailPlaceholder": "e.g. name@branch.com",
     "phonePlaceholder": "e.g. 9876543210",
     "passwordPlaceholder": "Set a login password for this branch",
-  "passwordEditPlaceholder": "Leave blank to keep the current password",
+    "passwordEditPlaceholder": "Leave blank to keep the current password",
     "showCurrentPassword": "Show current password",
     "noSavedPassword": "No saved password for this branch yet — set a new one below to enable viewing it in future",
     "copyPassword": "Copy password",
@@ -409,7 +425,7 @@
   },
   "ExpenseTracker": {
     "title": "Expense Tracker",
-    "description": "Your branch's cash-in-hand ledger — money added, spent, or handed over to the authorised person, in cash or bank/UPI.",
+    "description": "Description",
     "addExpense": "Add Entry",
     "editExpense": "Edit Entry",
     "edit": "Edit",
@@ -438,7 +454,6 @@
     "amountPositive": "Amount must be greater than 0",
     "date": "Date",
     "dateRequired": "A date is required",
-    "description": "Description",
     "descriptionPlaceholder": "Optional note about this entry",
     "proofDocument": "Proof Document",
     "download": "Download",

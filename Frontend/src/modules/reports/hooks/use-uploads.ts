@@ -1,10 +1,11 @@
 "use client"
 
 import type { AxiosProgressEvent } from "axios"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { reportsQueryKeys } from "../constants/query-keys"
-import type { ImportFileType } from "../types"
+import { reportsMutationKeys, reportsQueryKeys } from "../constants/query-keys"
+import { ImportBatchStatus, type ImportBatch, type ImportFileType } from "../types"
+import { findRunningImport } from "../utils/upload-guide"
 import { bulkUploadFiles, getImportBatches, getUploadCycleStatus, revertImportBatch, uploadFile } from "../api/uploads-api"
 
 /**
@@ -20,7 +21,7 @@ export function useImportBatches(branchId?: string, fileType?: ImportFileType) {
     queryKey: reportsQueryKeys.importBatches(branchId, fileType),
     queryFn: () => getImportBatches(branchId, fileType),
     enabled: !!branchId,
-    refetchInterval: (query) => (query.state.data?.some((batch) => batch.status === "processing") ? 3000 : false),
+    refetchInterval: (query) => (query.state.data?.some((batch) => batch.status === ImportBatchStatus.Processing) ? 3000 : false),
   })
 }
 
@@ -32,10 +33,34 @@ export function useUploadCycleStatus(branchId?: string) {
   })
 }
 
+export type RunningImport = {
+  isRunning: boolean
+  /** First load of the branch's import history still in flight — whether something is running isn't known yet. */
+  isLoading: boolean
+  /** The batch being processed on the server, if one is known yet — absent while a file is still being sent. */
+  batch: ImportBatch | undefined
+}
+
+/**
+ * Whether *any* file for this branch is still importing — being sent right now (a pending upload
+ * mutation, single or bulk) or still processing on the server (any file type). The Import page
+ * locks every other upload until this clears, so a user can't send the day's Purchase while its
+ * Stock is still going in. Reuses the branch-wide history query, which already polls while
+ * anything in it is processing.
+ */
+export function useRunningImport(branchId?: string): RunningImport {
+  const { data: batches, isLoading } = useImportBatches(branchId)
+  const sendingCount = useIsMutating({ mutationKey: reportsMutationKeys.uploadAny })
+  // eslint-disable-next-line react-hooks/purity -- staleness check only needs to be as fresh as the last render; every poll re-renders anyway
+  const batch = batches ? findRunningImport(batches, Date.now()) : undefined
+  return { isRunning: sendingCount > 0 || !!batch, isLoading, batch }
+}
+
 export function useUploadFile() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: reportsMutationKeys.uploadFile,
     mutationFn: ({
       fileType,
       branchId,
@@ -49,9 +74,9 @@ export function useUploadFile() {
     }) => uploadFile(fileType, branchId, file, onUploadProgress),
     // The batch already lands as a "processing" row by the time this ack comes back — worth a
     // refresh right away, on top of the live per-file refresh `useImportSocket` triggers as it finishes.
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reports"] })
-    },
+    // Returned (awaited) so the mutation stays pending until that row is in the cache — otherwise
+    // `useRunningImport` would briefly see neither a pending upload nor a processing row and unlock.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reports"] }),
   })
 }
 
@@ -70,6 +95,7 @@ export function useBulkUploadFiles() {
   const queryClient = useQueryClient()
 
   return useMutation({
+    mutationKey: reportsMutationKeys.uploadBulk,
     mutationFn: ({
       branchId,
       files,

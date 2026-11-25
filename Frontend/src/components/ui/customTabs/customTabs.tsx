@@ -18,9 +18,14 @@ type CustomTabsProps = {
   items: CustomTabItem[];
   className?: string;
   orientation?: TabsOrientation;
+  /** Optional controlled mode — pass both to drive the selected tab from outside. Omit both and the tabs manage their own selection, as before. */
+  selectedKey?: string;
+  onSelectionChange?: (key: string) => void;
+  /** Tabs that can't be switched to right now. */
+  disabledKeys?: string[];
 };
 
-export const CustomTabs = ({ items, className, orientation }: CustomTabsProps) => {
+export const CustomTabs = ({ items, className, orientation, selectedKey, onSelectionChange, disabledKeys }: CustomTabsProps) => {
   return (
     <SharedElementTransition>
       {/* `h-full min-h-0` on both the root and every panel — inert (resolves to `auto`) for
@@ -28,7 +33,13 @@ export const CustomTabs = ({ items, className, orientation }: CustomTabsProps) =
           page wrapping this in `flex h-full min-h-0 flex-col`) have its tab content fill the
           remaining space, so a `fillHeight` table inside a tab scrolls internally instead of the
           whole page scrolling past it — same behavior every non-tabbed list page already has. */}
-      <Tabs className={`h-full min-h-0 ${className ?? ""}`} orientation={orientation}>
+      <Tabs
+        className={`h-full min-h-0 ${className ?? ""}`}
+        orientation={orientation}
+        selectedKey={selectedKey}
+        onSelectionChange={onSelectionChange ? (key) => onSelectionChange(String(key)) : undefined}
+        disabledKeys={disabledKeys}
+      >
         <Tabs.ListContainer>
           <Tabs.List>
             {items.map((item) => (
